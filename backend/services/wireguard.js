@@ -10,7 +10,7 @@ const WG_DNS = process.env.WG_DNS || '1.1.1.1';
 const WG_SUBNET = process.env.WG_SUBNET || '10.0.0.0/24';
 
 // Get next available IP in subnet
-function getNextAvailableIP(usedIPs) {
+export function getNextAvailableIP(usedIPs) {
   const baseIP = WG_SUBNET.split('.')[2];
   const subnetBase = WG_SUBNET.split('/')[0].split('.').slice(0, 2).join('.');
   
