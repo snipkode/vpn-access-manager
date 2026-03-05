@@ -80,19 +80,19 @@ export default function AdminDashboard({ token }) {
           onClick={() => setActiveTab('overview')}
           style={activeTab === 'overview' ? styles.activeTab : styles.tab}
         >
-          📊 Overview
+          <i className="fas fa-chart-pie" style={styles.tabIcon}></i> Overview
         </button>
         <button
           onClick={() => setActiveTab('users')}
           style={activeTab === 'users' ? styles.activeTab : styles.tab}
         >
-          👥 Users
+          <i className="fas fa-users" style={styles.tabIcon}></i> Users
         </button>
         <button
           onClick={() => setActiveTab('devices')}
           style={activeTab === 'devices' ? styles.activeTab : styles.tab}
         >
-          📱 Devices
+          <i className="fas fa-mobile-screen" style={styles.tabIcon}></i> Devices
         </button>
       </div>
 
@@ -100,18 +100,30 @@ export default function AdminDashboard({ token }) {
         {activeTab === 'overview' && (
           <div style={styles.statsGrid}>
             <div style={styles.statCard}>
+              <div style={styles.statIcon}>
+                <i className="fas fa-users"></i>
+              </div>
               <div style={styles.statValue}>{stats?.total_users || 0}</div>
               <div style={styles.statLabel}>Total Users</div>
             </div>
             <div style={styles.statCard}>
+              <div style={styles.statIcon}>
+                <i className="fas fa-check-circle"></i>
+              </div>
               <div style={styles.statValue}>{stats?.vpn_enabled_users || 0}</div>
               <div style={styles.statLabel}>VPN Enabled</div>
             </div>
             <div style={styles.statCard}>
+              <div style={styles.statIcon}>
+                <i className="fas fa-times-circle"></i>
+              </div>
               <div style={styles.statValue}>{stats?.vpn_disabled_users || 0}</div>
               <div style={styles.statLabel}>VPN Disabled</div>
             </div>
             <div style={styles.statCard}>
+              <div style={styles.statIcon}>
+                <i className="fas fa-wifi"></i>
+              </div>
               <div style={styles.statValue}>{stats?.active_devices || 0}</div>
               <div style={styles.statLabel}>Active Devices</div>
             </div>
@@ -119,14 +131,18 @@ export default function AdminDashboard({ token }) {
         )}
 
         {activeTab === 'users' && (
-          <div style={styles.tableContainer}>
-            <table style={styles.table}>
+          <div style={styles.tableContainer} className="table-responsive">
+            <table style={styles.table} className="table-hover">
               <thead>
                 <tr>
-                  <th style={styles.th}>Email</th>
+                  <th style={styles.th}>
+                    <i className="fas fa-envelope" style={styles.thIcon}></i> Email
+                  </th>
                   <th style={styles.th}>Role</th>
                   <th style={styles.th}>VPN Access</th>
-                  <th style={styles.th}>Created</th>
+                  <th style={styles.th}>
+                    <i className="fas fa-calendar" style={styles.thIcon}></i> Created
+                  </th>
                   <th style={styles.th}>Actions</th>
                 </tr>
               </thead>
@@ -136,7 +152,7 @@ export default function AdminDashboard({ token }) {
                     <td style={styles.td}>{user.email}</td>
                     <td style={styles.td}>
                       <span style={user.role === 'admin' ? styles.adminBadge : styles.userBadge}>
-                        {user.role}
+                        {user.role === 'admin' ? <i className="fas fa-crown"></i> : <i className="fas fa-user"></i>} {user.role}
                       </span>
                     </td>
                     <td style={styles.td}>
@@ -144,7 +160,15 @@ export default function AdminDashboard({ token }) {
                         onClick={() => toggleVpnAccess(user.id, user.vpn_enabled)}
                         style={user.vpn_enabled ? styles.enabledBtn : styles.disabledBtn}
                       >
-                        {user.vpn_enabled ? '✅ Enabled' : '❌ Disabled'}
+                        {user.vpn_enabled ? (
+                          <>
+                            <i className="fas fa-check"></i> Enabled
+                          </>
+                        ) : (
+                          <>
+                            <i className="fas fa-times"></i> Disabled
+                          </>
+                        )}
                       </button>
                     </td>
                     <td style={styles.td}>
@@ -155,7 +179,7 @@ export default function AdminDashboard({ token }) {
                         onClick={() => toggleVpnAccess(user.id, user.vpn_enabled)}
                         style={styles.actionBtn}
                       >
-                        {user.vpn_enabled ? 'Disable' : 'Enable'}
+                        <i className="fas fa-toggle-on"></i> {user.vpn_enabled ? 'Disable' : 'Enable'}
                       </button>
                     </td>
                   </tr>
@@ -166,15 +190,21 @@ export default function AdminDashboard({ token }) {
         )}
 
         {activeTab === 'devices' && (
-          <div style={styles.tableContainer}>
-            <table style={styles.table}>
+          <div style={styles.tableContainer} className="table-responsive">
+            <table style={styles.table} className="table-hover">
               <thead>
                 <tr>
-                  <th style={styles.th}>Device Name</th>
+                  <th style={styles.th}>
+                    <i className="fas fa-mobile-alt" style={styles.thIcon}></i> Device Name
+                  </th>
                   <th style={styles.th}>User</th>
-                  <th style={styles.th}>IP Address</th>
+                  <th style={styles.th}>
+                    <i className="fas fa-network-wired" style={styles.thIcon}></i> IP Address
+                  </th>
                   <th style={styles.th}>Status</th>
-                  <th style={styles.th}>Created</th>
+                  <th style={styles.th}>
+                    <i className="fas fa-calendar" style={styles.thIcon}></i> Created
+                  </th>
                   <th style={styles.th}>Actions</th>
                 </tr>
               </thead>
@@ -185,7 +215,9 @@ export default function AdminDashboard({ token }) {
                     <td style={styles.td}>{device.user_id}</td>
                     <td style={styles.td}>{device.ip_address}</td>
                     <td style={styles.td}>
-                      <span style={styles.statusBadge}>{device.status}</span>
+                      <span style={styles.statusBadge}>
+                        <i className="fas fa-circle" style={styles.statusDot}></i> {device.status}
+                      </span>
                     </td>
                     <td style={styles.td}>
                       {new Date(device.created_at).toLocaleDateString()}
@@ -195,7 +227,7 @@ export default function AdminDashboard({ token }) {
                         onClick={() => revokeDevice(device.id)}
                         style={styles.revokeBtn}
                       >
-                        Revoke
+                        <i className="fas fa-trash"></i> Revoke
                       </button>
                     </td>
                   </tr>
@@ -205,6 +237,68 @@ export default function AdminDashboard({ token }) {
           </div>
         )}
       </div>
+
+      <style jsx global>{`
+        @media (max-width: 768px) {
+          .admin-tabs {
+            flex-wrap: wrap;
+            gap: 8px !important;
+          }
+          .admin-tab {
+            padding: 10px 16px !important;
+            font-size: 13px !important;
+            flex: 1 1 auto;
+            text-align: center;
+          }
+          .stats-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+          .stat-card {
+            padding: 16px !important;
+          }
+          .stat-value {
+            font-size: 28px !important;
+          }
+          .admin-content {
+            padding: 16px !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .stats-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .admin-content {
+            padding: 12px !important;
+          }
+          
+          /* Responsive Table - Card View */
+          .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border-radius: 8px;
+          }
+          .table-responsive table {
+            min-width: 700px;
+          }
+          .table-responsive th {
+            font-size: 10px !important;
+            padding: 12px 10px !important;
+          }
+          .table-responsive td {
+            font-size: 13px !important;
+            padding: 12px 10px !important;
+          }
+          .table-responsive tr:hover {
+            background-color: rgba(59, 130, 246, 0.1) !important;
+          }
+        }
+        
+        /* Table row hover effect */
+        .table-hover tr:hover {
+          background-color: rgba(59, 130, 246, 0.1);
+        }
+      `}</style>
     </div>
   );
 }
@@ -224,6 +318,7 @@ const styles = {
     display: 'flex',
     gap: '8px',
     marginBottom: '24px',
+    flexWrap: 'wrap',
   },
   tab: {
     padding: '12px 24px',
@@ -234,6 +329,16 @@ const styles = {
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '500',
+    flex: '1 1 auto',
+    textAlign: 'center',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    transition: 'all 0.2s',
+  },
+  tabIcon: {
+    fontSize: '14px',
   },
   activeTab: {
     padding: '12px 24px',
@@ -244,16 +349,23 @@ const styles = {
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '500',
+    flex: '1 1 auto',
+    textAlign: 'center',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    transition: 'all 0.2s',
   },
   content: {
     backgroundColor: '#1e293b',
-    padding: '24px',
+    padding: '20px',
     borderRadius: '12px',
     border: '1px solid #334155',
   },
   statsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
     gap: '20px',
   },
   statCard: {
@@ -262,6 +374,12 @@ const styles = {
     borderRadius: '12px',
     textAlign: 'center',
     border: '1px solid #334155',
+    transition: 'transform 0.2s',
+  },
+  statIcon: {
+    fontSize: '28px',
+    color: '#3b82f6',
+    marginBottom: '12px',
   },
   statValue: {
     fontSize: '36px',
@@ -275,6 +393,8 @@ const styles = {
   },
   tableContainer: {
     overflow: 'auto',
+    borderRadius: '8px',
+    border: '1px solid #334155',
   },
   table: {
     width: '100%',
@@ -282,19 +402,29 @@ const styles = {
   },
   th: {
     textAlign: 'left',
-    padding: '12px',
-    backgroundColor: '#0f172a',
-    color: '#94a3b8',
-    fontSize: '12px',
-    fontWeight: '600',
+    padding: '14px 16px',
+    backgroundColor: '#1e293b',
+    color: '#60a5fa',
+    fontSize: '11px',
+    fontWeight: '700',
     textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    whiteSpace: 'nowrap',
+    borderBottom: '2px solid #3b82f6',
+  },
+  thIcon: {
+    color: '#3b82f6',
+    fontSize: '12px',
+    marginRight: '6px',
   },
   tr: {
     borderBottom: '1px solid #334155',
+    transition: 'background-color 0.2s',
   },
   td: {
-    padding: '12px',
+    padding: '14px 16px',
     fontSize: '14px',
+    color: '#e2e8f0',
   },
   adminBadge: {
     backgroundColor: '#3b82f6',
@@ -309,10 +439,18 @@ const styles = {
     fontSize: '12px',
   },
   statusBadge: {
-    backgroundColor: '#10b981',
-    padding: '4px 8px',
-    borderRadius: '4px',
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    color: '#10b981',
+    padding: '4px 10px',
+    borderRadius: '12px',
     fontSize: '12px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    border: '1px solid rgba(16, 185, 129, 0.3)',
+  },
+  statusDot: {
+    fontSize: '6px',
   },
   enabledBtn: {
     backgroundColor: '#10b981',

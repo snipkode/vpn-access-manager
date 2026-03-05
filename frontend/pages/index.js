@@ -81,14 +81,22 @@ export default function Home() {
   return (
     <div style={styles.container}>
       <header style={styles.header}>
-        <h1 style={styles.title}>🔐 VPN Access Manager</h1>
+        <div style={styles.headerLeft}>
+          <i style={styles.logoIcon} className="fas fa-shield-halved"></i>
+          <h1 style={styles.title}>VPN Access Manager</h1>
+        </div>
         <div style={styles.userInfo}>
-          <span>{userData.email}</span>
+          <div style={styles.userAvatar}>
+            <i className="fas fa-user"></i>
+          </div>
+          <span style={styles.userEmail}>{userData.email}</span>
           {userData.role === 'admin' && (
-            <span style={styles.adminBadge}>Admin</span>
+            <span style={styles.adminBadge}>
+              <i className="fas fa-crown"></i> Admin
+            </span>
           )}
-          <button onClick={handleLogout} style={styles.logoutBtn}>
-            Logout
+          <button onClick={handleLogout} style={styles.logoutBtn} title="Logout">
+            <i className="fas fa-right-from-bracket"></i>
           </button>
         </div>
       </header>
@@ -100,6 +108,25 @@ export default function Home() {
           <Dashboard token={token} userData={userData} />
         )}
       </main>
+
+      <style jsx global>{`
+        @media (max-width: 768px) {
+          .header-mobile {
+            flex-direction: column;
+            gap: 12px;
+            padding: 16px 20px !important;
+          }
+          .user-email-mobile {
+            font-size: 14px;
+          }
+          .main-mobile {
+            padding: 16px !important;
+          }
+          .title-mobile {
+            font-size: 16px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
@@ -121,36 +148,78 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '20px 40px',
-    backgroundColor: '#1e293b',
+    padding: '16px 24px',
+    backgroundColor: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+    background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
     borderBottom: '1px solid #334155',
+    flexWrap: 'wrap',
+    gap: '12px',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+  },
+  headerLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  logoIcon: {
+    fontSize: '28px',
+    color: '#3b82f6',
   },
   title: {
     margin: 0,
-    fontSize: '24px',
+    fontSize: '18px',
+    fontWeight: '600',
+    letterSpacing: '-0.025em',
   },
   userInfo: {
     display: 'flex',
     alignItems: 'center',
-    gap: '15px',
+    gap: '12px',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
   },
-  adminBadge: {
+  userAvatar: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '50%',
     backgroundColor: '#3b82f6',
-    padding: '4px 12px',
-    borderRadius: '12px',
-    fontSize: '12px',
-    fontWeight: 'bold',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '14px',
   },
-  logoutBtn: {
-    padding: '8px 16px',
-    backgroundColor: '#ef4444',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
+  userEmail: {
+    fontSize: '14px',
+    color: '#94a3b8',
     fontWeight: '500',
   },
+  adminBadge: {
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    color: '#60a5fa',
+    padding: '6px 12px',
+    borderRadius: '20px',
+    fontSize: '12px',
+    fontWeight: '600',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    border: '1px solid rgba(59, 130, 246, 0.3)',
+  },
+  logoutBtn: {
+    padding: '10px 12px',
+    backgroundColor: 'transparent',
+    color: '#ef4444',
+    border: '1px solid #ef4444',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontWeight: '500',
+    fontSize: '14px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.2s',
+  },
   main: {
-    padding: '40px',
+    padding: '24px',
   },
 };

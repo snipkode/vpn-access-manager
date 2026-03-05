@@ -104,12 +104,16 @@ export default function Dashboard({ token, userData }) {
       <div style={styles.grid}>
         {/* Generate Config Card */}
         <div style={styles.card}>
-          <h2 style={styles.cardTitle}>📱 Generate VPN Config</h2>
-          
+          <h2 style={styles.cardTitle}>
+            <i className="fas fa-mobile-screen" style={styles.cardIcon}></i>
+            Generate VPN Config
+          </h2>
+
           {!userData.vpn_enabled ? (
             <div style={styles.disabledBox}>
               <p style={styles.disabledText}>
-                ⚠️ Your VPN access is currently disabled.
+                <i className="fas fa-triangle-exclamation" style={styles.warningIcon}></i>
+                Your VPN access is currently disabled.
                 <br />
                 Please contact your administrator to enable access.
               </p>
@@ -117,7 +121,9 @@ export default function Dashboard({ token, userData }) {
           ) : (
             <>
               <div style={styles.inputGroup}>
-                <label style={styles.label}>Device Name</label>
+                <label style={styles.label}>
+                  <i className="fas fa-tag" style={styles.labelIcon}></i> Device Name
+                </label>
                 <input
                   type="text"
                   value={deviceName}
@@ -132,7 +138,8 @@ export default function Dashboard({ token, userData }) {
                 disabled={loading}
                 style={styles.generateBtn}
               >
-                {loading ? 'Generating...' : '⚡ Generate Configuration'}
+                <i className="fas fa-bolt" style={styles.btnIcon}></i>
+                {loading ? 'Generating...' : 'Generate Configuration'}
               </button>
             </>
           )}
@@ -144,12 +151,17 @@ export default function Dashboard({ token, userData }) {
         {/* Config Display Card */}
         {config && (
           <div style={styles.card}>
-            <h2 style={styles.cardTitle}>🔧 Configuration</h2>
-            
+            <h2 style={styles.cardTitle}>
+              <i className="fas fa-sliders" style={styles.cardIcon}></i>
+              Configuration
+            </h2>
+
             {qrCode && (
               <div style={styles.qrContainer}>
                 <div dangerouslySetInnerHTML={{ __html: qrCode }} />
-                <p style={styles.qrLabel}>Scan QR Code</p>
+                <p style={styles.qrLabel}>
+                  <i className="fas fa-qrcode"></i> Scan QR Code
+                </p>
               </div>
             )}
 
@@ -158,35 +170,48 @@ export default function Dashboard({ token, userData }) {
             </div>
 
             <button onClick={downloadConfig} style={styles.downloadBtn}>
-              📥 Download .conf File
+              <i className="fas fa-download" style={styles.btnIcon}></i>
+              Download .conf File
             </button>
           </div>
         )}
 
         {/* Devices List Card */}
         <div style={styles.card}>
-          <h2 style={styles.cardTitle}>📋 My Devices</h2>
-          
+          <h2 style={styles.cardTitle}>
+            <i className="fas fa-list-check" style={styles.cardIcon}></i>
+            My Devices
+          </h2>
+
           <button onClick={fetchDevices} style={styles.refreshBtn}>
-            🔄 Refresh
+            <i className="fas fa-rotate" style={styles.btnIconSmall}></i> Refresh
           </button>
 
           {devices.length === 0 ? (
-            <p style={styles.emptyText}>No devices registered</p>
+            <p style={styles.emptyText}>
+              <i className="fas fa-inbox" style={styles.emptyIcon}></i>
+              <br />No devices registered
+            </p>
           ) : (
             <div style={styles.deviceList}>
               {devices.map((device) => (
                 <div key={device.id} style={styles.deviceItem}>
                   <div style={styles.deviceInfo}>
-                    <strong>{device.device_name}</strong>
-                    <span style={styles.deviceIP}>{device.ip_address}</span>
-                    <span style={styles.deviceStatus}>{device.status}</span>
+                    <strong>
+                      <i className="fas fa-laptop" style={styles.deviceIcon}></i> {device.device_name}
+                    </strong>
+                    <span style={styles.deviceIP}>
+                      <i className="fas fa-globe"></i> {device.ip_address}
+                    </span>
+                    <span style={styles.deviceStatus}>
+                      <i className="fas fa-circle-check"></i> {device.status}
+                    </span>
                   </div>
                   <button
                     onClick={() => revokeDevice(device.id)}
                     style={styles.revokeBtn}
                   >
-                    Revoke
+                    <i className="fas fa-trash"></i> Revoke
                   </button>
                 </div>
               ))}
@@ -194,6 +219,37 @@ export default function Dashboard({ token, userData }) {
           )}
         </div>
       </div>
+
+      <style jsx global>{`
+        @media (max-width: 768px) {
+          .dashboard-grid {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+          }
+          .dashboard-card {
+            padding: 16px !important;
+          }
+          .dashboard-title {
+            font-size: 16px !important;
+          }
+          .device-item {
+            flex-direction: column;
+            gap: 12px;
+            align-items: flex-start !important;
+          }
+          .revoke-btn {
+            width: 100%;
+          }
+        }
+        @media (max-width: 480px) {
+          .dashboard-container {
+            padding: 0 !important;
+          }
+          .dashboard-card {
+            padding: 16px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
@@ -205,19 +261,26 @@ const styles = {
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-    gap: '24px',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gap: '20px',
   },
   card: {
     backgroundColor: '#1e293b',
-    padding: '24px',
+    padding: '20px',
     borderRadius: '12px',
     border: '1px solid #334155',
   },
   cardTitle: {
-    margin: '0 0 20px 0',
-    fontSize: '18px',
+    margin: '0 0 16px 0',
+    fontSize: '16px',
     fontWeight: '600',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  cardIcon: {
+    color: '#3b82f6',
+    fontSize: '18px',
   },
   disabledBox: {
     backgroundColor: '#451a03',
@@ -230,6 +293,11 @@ const styles = {
     margin: 0,
     lineHeight: '1.6',
   },
+  warningIcon: {
+    color: '#fbbf24',
+    fontSize: '16px',
+    marginRight: '8px',
+  },
   inputGroup: {
     marginBottom: '16px',
   },
@@ -238,6 +306,13 @@ const styles = {
     marginBottom: '8px',
     fontSize: '14px',
     color: '#94a3b8',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  labelIcon: {
+    color: '#64748b',
+    fontSize: '14px',
   },
   input: {
     width: '100%',
@@ -259,6 +334,16 @@ const styles = {
     fontSize: '16px',
     fontWeight: '600',
     cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+  },
+  btnIcon: {
+    fontSize: '16px',
+  },
+  btnIconSmall: {
+    fontSize: '14px',
   },
   error: {
     marginTop: '16px',
@@ -328,7 +413,14 @@ const styles = {
   emptyText: {
     color: '#64748b',
     textAlign: 'center',
-    padding: '20px',
+    padding: '40px 20px',
+    fontSize: '14px',
+  },
+  emptyIcon: {
+    fontSize: '32px',
+    color: '#475569',
+    marginBottom: '8px',
+    display: 'block',
   },
   deviceList: {
     display: 'flex',
@@ -347,6 +439,10 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '4px',
+  },
+  deviceIcon: {
+    color: '#64748b',
+    marginRight: '6px',
   },
   deviceIP: {
     fontSize: '12px',
