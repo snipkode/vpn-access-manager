@@ -47,6 +47,27 @@ vpn-access/
 │   ├── package.json
 │   └── next.config.js
 │
+├── client/                    # Custom WireGuard Client (Electron)
+│   ├── src/
+│   │   ├── main.js            # Electron main process
+│   │   └── index.html         # Custom UI
+│   ├── assets/                # Icons & branding
+│   ├── package.json
+│   └── BRANDING.md
+│
+├── mobile/                    # React Native Expo Mobile App
+│   ├── app/                   # Expo Router screens
+│   │   ├── index.js           # Login screen
+│   │   ├── dashboard.js       # User dashboard
+│   │   ├── config.js          # VPN config
+│   │   ├── devices.js         # Device management
+│   │   └── admin.js           # Admin panel
+│   ├── src/
+│   │   └── config/            # Config & branding
+│   ├── assets/                # App icons & splash
+│   ├── package.json
+│   └── BRANDING.md
+│
 └── README.md
 ```
 
@@ -56,6 +77,68 @@ vpn-access/
 - **Backend**: Node.js, Express.js, Firebase Admin SDK
 - **Database**: Firestore
 - **VPN**: WireGuard
+- **Desktop Client**: Electron (Cross-platform)
+- **Mobile App**: React Native + Expo (iOS/Android)
+
+## 🖥️ Custom WireGuard Client
+
+Aplikasi desktop client dengan branding Anda sendiri untuk koneksi VPN yang mudah.
+
+### Fitur Client
+- ✅ UI modern dengan dark theme
+- ✅ System tray integration
+- ✅ Auto-connect on startup
+- ✅ Import .conf file
+- ✅ Connect/Disconnect dengan satu klik
+- ✅ Cross-platform (Windows, macOS, Linux)
+
+### Setup Client
+
+```bash
+cd client
+npm install
+
+# Run development
+npm start
+
+# Build untuk distribusi
+npm run build
+npm run build:win    # Windows
+npm run build:mac    # macOS
+npm run build:linux  # Linux
+```
+
+📖 Lihat [client/BRANDING.md](client/BRANDING.md) untuk panduan custom branding lengkap.
+
+## 📱 Mobile App (React Native Expo)
+
+Aplikasi mobile untuk iOS dan Android dengan branding Anda.
+
+### Fitur Mobile
+- ✅ Login dengan Google
+- ✅ Generate VPN configuration
+- ✅ QR Code untuk desktop setup
+- ✅ Download/share .conf file
+- ✅ Manage devices
+- ✅ Admin dashboard
+- ✅ Fully customizable branding
+
+### Setup Mobile
+
+```bash
+cd mobile
+npm install
+cp .env.example .env
+
+# Run development
+npm start
+
+# Build untuk production
+eas build --platform android
+eas build --platform ios
+```
+
+📖 Lihat [mobile/BRANDING.md](mobile/BRANDING.md) untuk panduan custom branding lengkap.
 
 ## 📦 Instalasi
 
@@ -264,11 +347,25 @@ Frontend akan berjalan di `http://localhost:3001`
 
 ### Untuk User
 
+**Via Web Portal:**
 1. Buka aplikasi dan login dengan Google
 2. Masukkan nama device
 3. Klik **Generate Configuration**
 4. Download file `.conf` atau scan QR code
-5. Import ke WireGuard client
+5. Import ke WireGuard client atau VPN Access Client
+
+**Via Desktop Client:**
+1. Install dan buka VPN Access Client
+2. Klik **Import Config** dan pilih file `.conf`
+3. Klik **Connect** untuk terhubung ke VPN
+4. Status koneksi ditampilkan di system tray
+
+**Via Mobile App:**
+1. Download app dari App Store / Google Play
+2. Login dengan Google
+3. Generate atau import konfigurasi VPN
+4. Scan QR code atau download .conf file
+5. Connect menggunakan WireGuard app
 
 ### Untuk Admin
 
@@ -280,6 +377,8 @@ Frontend akan berjalan di `http://localhost:3001`
 
 ## 🚧 Future Features
 
+- [x] Custom WireGuard Desktop Client
+- [x] Mobile apps (iOS/Android)
 - [ ] Device limit per user (configurable)
 - [ ] VPN usage analytics
 - [ ] Auto expiry access
@@ -288,6 +387,7 @@ Frontend akan berjalan di `http://localhost:3001`
 - [ ] Billing subscription system
 - [ ] Device fingerprinting
 - [ ] Email notifications
+- [ ] Split tunneling support
 
 ## 📝 License
 

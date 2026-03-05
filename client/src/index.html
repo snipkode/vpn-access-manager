@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: file:;">
+  <title>VPN Access Client</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-tertiary: #334155;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow: hidden;
+      -webkit-app-region: drag;
+    }
+
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      padding: 20px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--bg-tertiary);
+      -webkit-app-region: no-drag;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      font-size: 28px;
+    }
+
+    .logo-text {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .logo-text span {
+      color: var(--accent);
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .window-btn {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      -webkit-app-region: no-drag;
+    }
+
+    .window-btn.minimize { background: #fbbf24; }
+    .window-btn.close { background: #ef4444; }
+
+    /* Main Content */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 30px;
+      padding: 20px 0;
+    }
+
+    /* Connection Status */
+    .status-container {
+      position: relative;
+      width: 180px;
+      height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .status-ring {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 4px solid var(--bg-tertiary);
+      transition: all 0.3s ease;
+    }
+
+    .status-ring.connected {
+      border-color: var(--success);
+      box-shadow: 0 0 30px rgba(16, 185, 129, 0.3);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.8; }
+    }
+
+    .status-inner {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: var(--bg-secondary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .status-icon {
+      font-size: 48px;
+      transition: all 0.3s ease;
+    }
+
+    .status-icon.connected {
+      filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.5));
+    }
+
+    .status-text {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .status-text.connected {
+      color: var(--success);
+      font-weight: 600;
+    }
+
+    /* Connection Info */
+    .connection-info {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 16px 24px;
+      width: 100%;
+      max-width: 350px;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--bg-tertiary);
+    }
+
+    .info-row:last-child {
+      border-bottom: none;
+    }
+
+    .info-label {
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .info-value {
+      color: var(--text-primary);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .info-value.connected {
+      color: var(--success);
+    }
+
+    /* Connect Button */
+    .connect-btn {
+      -webkit-app-region: no-drag;
+      width: 100%;
+      max-width: 350px;
+      padding: 16px 32px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .connect-btn.disconnected {
+      background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+      color: white;
+      box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    .connect-btn.connected {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+    }
+
+    .connect-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .connect-btn:active {
+      transform: translateY(0);
+    }
+
+    /* Config Section */
+    .config-section {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 16px;
+      width: 100%;
+      max-width: 350px;
+      -webkit-app-region: no-drag;
+    }
+
+    .config-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .config-title {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .config-name {
+      font-size: 13px;
+      color: var(--text-primary);
+      background: var(--bg-tertiary);
+      padding: 4px 10px;
+      border-radius: 6px;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .config-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .config-btn {
+      flex: 1;
+      padding: 10px;
+      font-size: 13px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 500;
+    }
+
+    .import-btn {
+      background: var(--accent);
+      color: white;
+    }
+
+    .import-btn:hover {
+      background: var(--accent-hover);
+    }
+
+    .remove-btn {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+    }
+
+    .remove-btn:hover {
+      background: var(--danger);
+      color: white;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding-top: 16px;
+      border-top: 1px solid var(--bg-tertiary);
+      font-size: 12px;
+      color: var(--text-secondary);
+      -webkit-app-region: no-drag;
+    }
+
+    .footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      padding: 12px 24px;
+      border-radius: 8px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--bg-tertiary);
+      font-size: 14px;
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 1000;
+      -webkit-app-region: no-drag;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .toast.success {
+      border-color: var(--success);
+    }
+
+    .toast.error {
+      border-color: var(--danger);
+    }
+
+    /* Loading Spinner */
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--bg-tertiary);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Auto-connect toggle */
+    .auto-connect {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 350px;
+      padding: 12px 16px;
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      -webkit-app-region: no-drag;
+    }
+
+    .auto-connect-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      background: var(--bg-tertiary);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .toggle.active {
+      background: var(--accent);
+    }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.3s ease;
+    }
+
+    .toggle.active::after {
+      transform: translateX(20px);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo">
+        <span class="logo-icon">🔐</span>
+        <span class="logo-text">VPN <span>Access</span></span>
+      </div>
+      <div class="window-controls">
+        <button class="window-btn minimize" onclick="minimizeWindow()"></button>
+        <button class="window-btn close" onclick="closeWindow()"></button>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Status Ring -->
+      <div class="status-container">
+        <div class="status-ring" id="statusRing"></div>
+        <div class="status-inner">
+          <div class="status-icon" id="statusIcon">🛡️</div>
+          <div class="status-text" id="statusText">Disconnected</div>
+        </div>
+      </div>
+
+      <!-- Connection Info -->
+      <div class="connection-info" id="connectionInfo" style="display: none;">
+        <div class="info-row">
+          <span class="info-label">Connected Since</span>
+          <span class="info-value" id="connectedSince">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Protocol</span>
+          <span class="info-value">WireGuard</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Status</span>
+          <span class="info-value connected" id="connectionStatus">Active</span>
+        </div>
+      </div>
+
+      <!-- Connect Button -->
+      <button class="connect-btn disconnected" id="connectBtn" onclick="toggleConnection()">
+        🔌 Connect
+      </button>
+
+      <!-- Auto Connect -->
+      <div class="auto-connect">
+        <span class="auto-connect-label">Auto-connect on startup</span>
+        <div class="toggle" id="autoConnectToggle" onclick="toggleAutoConnect()"></div>
+      </div>
+
+      <!-- Config Section -->
+      <div class="config-section">
+        <div class="config-header">
+          <span class="config-title">Configuration</span>
+          <span class="config-name" id="configName">No config loaded</span>
+        </div>
+        <div class="config-actions">
+          <button class="config-btn import-btn" onclick="importConfig()">
+            📁 Import Config
+          </button>
+          <button class="config-btn remove-btn" onclick="removeConfig()">
+            🗑️ Remove
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      VPN Access Client v1.0.0 | <a href="#" onclick="openWebsite()">vpn-access.io</a>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    const Store = require('electron-store');
+    const store = new Store();
+
+    let isConnected = false;
+    let configLoaded = false;
+
+    // Initialize
+    async function init() {
+      // Get platform
+      const platform = await ipcRenderer.invoke('get-platform');
+      console.log('Running on:', platform);
+
+      // Get stored config
+      const stored = await ipcRenderer.invoke('get-stored-config');
+      if (stored.configName) {
+        configLoaded = true;
+        document.getElementById('configName').textContent = stored.configName;
+      }
+
+      // Get connection status
+      const status = await ipcRenderer.invoke('get-connection-status');
+      isConnected = status.connected;
+      updateUI();
+
+      // Get auto-connect setting
+      const autoConnect = store.get('autoConnect', false);
+      if (autoConnect) {
+        document.getElementById('autoConnectToggle').classList.add('active');
+      }
+
+      // Listen for connection status updates
+      ipcRenderer.on('connection-status', (event, data) => {
+        isConnected = data.connected;
+        updateUI();
+      });
+    }
+
+    // Update UI based on connection state
+    function updateUI() {
+      const statusRing = document.getElementById('statusRing');
+      const statusIcon = document.getElementById('statusIcon');
+      const statusText = document.getElementById('statusText');
+      const connectBtn = document.getElementById('connectBtn');
+      const connectionInfo = document.getElementById('connectionInfo');
+
+      if (isConnected) {
+        statusRing.classList.add('connected');
+        statusIcon.classList.add('connected');
+        statusText.classList.add('connected');
+        statusText.textContent = 'Connected';
+        connectBtn.textContent = '⏹️ Disconnect';
+        connectBtn.classList.remove('disconnected');
+        connectBtn.classList.add('connected');
+        connectionInfo.style.display = 'block';
+        
+        // Update connected time
+        const stored = store.get('connectedAt');
+        if (stored) {
+          const date = new Date(stored);
+          document.getElementById('connectedSince').textContent = date.toLocaleTimeString();
+        }
+      } else {
+        statusRing.classList.remove('connected');
+        statusIcon.classList.remove('connected');
+        statusText.classList.remove('connected');
+        statusText.textContent = 'Disconnected';
+        connectBtn.textContent = '🔌 Connect';
+        connectBtn.classList.remove('connected');
+        connectBtn.classList.add('disconnected');
+        connectionInfo.style.display = 'none';
+      }
+    }
+
+    // Toggle connection
+    async function toggleConnection() {
+      if (!configLoaded) {
+        showToast('Please import a VPN configuration first', 'error');
+        return;
+      }
+
+      const result = await ipcRenderer.invoke('toggle-connection');
+      isConnected = result.connected;
+      updateUI();
+    }
+
+    // Import configuration
+    async function importConfig() {
+      const result = await ipcRenderer.invoke('import-config');
+      
+      if (result.success) {
+        configLoaded = true;
+        document.getElementById('configName').textContent = result.name;
+        showToast('Configuration imported successfully!', 'success');
+      }
+    }
+
+    // Remove configuration
+    async function removeConfig() {
+      if (isConnected) {
+        showToast('Please disconnect first', 'error');
+        return;
+      }
+
+      const { ipcRenderer } = require('electron');
+      const Store = require('electron-store');
+      const store = new Store();
+      
+      store.delete('configPath');
+      store.delete('configName');
+      
+      configLoaded = false;
+      document.getElementById('configName').textContent = 'No config loaded';
+      showToast('Configuration removed', 'success');
+    }
+
+    // Toggle auto-connect
+    function toggleAutoConnect() {
+      const toggle = document.getElementById('autoConnectToggle');
+      const isActive = toggle.classList.contains('active');
+      
+      if (isActive) {
+        toggle.classList.remove('active');
+        store.set('autoConnect', false);
+      } else {
+        toggle.classList.add('active');
+        store.set('autoConnect', true);
+      }
+    }
+
+    // Show toast notification
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast ${type} show`;
+      
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // Window controls
+    function minimizeWindow() {
+      const { remote } = require('electron');
+      remote.BrowserWindow.getFocusedWindow().minimize();
+    }
+
+    function closeWindow() {
+      const { remote } = require('electron');
+      remote.BrowserWindow.getFocusedWindow().hide();
+    }
+
+    function openWebsite() {
+      const { shell } = require('electron');
+      shell.openExternal('https://vpn-access.io');
+    }
+
+    // Initialize on load
+    init();
+  </script>
+</body>
+</html>

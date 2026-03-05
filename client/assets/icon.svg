@@ -1,0 +1,8 @@
+<!-- Placeholder for icon.png (512x512) -->
+<!-- Replace this with your actual icon -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="100" fill="#0f172a"/>
+  <circle cx="256" cy="200" r="80" fill="#3b82f6"/>
+  <path d="M156 320 Q256 420 356 320" stroke="#3b82f6" stroke-width="40" fill="none" stroke-linecap="round"/>
+  <text x="256" y="230" text-anchor="middle" fill="white" font-size="80" font-weight="bold">VPN</text>
+</svg>

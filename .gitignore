@@ -26,6 +26,13 @@ build/
 dist/
 *.tsbuildinfo
 
+# Expo/Mobile builds
+.expo/
+.webpack/
+web-build/
+ios/
+android/
+
 # ======================
 # Logs
 # ======================
