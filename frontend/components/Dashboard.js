@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
-export default function Dashboard({ token, userData }) {
+export default function Dashboard({ token, userData, activePage }) {
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState(null);

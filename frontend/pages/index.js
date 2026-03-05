@@ -4,6 +4,8 @@ import { auth, googleProvider } from '../lib/firebase';
 import Login from '../components/Login';
 import Dashboard from '../components/Dashboard';
 import AdminDashboard from '../components/AdminDashboard';
+import Layout from '../components/Layout';
+import Wallet from '../components/Wallet';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
@@ -12,13 +14,15 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(null);
   const [userData, setUserData] = useState(null);
+  const [activePage, setActivePage] = useState('dashboard');
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
         const idToken = await firebaseUser.getIdToken();
         setToken(idToken);
-        
+        setUser(firebaseUser);
+
         // Verify user with backend
         try {
           const res = await fetch(`${API_URL}/auth/verify`, {
@@ -29,13 +33,26 @@ export default function Home() {
             },
             body: JSON.stringify({ token: idToken }),
           });
-          
+
           if (res.ok) {
             const data = await res.json();
             setUserData(data.user);
+          } else {
+            // If backend verify fails, use firebase user data with default role
+            setUserData({
+              email: firebaseUser.email,
+              role: 'user',
+              vpn_enabled: true,
+            });
           }
         } catch (error) {
           console.error('Verify error:', error);
+          // Fallback to firebase user data
+          setUserData({
+            email: firebaseUser.email,
+            role: 'user',
+            vpn_enabled: true,
+          });
         }
       } else {
         setUser(null);
@@ -61,6 +78,7 @@ export default function Home() {
       await signOut(auth);
       setUser(null);
       setUserData(null);
+      setActivePage('dashboard');
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -68,8 +86,11 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div style={styles.container}>
-        <div style={styles.loading}>Loading...</div>
+      <div style={styles.loadingContainer}>
+        <div style={styles.loader}>
+          <i className="fas fa-circle-notch fa-spin" style={styles.spinner}></i>
+          <p style={styles.loadingText}>Loading VPN Access...</p>
+        </div>
       </div>
     );
   }
@@ -79,147 +100,41 @@ export default function Home() {
   }
 
   return (
-    <div style={styles.container}>
-      <header style={styles.header}>
-        <div style={styles.headerLeft}>
-          <i style={styles.logoIcon} className="fas fa-shield-halved"></i>
-          <h1 style={styles.title}>VPN Access Manager</h1>
-        </div>
-        <div style={styles.userInfo}>
-          <div style={styles.userAvatar}>
-            <i className="fas fa-user"></i>
-          </div>
-          <span style={styles.userEmail}>{userData.email}</span>
-          {userData.role === 'admin' && (
-            <span style={styles.adminBadge}>
-              <i className="fas fa-crown"></i> Admin
-            </span>
-          )}
-          <button onClick={handleLogout} style={styles.logoutBtn} title="Logout">
-            <i className="fas fa-right-from-bracket"></i>
-          </button>
-        </div>
-      </header>
-
-      <main style={styles.main}>
-        {userData.role === 'admin' ? (
-          <AdminDashboard token={token} />
-        ) : (
-          <Dashboard token={token} userData={userData} />
-        )}
-      </main>
-
-      <style jsx global>{`
-        @media (max-width: 768px) {
-          .header-mobile {
-            flex-direction: column;
-            gap: 12px;
-            padding: 16px 20px !important;
-          }
-          .user-email-mobile {
-            font-size: 14px;
-          }
-          .main-mobile {
-            padding: 16px !important;
-          }
-          .title-mobile {
-            font-size: 16px !important;
-          }
-        }
-      `}</style>
-    </div>
+    <Layout
+      user={userData}
+      onLogout={handleLogout}
+      activePage={activePage}
+      onPageChange={setActivePage}
+    >
+      {activePage === 'admin' || activePage === 'users' || activePage === 'all-devices' ? (
+        <AdminDashboard token={token} activeTab={activePage} />
+      ) : activePage === 'wallet' ? (
+        <Wallet token={token} />
+      ) : (
+        <Dashboard token={token} userData={userData} activePage={activePage} />
+      )}
+    </Layout>
   );
 }
 
 const styles = {
-  container: {
+  loadingContainer: {
     minHeight: '100vh',
     backgroundColor: '#0f172a',
-    color: '#fff',
-  },
-  loading: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    height: '100vh',
-    fontSize: '24px',
   },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '16px 24px',
-    backgroundColor: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-    background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-    borderBottom: '1px solid #334155',
-    flexWrap: 'wrap',
-    gap: '12px',
-    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+  loader: {
+    textAlign: 'center',
   },
-  headerLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-  },
-  logoIcon: {
-    fontSize: '28px',
+  spinner: {
+    fontSize: '48px',
     color: '#3b82f6',
   },
-  title: {
-    margin: 0,
-    fontSize: '18px',
-    fontWeight: '600',
-    letterSpacing: '-0.025em',
-  },
-  userInfo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-  },
-  userAvatar: {
-    width: '36px',
-    height: '36px',
-    borderRadius: '50%',
-    backgroundColor: '#3b82f6',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '14px',
-  },
-  userEmail: {
-    fontSize: '14px',
+  loadingText: {
+    marginTop: '16px',
     color: '#94a3b8',
-    fontWeight: '500',
-  },
-  adminBadge: {
-    backgroundColor: 'rgba(59, 130, 246, 0.2)',
-    color: '#60a5fa',
-    padding: '6px 12px',
-    borderRadius: '20px',
-    fontSize: '12px',
-    fontWeight: '600',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    border: '1px solid rgba(59, 130, 246, 0.3)',
-  },
-  logoutBtn: {
-    padding: '10px 12px',
-    backgroundColor: 'transparent',
-    color: '#ef4444',
-    border: '1px solid #ef4444',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontWeight: '500',
-    fontSize: '14px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'all 0.2s',
-  },
-  main: {
-    padding: '24px',
+    fontSize: '16px',
   },
 };

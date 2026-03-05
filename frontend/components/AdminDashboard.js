@@ -2,12 +2,17 @@ import { useState, useEffect } from 'react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
-export default function AdminDashboard({ token }) {
+import AdminCredit from './AdminCredit';
+
+export default function AdminDashboard({ token, activeTab }) {
   const [users, setUsers] = useState([]);
   const [devices, setDevices] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [internalTab, setInternalTab] = useState('overview');
+
+  // Use activeTab from parent if provided (from sidebar navigation)
+  const tab = activeTab || internalTab;
 
   useEffect(() => {
     fetchData();
@@ -75,29 +80,39 @@ export default function AdminDashboard({ token }) {
 
   return (
     <div style={styles.container}>
-      <div style={styles.tabs}>
-        <button
-          onClick={() => setActiveTab('overview')}
-          style={activeTab === 'overview' ? styles.activeTab : styles.tab}
-        >
-          <i className="fas fa-chart-pie" style={styles.tabIcon}></i> Overview
-        </button>
-        <button
-          onClick={() => setActiveTab('users')}
-          style={activeTab === 'users' ? styles.activeTab : styles.tab}
-        >
-          <i className="fas fa-users" style={styles.tabIcon}></i> Users
-        </button>
-        <button
-          onClick={() => setActiveTab('devices')}
-          style={activeTab === 'devices' ? styles.activeTab : styles.tab}
-        >
-          <i className="fas fa-mobile-screen" style={styles.tabIcon}></i> Devices
-        </button>
-      </div>
+      {!activeTab && (
+        <div style={styles.tabs}>
+          <button
+            onClick={() => setInternalTab('overview')}
+            style={internalTab === 'overview' ? styles.activeTab : styles.tab}
+          >
+            <i className="fas fa-chart-pie" style={styles.tabIcon}></i> Overview
+          </button>
+          <button
+            onClick={() => setInternalTab('users')}
+            style={internalTab === 'users' ? styles.activeTab : styles.tab}
+          >
+            <i className="fas fa-users" style={styles.tabIcon}></i> Users
+          </button>
+          <button
+            onClick={() => setInternalTab('devices')}
+            style={internalTab === 'devices' ? styles.activeTab : styles.tab}
+          >
+            <i className="fas fa-mobile-screen" style={styles.tabIcon}></i> Devices
+          </button>
+          <button
+            onClick={() => setInternalTab('credit')}
+            style={internalTab === 'credit' ? styles.activeTab : styles.tab}
+          >
+            <i className="fas fa-coins" style={styles.tabIcon}></i> Credit
+          </button>
+        </div>
+      )}
 
       <div style={styles.content}>
-        {activeTab === 'overview' && (
+        {tab === 'credit' ? (
+          <AdminCredit token={token} />
+        ) : tab === 'overview' && (
           <div style={styles.statsGrid}>
             <div style={styles.statCard}>
               <div style={styles.statIcon}>
@@ -130,7 +145,7 @@ export default function AdminDashboard({ token }) {
           </div>
         )}
 
-        {activeTab === 'users' && (
+        {tab === 'users' && (
           <div style={styles.tableContainer} className="table-responsive">
             <table style={styles.table} className="table-hover">
               <thead>
@@ -189,7 +204,7 @@ export default function AdminDashboard({ token }) {
           </div>
         )}
 
-        {activeTab === 'devices' && (
+        {tab === 'devices' && (
           <div style={styles.tableContainer} className="table-responsive">
             <table style={styles.table} className="table-hover">
               <thead>
