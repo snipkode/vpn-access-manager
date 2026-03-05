@@ -1,0 +1,67 @@
+{
+  "expo": {
+    "name": "VPN Client Pro",
+    "slug": "vpn-client-pro",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "vpnclient",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f172a"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.vpnclient.pro",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": ["group.com.vpnclient.pro"]
+      },
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "VPN needs network access to establish secure connection",
+        "UIBackgroundModes": ["vpn"]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0f172a"
+      },
+      "package": "com.vpnclient.pro",
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "13.0"
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "your-project-id"
+      }
+    }
+  }
+}

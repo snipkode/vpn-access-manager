@@ -1,0 +1,8 @@
+<!-- Placeholder icon for VPN Client Pro -->
+<!-- Replace with your actual icon (1024x1024 PNG) -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" rx="226" fill="#0f172a"/>
+  <circle cx="512" cy="400" r="150" fill="#3b82f6"/>
+  <path d="M362 550 Q512 700 662 550" stroke="#3b82f6" stroke-width="60" fill="none" stroke-linecap="round"/>
+  <text x="512" y="450" text-anchor="middle" fill="white" font-size="120" font-weight="bold">VPN</text>
+</svg>

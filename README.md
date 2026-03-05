@@ -68,6 +68,18 @@ vpn-access/
 │   ├── package.json
 │   └── BRANDING.md
 │
+├── vpn-client/                # 🔥 WireGuard VPN Client App
+│   ├── app/                   # App screens
+│   │   ├── index.js           # Main connection screen
+│   │   ├── configs.js         # Config management
+│   │   └── settings.js        # Settings
+│   ├── src/
+│   │   ├── services/          # WireGuard service
+│   │   └── config/            # Branding config
+│   ├── assets/                # App icons
+│   ├── package.json
+│   └── BRANDING.md
+│
 └── README.md
 ```
 
@@ -79,6 +91,7 @@ vpn-access/
 - **VPN**: WireGuard
 - **Desktop Client**: Electron (Cross-platform)
 - **Mobile App**: React Native + Expo (iOS/Android)
+- **VPN Client**: React Native + WireGuard Native
 
 ## 🖥️ Custom WireGuard Client
 
@@ -139,6 +152,43 @@ eas build --platform ios
 ```
 
 📖 Lihat [mobile/BRANDING.md](mobile/BRANDING.md) untuk panduan custom branding lengkap.
+
+## 🔐 VPN Client Pro (WireGuard Native)
+
+Aplikasi mobile VPN client yang bisa langsung connect ke WireGuard server.
+
+### Fitur VPN Client
+- ✅ **One-Tap Connect** - Connect/disconnect dengan satu tombol
+- ✅ **Import Config** - Import file .conf dari device
+- ✅ **Multiple Tunnels** - Support banyak konfigurasi
+- ✅ **Real-time Stats** - Upload/download counter
+- ✅ **Connection Timer** - Durasi koneksi
+- ✅ **Dark Theme UI** - Modern dark theme
+- ✅ **Full Branding** - Customizable colors & logo
+
+### Setup VPN Client
+
+```bash
+cd vpn-client
+npm install
+cp .env.example .env
+
+# Run development
+npm start
+
+# Build production
+eas build --platform android
+eas build --platform ios
+```
+
+### Cara Menggunakan
+
+1. **Import Config**: Klik "Import Configuration" → pilih file .conf
+2. **Connect**: Tekan tombol Connect untuk mulai VPN
+3. **Monitor**: Lihat data transfer & durasi koneksi
+4. **Disconnect**: Tekan Disconnect untuk stop VPN
+
+📖 Lihat [vpn-client/BRANDING.md](vpn-client/BRANDING.md) untuk panduan custom branding lengkap.
 
 ## 📦 Instalasi
 
@@ -379,6 +429,7 @@ Frontend akan berjalan di `http://localhost:3001`
 
 - [x] Custom WireGuard Desktop Client
 - [x] Mobile apps (iOS/Android)
+- [x] VPN Client Pro (Native WireGuard)
 - [ ] Device limit per user (configurable)
 - [ ] VPN usage analytics
 - [ ] Auto expiry access
