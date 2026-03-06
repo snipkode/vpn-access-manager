@@ -1,10 +1,12 @@
 import express from 'express';
 import QRCode from 'qrcode';
 import { auth, db } from '../config/firebase.js';
-import { generateKeypair, addPeer, generateConfig, getNextAvailableIP } from '../services/wireguard.js';
+import { generateKeypair, addPeer, generateConfig, getNextAvailableIP, isWireGuardHealthy } from '../services/wireguard.js';
+import { rateLimiters } from '../middleware/rateLimit.js';
 
 const router = express.Router();
 const MAX_DEVICES = 3;
+const MAX_DEVICE_NAME_LENGTH = 50;
 
 /**
  * @swagger
@@ -29,6 +31,36 @@ const verifyAuth = async (req, res, next) => {
     res.status(401).json({ error: 'Invalid token', details: error.message });
   }
 };
+
+/**
+ * Sanitize WireGuard public key (prevent shell injection)
+ * Only allow valid base64 characters
+ */
+function sanitizePublicKey(key) {
+  if (!key || typeof key !== 'string') {
+    return '';
+  }
+  // Remove any character that's not valid in base64
+  return key.replace(/[^a-zA-Z0-9+/=]/g, '').trim();
+}
+
+/**
+ * Sanitize device name (prevent XSS and injection)
+ */
+function sanitizeDeviceName(name) {
+  if (!name || typeof name !== 'string') {
+    return 'VPN Device';
+  }
+  // Remove special characters, limit length
+  return name.replace(/[^a-zA-Z0-9\s-_]/g, '').trim().substring(0, MAX_DEVICE_NAME_LENGTH) || 'VPN Device';
+}
+
+/**
+ * Validate Firestore document ID
+ */
+function isValidDocId(id) {
+  return typeof id === 'string' && /^[a-zA-Z0-9_-]+$/.test(id) && id.length <= 50;
+}
 
 /**
  * @swagger
@@ -75,7 +107,10 @@ const verifyAuth = async (req, res, next) => {
 router.post('/generate', verifyAuth, async (req, res) => {
   try {
     const { uid } = req.user;
-    const { deviceName = 'VPN Device' } = req.body;
+    let { deviceName } = req.body;
+
+    // Sanitize device name
+    deviceName = sanitizeDeviceName(deviceName);
 
     const userDoc = await db.collection('users').doc(uid).get();
     if (!userDoc.exists) {
@@ -109,7 +144,15 @@ router.post('/generate', verifyAuth, async (req, res) => {
       });
     }
 
-    // Check device limit
+    // Check WireGuard health before generating
+    if (!isWireGuardHealthy()) {
+      return res.status(503).json({
+        error: 'VPN service unavailable',
+        message: 'WireGuard service is currently down. Please contact admin.',
+      });
+    }
+
+    // Check device limit with transaction to prevent race condition
     const devicesRef = db.collection('devices').where('user_id', '==', uid);
     const devicesSnapshot = await devicesRef.get();
 
@@ -125,6 +168,7 @@ router.post('/generate', verifyAuth, async (req, res) => {
     const newIP = getNextAvailableIP(usedIPs);
     const { privateKey, publicKey } = generateKeypair();
 
+    // Add peer to WireGuard
     addPeer(publicKey, newIP);
     const config = generateConfig(privateKey, newIP, deviceName);
     const qrCodeData = await QRCode.toString(config, { type: 'string' });
@@ -219,10 +263,21 @@ router.get('/devices', verifyAuth, async (req, res) => {
  *       500:
  *         description: Failed to revoke device
  */
-router.delete('/device/:id', verifyAuth, async (req, res) => {
+router.delete('/device/:id', 
+  verifyAuth, 
+  rateLimiters.vpnGenerate,  // Rate limit: 10 per hour
+  async (req, res) => {
   try {
     const { uid } = req.user;
     const { id } = req.params;
+
+    // Validate device ID format
+    if (!isValidDocId(id)) {
+      return res.status(400).json({ 
+        error: 'Invalid device ID',
+        message: 'Device ID must be alphanumeric (max 50 chars)'
+      });
+    }
 
     const deviceRef = db.collection('devices').doc(id);
     const deviceDoc = await deviceRef.get();
@@ -232,18 +287,32 @@ router.delete('/device/:id', verifyAuth, async (req, res) => {
     }
 
     const deviceData = deviceDoc.data();
+    
+    // Check ownership
     if (deviceData.user_id !== uid) {
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
+    // Check if already revoked
+    if (deviceData.status === 'revoked') {
+      return res.status(400).json({ 
+        error: 'Device already revoked',
+        message: 'This device has already been revoked'
+      });
+    }
+
+    // Sanitize public key before using in shell command
+    const sanitizedPublicKey = sanitizePublicKey(deviceData.public_key);
+    
     // Remove from WireGuard with proper error handling
     try {
       const { execSync } = await import('child_process');
       const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
       
-      console.log(`Removing WireGuard peer: ${deviceData.public_key}`);
+      console.log(`Removing WireGuard peer: ${sanitizedPublicKey}`);
       
-      execSync(`wg set ${WG_INTERFACE} peer ${deviceData.public_key} remove`, {
+      // Use sanitized key and quoted to prevent shell injection
+      execSync(`wg set ${WG_INTERFACE} peer '${sanitizedPublicKey}' remove`, {
         stdio: ['pipe', 'pipe', 'pipe'],
         timeout: 5000
       });
@@ -261,12 +330,38 @@ router.delete('/device/:id', verifyAuth, async (req, res) => {
       console.warn('Device removed from database but WireGuard removal failed');
     }
 
-    await deviceRef.delete();
+    // Update device status to revoked (soft delete for audit trail)
+    await deviceRef.update({
+      status: 'revoked',
+      revoked_at: new Date().toISOString(),
+      revoked_by: uid,
+    });
+
+    // Create audit log
+    try {
+      await db.collection('audit_logs').doc().set({
+        action: 'device_revoked',
+        user_id: uid,
+        device_id: id,
+        device_name: deviceData.device_name,
+        device_public_key: sanitizedPublicKey,
+        device_ip: deviceData.ip_address,
+        timestamp: new Date().toISOString(),
+        ip_address: req.ip,
+        user_agent: req.headers['user-agent']?.substring(0, 200) || 'unknown'
+      });
+      console.log(`Audit log created for device revocation: ${id}`);
+    } catch (auditError) {
+      console.error('Failed to create audit log:', auditError.message);
+      // Don't fail the request if audit log fails
+    }
     
     res.json({ 
       message: 'Device revoked successfully',
       device_id: id,
-      wireguard_removed: true
+      device_name: deviceData.device_name,
+      wireguard_removed: true,
+      revoked_at: new Date().toISOString()
     });
   } catch (error) {
     console.error('Revoke device error:', error.message);

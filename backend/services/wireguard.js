@@ -120,3 +120,20 @@ export function getPeers() {
     return '';
   }
 }
+
+// Check if WireGuard service is healthy
+export function isWireGuardHealthy() {
+  try {
+    const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
+    
+    execSync(`wg show ${WG_INTERFACE}`, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 2000
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('WireGuard health check failed:', error.message);
+    return false;
+  }
+}
