@@ -7,21 +7,17 @@ const router = express.Router();
 router.post('/verify', async (req, res) => {
   try {
     const { token } = req.body;
-    
     if (!token) {
       return res.status(400).json({ error: 'Token is required' });
     }
 
-    // Verify Firebase token
     const decodedToken = await auth.verifyIdToken(token);
     const { uid, email } = decodedToken;
 
-    // Check if user exists in Firestore
     const userRef = db.collection('users').doc(uid);
     const userDoc = await userRef.get();
 
     if (!userDoc.exists) {
-      // Create new user
       await userRef.set({
         email,
         firebase_uid: uid,
@@ -32,14 +28,8 @@ router.post('/verify', async (req, res) => {
     }
 
     const userData = (await userRef.get()).data();
-
     res.json({
-      user: {
-        uid,
-        email,
-        role: userData.role,
-        vpn_enabled: userData.vpn_enabled,
-      },
+      user: { uid, email, role: userData.role, vpn_enabled: userData.vpn_enabled },
       token: decodedToken,
     });
   } catch (error) {
@@ -52,7 +42,7 @@ router.post('/verify', async (req, res) => {
 router.get('/me', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader?.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -61,7 +51,6 @@ router.get('/me', async (req, res) => {
     const { uid } = decodedToken;
 
     const userDoc = await db.collection('users').doc(uid).get();
-    
     if (!userDoc.exists) {
       return res.status(404).json({ error: 'User not found' });
     }

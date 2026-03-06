@@ -1,0 +1,386 @@
+import express from 'express';
+import { auth, db } from '../config/firebase.js';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { rateLimiters, validateProofFile } from '../middleware/rateLimit.js';
+import { emailNotifications } from '../services/email.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const router = express.Router();
+
+// Configure multer for proof upload
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '..', 'uploads', 'proofs');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+    cb(null, `proof-${uniqueSuffix}${path.extname(file.originalname)}`);
+  },
+});
+
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = /jpeg|jpg|png|pdf/;
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = allowedTypes.test(file.mimetype);
+  
+  if (extname && mimetype) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only images (JPEG, PNG) and PDF files are allowed'));
+  }
+};
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  fileFilter,
+});
+
+// Middleware to verify auth
+const verifyAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = await auth.verifyIdToken(token);
+    req.user = decodedToken;
+    next();
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid token', details: error.message });
+  }
+};
+
+// Middleware to check if billing is enabled
+const checkBillingEnabled = async (req, res, next) => {
+  try {
+    const settingsDoc = await db.collection('payment_settings').doc('config').get();
+    const settings = settingsDoc.exists ? settingsDoc.data() : {};
+
+    if (!settings.billing_enabled) {
+      return res.status(503).json({ 
+        error: 'Billing disabled',
+        message: 'Payment functionality is currently unavailable. Please contact admin.'
+      });
+    }
+
+    next();
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to check billing status', details: error.message });
+  }
+};
+
+// Pricing plans
+const PLANS = {
+  monthly: { price: 50000, duration: 30, label: 'Monthly' },
+  quarterly: { price: 135000, duration: 90, label: 'Quarterly (10% off)' },
+  yearly: { price: 480000, duration: 365, label: 'Yearly (20% off)' },
+};
+
+// Submit payment proof
+router.post('/submit', 
+  verifyAuth, 
+  checkBillingEnabled,
+  rateLimiters.billingSubmit,
+  upload.single('proof'), 
+  validateProofFile,
+  async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { amount, plan, bank_from, transfer_date, notes } = req.body;
+
+    // Validate plan
+    if (!plan || !PLANS[plan]) {
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({ 
+        error: 'Invalid plan',
+        available_plans: Object.keys(PLANS)
+      });
+    }
+
+    const planInfo = PLANS[plan];
+
+    // Validate amount (allow small difference for bank fees)
+    const parsedAmount = parseInt(amount);
+    if (isNaN(parsedAmount) || parsedAmount < planInfo.price * 0.9) {
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({ 
+        error: 'Invalid amount',
+        expected: planInfo.price,
+        submitted: amount
+      });
+    }
+
+    // Validate transfer date
+    if (!transfer_date) {
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({ error: 'Transfer date is required' });
+    }
+
+    // Check if proof file exists
+    if (!req.file) {
+      return res.status(400).json({ error: 'Proof of transfer is required' });
+    }
+
+    // Check for pending payments
+    const pendingPayments = await db.collection('payments')
+      .where('user_id', '==', uid)
+      .where('status', '==', 'pending')
+      .get();
+
+    if (pendingPayments.size > 0) {
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ 
+        error: 'You have a pending payment',
+        message: 'Please wait for admin approval before submitting another payment'
+      });
+    }
+
+    // Create payment record
+    const paymentRef = db.collection('payments').doc();
+    const paymentData = {
+      user_id: uid,
+      amount: parsedAmount,
+      plan,
+      plan_label: planInfo.label,
+      duration_days: planInfo.duration,
+      bank_from: bank_from || 'Unknown',
+      transfer_date: new Date(transfer_date).toISOString(),
+      proof_image_url: `/uploads/proofs/${req.file.filename}`,
+      proof_filename: req.file.filename,
+      status: 'pending',
+      notes: notes || '',
+      admin_note: '',
+      approved_by: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    await paymentRef.set(paymentData);
+
+    // Send email notification to admin
+    try {
+      // Get user email
+      const userDoc = await db.collection('users').doc(uid).get();
+      const userEmail = userDoc.exists ? userDoc.data().email : null;
+      
+      if (userEmail) {
+        await emailNotifications.notifyPaymentSubmitted(paymentData, userEmail);
+      }
+    } catch (emailError) {
+      console.error('Failed to send payment notification email:', emailError.message);
+    }
+
+    res.status(201).json({
+      message: 'Payment proof submitted successfully',
+      payment: {
+        id: paymentRef.id,
+        ...paymentData,
+      },
+    });
+  } catch (error) {
+    console.error('Submit payment error:', error.message);
+    
+    // Clean up file if exists
+    if (req.file && req.file.path) {
+      try { fs.unlinkSync(req.file.path); } catch {}
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to submit payment', 
+      details: error.message 
+    });
+  }
+});
+
+// Get user's payment history
+router.get('/history', verifyAuth, rateLimiters.billingView, async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { limit = 20, status } = req.query;
+
+    let query = db.collection('payments')
+      .where('user_id', '==', uid)
+      .orderBy('created_at', 'desc')
+      .limit(parseInt(limit));
+
+    if (status) {
+      query = query.where('status', '==', status);
+    }
+
+    const paymentsSnapshot = await query.get();
+
+    const payments = paymentsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    res.json({ payments });
+  } catch (error) {
+    console.error('Get payment history error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to get payment history', 
+      details: error.message 
+    });
+  }
+});
+
+// Get user's subscription status
+router.get('/subscription', verifyAuth, rateLimiters.billingView, async (req, res) => {
+  try {
+    const { uid } = req.user;
+
+    // Get user data
+    const userDoc = await db.collection('users').doc(uid).get();
+    
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const userData = userDoc.data();
+
+    // Get approved payments
+    const approvedPayments = await db.collection('payments')
+      .where('user_id', '==', uid)
+      .where('status', '==', 'approved')
+      .orderBy('created_at', 'desc')
+      .get();
+
+    // Calculate subscription end date
+    let subscriptionEnd = null;
+    let activePlan = null;
+    let totalDays = 0;
+
+    approvedPayments.forEach(doc => {
+      const payment = doc.data();
+      const paymentDate = new Date(payment.created_at);
+      const endDate = new Date(paymentDate);
+      endDate.setDate(endDate.getDate() + payment.duration_days);
+
+      if (endDate > new Date()) {
+        if (!subscriptionEnd || endDate > subscriptionEnd) {
+          subscriptionEnd = endDate.toISOString();
+          activePlan = payment.plan;
+        }
+        totalDays += payment.duration_days;
+      }
+    });
+
+    res.json({
+      subscription: {
+        active: userData.vpn_enabled && subscriptionEnd && new Date(subscriptionEnd) > new Date(),
+        plan: activePlan,
+        plan_label: activePlan ? PLANS[activePlan]?.label : null,
+        subscription_end: subscriptionEnd,
+        days_remaining: subscriptionEnd 
+          ? Math.max(0, Math.floor((new Date(subscriptionEnd) - new Date()) / (1000 * 60 * 60 * 24)))
+          : 0,
+        vpn_enabled: userData.vpn_enabled,
+        total_purchases: approvedPayments.size,
+      },
+    });
+  } catch (error) {
+    console.error('Get subscription error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to get subscription status', 
+      details: error.message 
+    });
+  }
+});
+
+// Get available plans
+router.get('/plans', async (req, res) => {
+  try {
+    // Check if billing is enabled
+    const settingsDoc = await db.collection('payment_settings').doc('config').get();
+    const settings = settingsDoc.exists ? settingsDoc.data() : { billing_enabled: false, currency: 'IDR' };
+
+    // Get active bank accounts from database
+    let bank_accounts = [];
+    if (settings.billing_enabled) {
+      const banksSnapshot = await db.collection('bank_accounts')
+        .where('active', '==', true)
+        .orderBy('order', 'asc')
+        .get();
+
+      bank_accounts = banksSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          bank: data.bank,
+          account_number: data.account_number,
+          account_name: data.account_name,
+          description: data.description,
+          qr_code_url: data.qr_code_url,
+        };
+      });
+    }
+
+    const plans = Object.entries(PLANS).map(([key, value]) => ({
+      id: key,
+      ...value,
+      price_formatted: formatCurrency(value.price),
+    }));
+
+    res.json({
+      billing_enabled: settings.billing_enabled || false,
+      currency: settings.currency || 'IDR',
+      plans,
+      bank_accounts,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get plans', details: error.message });
+  }
+});
+
+// Get payment by ID
+router.get('/:id', verifyAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { uid } = req.user;
+
+    const paymentDoc = await db.collection('payments').doc(id).get();
+
+    if (!paymentDoc.exists) {
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+
+    const paymentData = paymentDoc.data();
+
+    // Users can only view their own payments
+    if (paymentData.user_id !== uid) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    res.json({ payment: paymentData });
+  } catch (error) {
+    console.error('Get payment error:', error.message);
+    res.status(500).json({ error: 'Failed to get payment', details: error.message });
+  }
+});
+
+// Helper functions
+function formatCurrency(amount) {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+  }).format(amount);
+}
+
+export default router;

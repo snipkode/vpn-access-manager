@@ -1,140 +1,128 @@
-import { useState, useEffect } from 'react';
-import { signInWithPopup, signOut } from 'firebase/auth';
+import { useEffect } from 'react';
+import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
+import { useAuthStore, useUIStore, apiFetch } from '../store';
+
+// Components
 import Login from '../components/Login';
-import Dashboard from '../components/Dashboard';
-import AdminDashboard from '../components/AdminDashboard';
 import Layout from '../components/Layout';
+import Dashboard from '../components/Dashboard';
+import MyDevices from '../components/MyDevices';
 import Wallet from '../components/Wallet';
+import AdminDashboard from '../components/AdminDashboard';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+// Menu configuration
+const MENU_ITEMS = [
+  { id: 'dashboard', label: 'Dashboard', icon: 'home' },
+  { id: 'devices', label: 'Devices', icon: 'mobile' },
+  { id: 'wallet', label: 'Wallet', icon: 'wallet' },
+];
 
-export default function Home() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(null);
-  const [userData, setUserData] = useState(null);
-  const [activePage, setActivePage] = useState('dashboard');
+const ADMIN_ITEMS = [
+  { id: 'admin', label: 'Admin', icon: 'shield' },
+  { id: 'users', label: 'Users', icon: 'users' },
+  { id: 'credit', label: 'Credits', icon: 'coins' },
+];
 
+// Page components mapping
+const PAGE_COMPONENTS = {
+  dashboard: Dashboard,
+  devices: MyDevices,
+  wallet: Wallet,
+  admin: AdminDashboard,
+  users: AdminDashboard,
+  credit: AdminDashboard,
+};
+
+export default function App() {
+  const { user, token, userData, loading, setUser, clearUser, updateUserData } = useAuthStore();
+  const { activePage, setActivePage, showNotification } = useUIStore();
+
+  // Initialize Firebase auth
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         const idToken = await firebaseUser.getIdToken();
-        setToken(idToken);
-        setUser(firebaseUser);
-
-        // Verify user with backend
+        
         try {
-          const res = await fetch(`${API_URL}/auth/verify`, {
+          const data = await apiFetch('/auth/verify', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${idToken}`,
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token: idToken }),
           });
-
-          if (res.ok) {
-            const data = await res.json();
-            setUserData(data.user);
-          } else {
-            // If backend verify fails, use firebase user data with default role
-            setUserData({
-              email: firebaseUser.email,
-              role: 'user',
-              vpn_enabled: true,
-            });
-          }
+          
+          setUser(firebaseUser, idToken, data.user);
         } catch (error) {
-          console.error('Verify error:', error);
-          // Fallback to firebase user data
-          setUserData({
+          console.error('Auth verification failed:', error);
+          setUser(firebaseUser, idToken, {
             email: firebaseUser.email,
             role: 'user',
-            vpn_enabled: true,
+            vpn_enabled: true
           });
         }
       } else {
-        setUser(null);
-        setToken(null);
-        setUserData(null);
+        clearUser();
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
+  // Handle login
   const handleLogin = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
-      console.error('Login error:', error);
+      showNotification('Login failed: ' + error.message, 'error');
     }
   };
 
+  // Handle logout
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      setUser(null);
-      setUserData(null);
+      clearUser();
       setActivePage('dashboard');
     } catch (error) {
-      console.error('Logout error:', error);
+      showNotification('Logout failed', 'error');
     }
   };
 
+  // Handle page change with loading
+  const handlePageChange = (pageId) => {
+    setActivePage(pageId);
+  };
+
+  // Show loading screen
   if (loading) {
     return (
-      <div style={styles.loadingContainer}>
-        <div style={styles.loader}>
-          <i className="fas fa-circle-notch fa-spin" style={styles.spinner}></i>
-          <p style={styles.loadingText}>Loading VPN Access...</p>
-        </div>
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
+        <div className="w-10 h-10 border-4 border-white/10 border-t-primary rounded-full animate-spin" />
+        <p className="text-gray-400 text-sm">Loading VPN Access...</p>
       </div>
     );
   }
 
-  if (!userData) {
+  // Show login screen
+  if (!user) {
     return <Login onLogin={handleLogin} />;
   }
 
+  // Determine menu items based on role
+  const isAdmin = userData?.role === 'admin';
+  const allMenuItems = [...MENU_ITEMS, ...(isAdmin ? ADMIN_ITEMS : [])];
+  const CurrentPage = PAGE_COMPONENTS[activePage] || Dashboard;
+
   return (
     <Layout
-      user={userData}
-      onLogout={handleLogout}
+      user={user}
+      userData={userData}
+      menuItems={allMenuItems}
       activePage={activePage}
-      onPageChange={setActivePage}
+      onPageChange={handlePageChange}
+      onLogout={handleLogout}
     >
-      {activePage === 'admin' || activePage === 'users' || activePage === 'all-devices' ? (
-        <AdminDashboard token={token} activeTab={activePage} />
-      ) : activePage === 'wallet' ? (
-        <Wallet token={token} />
-      ) : (
-        <Dashboard token={token} userData={userData} activePage={activePage} />
-      )}
+      <CurrentPage token={token} userData={userData} />
     </Layout>
   );
 }
-
-const styles = {
-  loadingContainer: {
-    minHeight: '100vh',
-    backgroundColor: '#0f172a',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loader: {
-    textAlign: 'center',
-  },
-  spinner: {
-    fontSize: '48px',
-    color: '#3b82f6',
-  },
-  loadingText: {
-    marginTop: '16px',
-    color: '#94a3b8',
-    fontSize: '16px',
-  },
-};

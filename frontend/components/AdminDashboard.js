@@ -1,18 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useUIStore, apiFetch } from '../store';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+const tabs = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'users', label: 'Users' },
+  { id: 'devices', label: 'Devices' },
+];
 
-import AdminCredit from './AdminCredit';
-
-export default function AdminDashboard({ token, activeTab }) {
+export default function AdminDashboard({ token, userData }) {
+  const [activeTab, setActiveTab] = useState('overview');
   const [users, setUsers] = useState([]);
   const [devices, setDevices] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [internalTab, setInternalTab] = useState('overview');
-
-  // Use activeTab from parent if provided (from sidebar navigation)
-  const tab = activeTab || internalTab;
+  const { showNotification } = useUIStore();
 
   useEffect(() => {
     fetchData();
@@ -20,19 +21,16 @@ export default function AdminDashboard({ token, activeTab }) {
 
   const fetchData = async () => {
     try {
-      const headers = { Authorization: `Bearer ${token}` };
-      
-      const [statsRes, usersRes, devicesRes] = await Promise.all([
-        fetch(`${API_URL}/admin/stats`, { headers }),
-        fetch(`${API_URL}/admin/users`, { headers }),
-        fetch(`${API_URL}/admin/devices`, { headers }),
+      const [statsData, usersData, devicesData] = await Promise.all([
+        apiFetch('/admin/stats'),
+        apiFetch('/admin/users'),
+        apiFetch('/admin/devices'),
       ]);
-
-      if (statsRes.ok) setStats(await statsRes.json());
-      if (usersRes.ok) setUsers((await usersRes.json()).users);
-      if (devicesRes.ok) setDevices((await devicesRes.json()).devices);
+      setStats(statsData);
+      setUsers(usersData.users || []);
+      setDevices(devicesData.devices || []);
     } catch (error) {
-      console.error('Fetch error:', error);
+      showNotification('Failed to load admin data', 'error');
     } finally {
       setLoading(false);
     }
@@ -40,467 +38,177 @@ export default function AdminDashboard({ token, activeTab }) {
 
   const toggleVpnAccess = async (userId, currentStatus) => {
     try {
-      const res = await fetch(`${API_URL}/admin/users/${userId}`, {
+      await apiFetch(`/admin/users/${userId}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ vpn_enabled: !currentStatus }),
       });
-
-      if (res.ok) {
-        fetchData();
-      }
+      showNotification('User access updated');
+      fetchData();
     } catch (error) {
-      console.error('Toggle error:', error);
+      showNotification('Failed to update user', 'error');
     }
   };
 
   const revokeDevice = async (deviceId) => {
     if (!confirm('Revoke this device?')) return;
-
     try {
-      const res = await fetch(`${API_URL}/admin/device/${deviceId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (res.ok) {
-        fetchData();
-      }
+      await apiFetch(`/admin/device/${deviceId}`, { method: 'DELETE' });
+      showNotification('Device revoked');
+      fetchData();
     } catch (error) {
-      console.error('Revoke error:', error);
+      showNotification('Failed to revoke device', 'error');
     }
   };
 
   if (loading) {
-    return <div style={styles.loading}>Loading admin dashboard...</div>;
+    return (
+      <div className="flex justify-center items-center min-h-[500px]">
+        <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
   }
 
   return (
-    <div style={styles.container}>
-      {!activeTab && (
-        <div style={styles.tabs}>
-          <button
-            onClick={() => setInternalTab('overview')}
-            style={internalTab === 'overview' ? styles.activeTab : styles.tab}
-          >
-            <i className="fas fa-chart-pie" style={styles.tabIcon}></i> Overview
-          </button>
-          <button
-            onClick={() => setInternalTab('users')}
-            style={internalTab === 'users' ? styles.activeTab : styles.tab}
-          >
-            <i className="fas fa-users" style={styles.tabIcon}></i> Users
-          </button>
-          <button
-            onClick={() => setInternalTab('devices')}
-            style={internalTab === 'devices' ? styles.activeTab : styles.tab}
-          >
-            <i className="fas fa-mobile-screen" style={styles.tabIcon}></i> Devices
-          </button>
-          <button
-            onClick={() => setInternalTab('credit')}
-            style={internalTab === 'credit' ? styles.activeTab : styles.tab}
-          >
-            <i className="fas fa-coins" style={styles.tabIcon}></i> Credit
-          </button>
+    <div className="max-w-[1100px] mx-auto space-y-6">
+      {/* Tabs */}
+      <div className="bg-white rounded-xl p-1.5 shadow-sm border border-gray-100">
+        <div className="flex gap-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                activeTab === tab.id 
+                  ? 'bg-primary text-white shadow-md' 
+                  : 'text-gray-500 hover:bg-gray-100'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
-      )}
-
-      <div style={styles.content}>
-        {tab === 'credit' ? (
-          <AdminCredit token={token} />
-        ) : tab === 'overview' && (
-          <div style={styles.statsGrid}>
-            <div style={styles.statCard}>
-              <div style={styles.statIcon}>
-                <i className="fas fa-users"></i>
-              </div>
-              <div style={styles.statValue}>{stats?.total_users || 0}</div>
-              <div style={styles.statLabel}>Total Users</div>
-            </div>
-            <div style={styles.statCard}>
-              <div style={styles.statIcon}>
-                <i className="fas fa-check-circle"></i>
-              </div>
-              <div style={styles.statValue}>{stats?.vpn_enabled_users || 0}</div>
-              <div style={styles.statLabel}>VPN Enabled</div>
-            </div>
-            <div style={styles.statCard}>
-              <div style={styles.statIcon}>
-                <i className="fas fa-times-circle"></i>
-              </div>
-              <div style={styles.statValue}>{stats?.vpn_disabled_users || 0}</div>
-              <div style={styles.statLabel}>VPN Disabled</div>
-            </div>
-            <div style={styles.statCard}>
-              <div style={styles.statIcon}>
-                <i className="fas fa-wifi"></i>
-              </div>
-              <div style={styles.statValue}>{stats?.active_devices || 0}</div>
-              <div style={styles.statLabel}>Active Devices</div>
-            </div>
-          </div>
-        )}
-
-        {tab === 'users' && (
-          <div style={styles.tableContainer} className="table-responsive">
-            <table style={styles.table} className="table-hover">
-              <thead>
-                <tr>
-                  <th style={styles.th}>
-                    <i className="fas fa-envelope" style={styles.thIcon}></i> Email
-                  </th>
-                  <th style={styles.th}>Role</th>
-                  <th style={styles.th}>VPN Access</th>
-                  <th style={styles.th}>
-                    <i className="fas fa-calendar" style={styles.thIcon}></i> Created
-                  </th>
-                  <th style={styles.th}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user) => (
-                  <tr key={user.id} style={styles.tr}>
-                    <td style={styles.td}>{user.email}</td>
-                    <td style={styles.td}>
-                      <span style={user.role === 'admin' ? styles.adminBadge : styles.userBadge}>
-                        {user.role === 'admin' ? <i className="fas fa-crown"></i> : <i className="fas fa-user"></i>} {user.role}
-                      </span>
-                    </td>
-                    <td style={styles.td}>
-                      <button
-                        onClick={() => toggleVpnAccess(user.id, user.vpn_enabled)}
-                        style={user.vpn_enabled ? styles.enabledBtn : styles.disabledBtn}
-                      >
-                        {user.vpn_enabled ? (
-                          <>
-                            <i className="fas fa-check"></i> Enabled
-                          </>
-                        ) : (
-                          <>
-                            <i className="fas fa-times"></i> Disabled
-                          </>
-                        )}
-                      </button>
-                    </td>
-                    <td style={styles.td}>
-                      {new Date(user.created_at).toLocaleDateString()}
-                    </td>
-                    <td style={styles.td}>
-                      <button
-                        onClick={() => toggleVpnAccess(user.id, user.vpn_enabled)}
-                        style={styles.actionBtn}
-                      >
-                        <i className="fas fa-toggle-on"></i> {user.vpn_enabled ? 'Disable' : 'Enable'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {tab === 'devices' && (
-          <div style={styles.tableContainer} className="table-responsive">
-            <table style={styles.table} className="table-hover">
-              <thead>
-                <tr>
-                  <th style={styles.th}>
-                    <i className="fas fa-mobile-alt" style={styles.thIcon}></i> Device Name
-                  </th>
-                  <th style={styles.th}>User</th>
-                  <th style={styles.th}>
-                    <i className="fas fa-network-wired" style={styles.thIcon}></i> IP Address
-                  </th>
-                  <th style={styles.th}>Status</th>
-                  <th style={styles.th}>
-                    <i className="fas fa-calendar" style={styles.thIcon}></i> Created
-                  </th>
-                  <th style={styles.th}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {devices.map((device) => (
-                  <tr key={device.id} style={styles.tr}>
-                    <td style={styles.td}>{device.device_name}</td>
-                    <td style={styles.td}>{device.user_id}</td>
-                    <td style={styles.td}>{device.ip_address}</td>
-                    <td style={styles.td}>
-                      <span style={styles.statusBadge}>
-                        <i className="fas fa-circle" style={styles.statusDot}></i> {device.status}
-                      </span>
-                    </td>
-                    <td style={styles.td}>
-                      {new Date(device.created_at).toLocaleDateString()}
-                    </td>
-                    <td style={styles.td}>
-                      <button
-                        onClick={() => revokeDevice(device.id)}
-                        style={styles.revokeBtn}
-                      >
-                        <i className="fas fa-trash"></i> Revoke
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
 
-      <style jsx global>{`
-        @media (max-width: 768px) {
-          .admin-tabs {
-            flex-wrap: wrap;
-            gap: 8px !important;
-          }
-          .admin-tab {
-            padding: 10px 16px !important;
-            font-size: 13px !important;
-            flex: 1 1 auto;
-            text-align: center;
-          }
-          .stats-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
-          }
-          .stat-card {
-            padding: 16px !important;
-          }
-          .stat-value {
-            font-size: 28px !important;
-          }
-          .admin-content {
-            padding: 16px !important;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .stats-grid {
-            grid-template-columns: 1fr !important;
-          }
-          .admin-content {
-            padding: 12px !important;
-          }
-          
-          /* Responsive Table - Card View */
-          .table-responsive {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            border-radius: 8px;
-          }
-          .table-responsive table {
-            min-width: 700px;
-          }
-          .table-responsive th {
-            font-size: 10px !important;
-            padding: 12px 10px !important;
-          }
-          .table-responsive td {
-            font-size: 13px !important;
-            padding: 12px 10px !important;
-          }
-          .table-responsive tr:hover {
-            background-color: rgba(59, 130, 246, 0.1) !important;
-          }
-        }
-        
-        /* Table row hover effect */
-        .table-hover tr:hover {
-          background-color: rgba(59, 130, 246, 0.1);
-        }
-      `}</style>
+      {/* Content */}
+      {activeTab === 'overview' && <Overview stats={stats} />}
+      {activeTab === 'users' && <UsersTable users={users} onToggle={toggleVpnAccess} />}
+      {activeTab === 'devices' && <DevicesTable devices={devices} onRevoke={revokeDevice} />}
     </div>
   );
 }
 
-const styles = {
-  container: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-  },
-  loading: {
-    textAlign: 'center',
-    padding: '40px',
-    fontSize: '18px',
-    color: '#94a3b8',
-  },
-  tabs: {
-    display: 'flex',
-    gap: '8px',
-    marginBottom: '24px',
-    flexWrap: 'wrap',
-  },
-  tab: {
-    padding: '12px 24px',
-    backgroundColor: '#1e293b',
-    color: '#94a3b8',
-    border: '1px solid #334155',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500',
-    flex: '1 1 auto',
-    textAlign: 'center',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '8px',
-    transition: 'all 0.2s',
-  },
-  tabIcon: {
-    fontSize: '14px',
-  },
-  activeTab: {
-    padding: '12px 24px',
-    backgroundColor: '#3b82f6',
-    color: '#fff',
-    border: '1px solid #3b82f6',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500',
-    flex: '1 1 auto',
-    textAlign: 'center',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '8px',
-    transition: 'all 0.2s',
-  },
-  content: {
-    backgroundColor: '#1e293b',
-    padding: '20px',
-    borderRadius: '12px',
-    border: '1px solid #334155',
-  },
-  statsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-    gap: '20px',
-  },
-  statCard: {
-    backgroundColor: '#0f172a',
-    padding: '24px',
-    borderRadius: '12px',
-    textAlign: 'center',
-    border: '1px solid #334155',
-    transition: 'transform 0.2s',
-  },
-  statIcon: {
-    fontSize: '28px',
-    color: '#3b82f6',
-    marginBottom: '12px',
-  },
-  statValue: {
-    fontSize: '36px',
-    fontWeight: 'bold',
-    color: '#3b82f6',
-  },
-  statLabel: {
-    marginTop: '8px',
-    color: '#94a3b8',
-    fontSize: '14px',
-  },
-  tableContainer: {
-    overflow: 'auto',
-    borderRadius: '8px',
-    border: '1px solid #334155',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-  },
-  th: {
-    textAlign: 'left',
-    padding: '14px 16px',
-    backgroundColor: '#1e293b',
-    color: '#60a5fa',
-    fontSize: '11px',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    whiteSpace: 'nowrap',
-    borderBottom: '2px solid #3b82f6',
-  },
-  thIcon: {
-    color: '#3b82f6',
-    fontSize: '12px',
-    marginRight: '6px',
-  },
-  tr: {
-    borderBottom: '1px solid #334155',
-    transition: 'background-color 0.2s',
-  },
-  td: {
-    padding: '14px 16px',
-    fontSize: '14px',
-    color: '#e2e8f0',
-  },
-  adminBadge: {
-    backgroundColor: '#3b82f6',
-    padding: '4px 8px',
-    borderRadius: '4px',
-    fontSize: '12px',
-  },
-  userBadge: {
-    backgroundColor: '#475569',
-    padding: '4px 8px',
-    borderRadius: '4px',
-    fontSize: '12px',
-  },
-  statusBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    color: '#10b981',
-    padding: '4px 10px',
-    borderRadius: '12px',
-    fontSize: '12px',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '6px',
-    border: '1px solid rgba(16, 185, 129, 0.3)',
-  },
-  statusDot: {
-    fontSize: '6px',
-  },
-  enabledBtn: {
-    backgroundColor: '#10b981',
-    color: '#fff',
-    border: 'none',
-    padding: '6px 12px',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '12px',
-  },
-  disabledBtn: {
-    backgroundColor: '#64748b',
-    color: '#fff',
-    border: 'none',
-    padding: '6px 12px',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '12px',
-  },
-  actionBtn: {
-    backgroundColor: '#3b82f6',
-    color: '#fff',
-    border: 'none',
-    padding: '6px 12px',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '12px',
-  },
-  revokeBtn: {
-    backgroundColor: '#ef4444',
-    color: '#fff',
-    border: 'none',
-    padding: '6px 12px',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '12px',
-  },
-};
+function Overview({ stats }) {
+  const statCards = [
+    { label: 'Total Users', value: stats?.total_users || 0, color: 'text-primary', bg: 'bg-blue-50' },
+    { label: 'VPN Enabled', value: stats?.vpn_enabled_users || 0, color: 'text-success', bg: 'bg-green-50' },
+    { label: 'VPN Disabled', value: stats?.vpn_disabled_users || 0, color: 'text-gray-400', bg: 'bg-gray-50' },
+    { label: 'Active Devices', value: stats?.active_devices || 0, color: 'text-amber-500', bg: 'bg-amber-50' },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {statCards.map((stat) => (
+        <div key={stat.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+          <div className={`${stat.bg} w-10 h-10 rounded-lg flex items-center justify-center mb-3`}>
+            <div className={`text-xl font-bold ${stat.color}`}>#</div>
+          </div>
+          <div className={`text-2xl font-bold ${stat.color} mb-1`}>{stat.value}</div>
+          <div className="text-xs text-gray-400 font-medium">{stat.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function UsersTable({ users, onToggle }) {
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-100">
+              <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Email</th>
+              <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Role</th>
+              <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">VPN Access</th>
+              <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {users.map((user) => (
+              <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                <td className="py-4 px-4 text-sm text-dark font-medium">{user.email}</td>
+                <td className="py-4 px-4">
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                    user.role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {user.role}
+                  </span>
+                </td>
+                <td className="py-4 px-4">
+                  <span className={`text-sm font-medium ${user.vpn_enabled ? 'text-success' : 'text-gray-400'}`}>
+                    {user.vpn_enabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </td>
+                <td className="py-4 px-4">
+                  <button
+                    onClick={() => onToggle(user.id, user.vpn_enabled)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      user.vpn_enabled 
+                        ? 'bg-red-50 text-red-500 hover:bg-red-100' 
+                        : 'bg-green-50 text-success hover:bg-green-100'
+                    }`}
+                  >
+                    {user.vpn_enabled ? 'Disable' : 'Enable'}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function DevicesTable({ devices, onRevoke }) {
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-100">
+              <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Device</th>
+              <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">User</th>
+              <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">IP</th>
+              <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+              <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {devices.map((device) => (
+              <tr key={device.id} className="hover:bg-gray-50 transition-colors">
+                <td className="py-4 px-4 text-sm text-dark font-medium">{device.device_name}</td>
+                <td className="py-4 px-4 text-sm text-gray-500">{device.user_id}</td>
+                <td className="py-4 px-4 text-sm font-mono text-gray-400">{device.ip_address}</td>
+                <td className="py-4 px-4">
+                  <span className={`text-sm font-medium ${device.status === 'active' ? 'text-success' : 'text-gray-400'}`}>
+                    {device.status}
+                  </span>
+                </td>
+                <td className="py-4 px-4">
+                  <button 
+                    onClick={() => onRevoke(device.id)} 
+                    className="px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors"
+                  >
+                    Revoke
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

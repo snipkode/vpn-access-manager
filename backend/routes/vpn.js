@@ -1,20 +1,16 @@
 import express from 'express';
 import QRCode from 'qrcode';
 import { auth, db } from '../config/firebase.js';
-import {
-  generateKeypair,
-  addPeer,
-  generateConfig,
-  getNextAvailableIP,
-} from '../services/wireguard.js';
+import { generateKeypair, addPeer, generateConfig, getNextAvailableIP } from '../services/wireguard.js';
 
 const router = express.Router();
+const MAX_DEVICES = 3;
 
-// Middleware to verify auth
+// Auth middleware
 const verifyAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader?.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -33,7 +29,6 @@ router.post('/generate', verifyAuth, async (req, res) => {
     const { uid } = req.user;
     const { deviceName = 'VPN Device' } = req.body;
 
-    // Check if user has VPN access
     const userDoc = await db.collection('users').doc(uid).get();
     if (!userDoc.exists) {
       return res.status(404).json({ error: 'User not found' });
@@ -41,44 +36,36 @@ router.post('/generate', verifyAuth, async (req, res) => {
 
     const userData = userDoc.data();
     if (!userData.vpn_enabled) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         error: 'VPN access not enabled',
-        message: 'Please contact admin to enable VPN access' 
+        message: 'Contact admin to enable VPN access',
       });
     }
 
-    // Check device limit (max 3 devices per user)
     const devicesRef = db.collection('devices').where('user_id', '==', uid);
     const devicesSnapshot = await devicesRef.get();
-    
-    if (devicesSnapshot.size >= 3) {
-      return res.status(400).json({ 
+
+    if (devicesSnapshot.size >= MAX_DEVICES) {
+      return res.status(400).json({
         error: 'Device limit reached',
-        message: 'Maximum 3 devices per user' 
+        message: `Maximum ${MAX_DEVICES} devices per user`,
       });
     }
 
-    // Get used IPs
-    const usedIPs = devicesSnapshot.docs.map(doc => doc.data().ip_address);
+    const usedIPs = devicesSnapshot.docs.map((doc) => doc.data().ip_address);
     const newIP = getNextAvailableIP(usedIPs);
-
-    // Generate WireGuard keypair
     const { privateKey, publicKey } = generateKeypair();
 
-    // Add peer to WireGuard server
     addPeer(publicKey, newIP);
-
-    // Generate config
     const config = generateConfig(privateKey, newIP, deviceName);
     const qrCodeData = await QRCode.toString(config, { type: 'string' });
 
-    // Save device to Firestore
     const deviceRef = db.collection('devices').doc();
     await deviceRef.set({
       user_id: uid,
       device_name: deviceName,
       public_key: publicKey,
-      private_key: privateKey, // Store securely in production
+      private_key: privateKey,
       ip_address: newIP,
       status: 'active',
       created_at: new Date().toISOString(),
@@ -95,10 +82,7 @@ router.post('/generate', verifyAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('Generate VPN config error:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to generate VPN config',
-      details: error.message 
-    });
+    res.status(500).json({ error: 'Failed to generate VPN config', details: error.message });
   }
 });
 
@@ -106,15 +90,10 @@ router.post('/generate', verifyAuth, async (req, res) => {
 router.get('/devices', verifyAuth, async (req, res) => {
   try {
     const { uid } = req.user;
-
     const devicesRef = db.collection('devices').where('user_id', '==', uid);
     const devicesSnapshot = await devicesRef.get();
 
-    const devices = devicesSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
+    const devices = devicesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     res.json({ devices });
   } catch (error) {
     console.error('Get devices error:', error.message);
@@ -140,7 +119,7 @@ router.delete('/device/:id', verifyAuth, async (req, res) => {
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    // Remove peer from WireGuard
+    // Remove from WireGuard
     try {
       const { execSync } = await import('child_process');
       const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
@@ -150,9 +129,7 @@ router.delete('/device/:id', verifyAuth, async (req, res) => {
       console.error('WireGuard remove error:', wgError.message);
     }
 
-    // Delete from Firestore
     await deviceRef.delete();
-
     res.json({ message: 'Device revoked successfully' });
   } catch (error) {
     console.error('Revoke device error:', error.message);

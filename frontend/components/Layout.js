@@ -1,417 +1,194 @@
 import { useState, useEffect } from 'react';
+import { useUIStore } from '../store';
 
-export default function Layout({ children, user, onLogout, activePage, onPageChange }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+export default function Layout({ 
+  children, 
+  user, 
+  userData,
+  menuItems, 
+  activePage, 
+  onPageChange, 
+  onLogout 
+}) {
+  const { sidebarOpen, setSidebarOpen } = useUIStore();
   const [isDesktop, setIsDesktop] = useState(false);
 
+  // Handle responsive sidebar
   useEffect(() => {
-    const checkDesktop = () => setIsDesktop(window.innerWidth > 768);
+    const checkDesktop = () => {
+      const desktop = window.innerWidth >= 1024;
+      setIsDesktop(desktop);
+      if (desktop) {
+        setSidebarOpen(true);
+      }
+    };
+    
     checkDesktop();
     window.addEventListener('resize', checkDesktop);
     return () => window.removeEventListener('resize', checkDesktop);
-  }, []);
+  }, [setSidebarOpen]);
 
+  // Close sidebar on page change (mobile only)
   useEffect(() => {
-    if (isDesktop) {
-      setSidebarOpen(true);
+    if (!isDesktop) {
+      setSidebarOpen(false);
     }
-  }, [isDesktop]);
+  }, [activePage, isDesktop, setSidebarOpen]);
 
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: 'fa-gauge' },
-    { id: 'devices', label: 'My Devices', icon: 'fa-mobile-screen' },
-    { id: 'wallet', label: 'Wallet', icon: 'fa-wallet' },
-    { id: 'settings', label: 'Settings', icon: 'fa-gear' },
-  ];
-
-  if (user?.role === 'admin') {
-    menuItems.push(
-      { id: 'admin', label: 'Admin Panel', icon: 'fa-shield-halved', admin: true },
-      { id: 'users', label: 'Users', icon: 'fa-users', admin: true },
-      { id: 'all-devices', label: 'All Devices', icon: 'fa-network-wired', admin: true },
-      { id: 'credit', label: 'Credit Mgmt', icon: 'fa-coins', admin: true },
-    );
-  }
+  const currentPage = menuItems.find(m => m.id === activePage);
+  const isAdminPage = ['admin', 'users', 'credit'].includes(activePage);
 
   return (
-    <div style={styles.layout}>
+    <div className="min-h-screen bg-gray-100 text-dark font-sans">
       {/* Mobile Overlay */}
-      {sidebarOpen && (
+      {sidebarOpen && !isDesktop && (
         <div 
-          style={styles.overlay} 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <aside 
-        className={isDesktop ? 'sidebar-desktop' : (sidebarOpen ? 'sidebar-mobile-open' : 'sidebar-mobile')}
-        style={styles.sidebar}
-      >
-        <div style={styles.sidebarHeader}>
-          <div style={styles.logoContainer}>
-            <i style={styles.logoIcon} className="fas fa-shield-halved"></i>
-            <span style={styles.logoText}>VPN Access</span>
+      <aside className={`fixed left-0 top-0 bottom-0 w-72 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out z-50 ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
+        <div className="flex flex-col h-full">
+          {/* Logo */}
+          <div className="p-5 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center">
+                <span className="text-white text-xl">🔐</span>
+              </div>
+              <span className="text-xl font-bold text-dark">VPN Access</span>
+            </div>
+            {!isDesktop && (
+              <button 
+                onClick={() => setSidebarOpen(false)} 
+                className="text-gray-400 hover:text-dark p-1 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
           </div>
-          <button 
-            className={!isDesktop ? '' : 'hidden'}
-            style={{...styles.closeBtn, display: isDesktop ? 'none' : 'flex'}} 
-            onClick={() => setSidebarOpen(false)}
-          >
-            <i className="fas fa-times"></i>
-          </button>
-        </div>
 
-        <nav style={styles.nav}>
-          {menuItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => {
-                onPageChange(item.id);
-                setSidebarOpen(false);
-              }}
-              style={{
-                ...styles.navItem,
-                ...(activePage === item.id ? styles.navItemActive : {}),
-                ...(item.admin ? styles.navItemAdmin : {}),
-              }}
+          {/* Navigation */}
+          <nav className="flex-1 p-3 overflow-y-auto">
+            {/* Main Menu */}
+            <div className="space-y-1">
+              {menuItems.filter(item => !['admin', 'users', 'credit'].includes(item.id)).map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => onPageChange(item.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-all ${
+                    activePage === item.id 
+                      ? 'bg-primary text-white shadow-lg shadow-primary/30' 
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <i className={`fas fa-${item.icon} w-5 text-center`} />
+                  <span className="flex-1 text-left">{item.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Admin Section */}
+            {menuItems.filter(item => ['admin', 'users', 'credit'].includes(item.id)).length > 0 && (
+              <div className="mt-6">
+                <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Admin Panel
+                </div>
+                <div className="space-y-1">
+                  {menuItems.filter(item => ['admin', 'users', 'credit'].includes(item.id)).map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => onPageChange(item.id)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-all ${
+                        activePage === item.id 
+                          ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30' 
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <i className={`fas fa-${item.icon} w-5 text-center`} />
+                      <span className="flex-1 text-left">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Quick Stats */}
+            <div className="mt-6 pt-6 border-t border-gray-100">
+              <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                Quick Stats
+              </div>
+              <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-3 mx-2">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs text-gray-500">Devices</span>
+                  <span className="text-xs font-semibold text-dark">3/3</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-1.5">
+                  <div className="bg-primary h-1.5 rounded-full" style={{ width: '100%' }}></div>
+                </div>
+              </div>
+            </div>
+          </nav>
+
+          {/* User Profile */}
+          <div className="p-4 border-t border-gray-100 bg-gray-50 flex-shrink-0">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-white font-semibold flex-shrink-0">
+                {user?.email?.[0]?.toUpperCase() || 'U'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-dark truncate">{user?.email?.split('@')[0]}</div>
+                {userData?.role === 'admin' && (
+                  <div className="text-xs text-purple-600 font-medium">Admin</div>
+                )}
+              </div>
+            </div>
+            <button 
+              onClick={onLogout}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 text-red-500 rounded-xl text-sm font-medium hover:bg-red-100 transition-colors"
             >
-              <i className={`fas ${item.icon}`} style={styles.navIcon}></i>
-              <span style={styles.navLabel}>{item.label}</span>
-              {item.admin && <span style={styles.adminTag}>Admin</span>}
+              <i className="fas fa-sign-out-alt" />
+              <span>Sign Out</span>
             </button>
-          ))}
-        </nav>
-
-        <div style={styles.sidebarFooter}>
-          <div style={styles.userInfo}>
-            <div style={styles.userAvatar}>
-              <i className="fas fa-user"></i>
-            </div>
-            <div style={styles.userDetails}>
-              <span style={styles.userName}>{user?.email?.split('@')[0]}</span>
-              <span style={styles.userEmail}>{user?.email}</span>
-            </div>
           </div>
-          <button onClick={onLogout} style={styles.logoutBtn}>
-            <i className="fas fa-right-from-bracket"></i>
-            <span>Logout</span>
-          </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <div className={isDesktop ? 'main-container-desktop' : 'main-container-mobile'} style={styles.mainContainer}>
+      <div className={`transition-all duration-300 ease-in-out ${isDesktop ? 'ml-72' : ''}`}>
         {/* Top Bar */}
-        <header style={styles.topBar}>
-          <button 
-            className="menu-btn-mobile"
-            style={styles.menuBtn} 
+        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-200 px-5 py-4 flex items-center gap-4">
+          <button
+            className="lg:hidden flex items-center justify-center text-gray-500 hover:text-dark p-2 rounded-lg hover:bg-gray-100 transition-all"
             onClick={() => setSidebarOpen(true)}
           >
-            <i className="fas fa-bars"></i>
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
           </button>
-          <h1 style={styles.pageTitle}>
-            {menuItems.find(m => m.id === activePage)?.label || 'Dashboard'}
+
+          <h1 className="text-xl font-bold text-dark flex-1">
+            {currentPage?.label || 'Dashboard'}
           </h1>
-          <div style={styles.topBarRight}>
-            {user?.role === 'admin' && (
-              <span style={styles.adminBadge}>
-                <i className="fas fa-crown"></i> Admin
-              </span>
-            )}
-          </div>
+
+          {isAdminPage && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 text-purple-600 rounded-full text-xs font-semibold border border-purple-200">
+              <i className="fas fa-crown text-xs" />
+              Admin
+            </span>
+          )}
         </header>
 
         {/* Page Content */}
-        <main style={styles.content}>
+        <main className="p-5 pb-10">
           {children}
         </main>
       </div>
-
-      <style jsx global>{`
-        @media (min-width: 769px) {
-          .sidebar-desktop {
-            transform: translateX(0) !important;
-          }
-          .main-container-desktop {
-            margin-left: 280px !important;
-          }
-          .menu-btn-desktop {
-            display: none !important;
-          }
-        }
-        
-        @media (max-width: 768px) {
-          .sidebar-mobile {
-            transform: translateX(-100%) !important;
-          }
-          .sidebar-mobile-open {
-            transform: translateX(0) !important;
-          }
-          .main-container-mobile {
-            margin-left: 0 !important;
-          }
-          .menu-btn-mobile {
-            display: flex !important;
-          }
-        }
-        
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-          background: #0f172a;
-        }
-        ::-webkit-scrollbar-thumb {
-          background: #334155;
-          border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-          background: #475569;
-        }
-      `}</style>
     </div>
   );
 }
-
-const styles = {
-  layout: {
-    minHeight: '100vh',
-    backgroundColor: '#0f172a',
-    color: '#fff',
-  },
-  overlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    zIndex: 40,
-    backdropFilter: 'blur(4px)',
-  },
-  sidebar: {
-    position: 'fixed',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: '280px',
-    backgroundColor: '#1e293b',
-    borderRight: '1px solid #334155',
-    display: 'flex',
-    flexDirection: 'column',
-    zIndex: 50,
-    transition: 'transform 0.3s ease',
-    boxShadow: '4px 0 24px rgba(0, 0, 0, 0.3)',
-    transform: 'translateX(-100%)',
-  },
-  sidebarOpen: {
-    transform: 'translateX(0)',
-  },
-  sidebarHeader: {
-    padding: '24px 20px',
-    borderBottom: '1px solid #334155',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  logoContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-  },
-  logoIcon: {
-    fontSize: '28px',
-    color: '#3b82f6',
-  },
-  logoText: {
-    fontSize: '20px',
-    fontWeight: '700',
-    background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    backgroundClip: 'text',
-  },
-  closeBtn: {
-    background: 'none',
-    border: 'none',
-    color: '#94a3b8',
-    fontSize: '20px',
-    cursor: 'pointer',
-    padding: '8px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: '8px',
-    transition: 'all 0.2s',
-  },
-  nav: {
-    flex: 1,
-    padding: '16px 12px',
-    overflowY: 'auto',
-  },
-  navItem: {
-    width: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '14px 16px',
-    background: 'none',
-    border: 'none',
-    borderRadius: '10px',
-    color: '#94a3b8',
-    fontSize: '14px',
-    fontWeight: '500',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    marginBottom: '4px',
-    textAlign: 'left',
-  },
-  navItemActive: {
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    color: '#3b82f6',
-    border: '1px solid rgba(59, 130, 246, 0.3)',
-  },
-  navItemAdmin: {
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-    border: '1px solid rgba(139, 92, 246, 0.2)',
-  },
-  navIcon: {
-    fontSize: '16px',
-    width: '20px',
-    textAlign: 'center',
-  },
-  navLabel: {
-    flex: 1,
-  },
-  adminTag: {
-    fontSize: '10px',
-    backgroundColor: 'rgba(139, 92, 246, 0.2)',
-    color: '#a78bfa',
-    padding: '2px 8px',
-    borderRadius: '12px',
-    fontWeight: '600',
-  },
-  sidebarFooter: {
-    padding: '16px',
-    borderTop: '1px solid #334155',
-    backgroundColor: '#0f172a',
-  },
-  userInfo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    marginBottom: '12px',
-  },
-  userAvatar: {
-    width: '44px',
-    height: '44px',
-    borderRadius: '50%',
-    backgroundColor: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-    background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '18px',
-    color: '#fff',
-  },
-  userDetails: {
-    flex: 1,
-    overflow: 'hidden',
-  },
-  userName: {
-    display: 'block',
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: '2px',
-  },
-  userEmail: {
-    display: 'block',
-    fontSize: '12px',
-    color: '#64748b',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-  },
-  logoutBtn: {
-    width: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '8px',
-    padding: '12px',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    border: '1px solid rgba(239, 68, 68, 0.3)',
-    borderRadius: '10px',
-    color: '#ef4444',
-    fontSize: '14px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
-  mainContainer: {
-    marginLeft: 0,
-    minHeight: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-    transition: 'margin-left 0.3s ease',
-  },
-  topBar: {
-    position: 'sticky',
-    top: 0,
-    zIndex: 30,
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-    padding: '16px 24px',
-    backgroundColor: 'rgba(15, 23, 42, 0.8)',
-    backdropFilter: 'blur(12px)',
-    borderBottom: '1px solid #334155',
-    boxShadow: '0 4px 24px rgba(0, 0, 0, 0.2)',
-  },
-  menuBtn: {
-    background: 'none',
-    border: 'none',
-    color: '#94a3b8',
-    fontSize: '20px',
-    cursor: 'pointer',
-    padding: '8px',
-    display: 'none',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: '8px',
-    transition: 'all 0.2s',
-  },
-  pageTitle: {
-    margin: 0,
-    fontSize: '20px',
-    fontWeight: '600',
-    color: '#fff',
-    flex: 1,
-  },
-  topBarRight: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-  },
-  adminBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '6px',
-    backgroundColor: 'rgba(139, 92, 246, 0.2)',
-    color: '#a78bfa',
-    padding: '6px 14px',
-    borderRadius: '20px',
-    fontSize: '12px',
-    fontWeight: '600',
-    border: '1px solid rgba(139, 92, 246, 0.3)',
-  },
-  content: {
-    flex: 1,
-    padding: '24px',
-  },
-};

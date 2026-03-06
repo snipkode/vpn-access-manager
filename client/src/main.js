@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, nativeImage } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, nativeImage, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const Store = require('electron-store');
@@ -8,19 +8,22 @@ const store = new Store();
 let mainWindow = null;
 let tray = null;
 let wireguardProcess = null;
-let isConnected = false;
-let currentConfig = null;
 
-// WireGuard executable paths (adjust based on OS)
+// Connection state
+const state = {
+  isConnected: false,
+  currentConfig: null,
+  connectedAt: null
+};
+
+// Platform-specific WireGuard paths
 const WG_PATHS = {
   win32: 'C:\\Program Files\\WireGuard\\wireguard.exe',
   darwin: '/usr/local/bin/wg',
   linux: '/usr/bin/wg'
 };
 
-function getWgPath() {
-  return WG_PATHS[process.platform] || 'wg';
-}
+const getWgPath = () => WG_PATHS[process.platform] || 'wg';
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -35,32 +38,23 @@ function createWindow() {
     titleBarStyle: 'hiddenInset',
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: false,
-      enableRemoteModule: true
+      contextIsolation: false
     },
     icon: path.join(__dirname, '../assets/icon.png'),
     backgroundColor: '#0f172a'
   });
 
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
-  
-  // Don't show until ready
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-  });
+  mainWindow.once('ready-to-show', () => mainWindow.show());
 
-  // Handle close
   mainWindow.on('close', (e) => {
-    if (isConnected) {
+    if (state.isConnected) {
       e.preventDefault();
       disconnectVPN();
-      setTimeout(() => {
-        mainWindow.hide();
-      }, 1000);
+      setTimeout(() => mainWindow.hide(), 1000);
     }
   });
 
-  // Open DevTools in development
   if (process.argv.includes('--dev')) {
     mainWindow.webContents.openDevTools();
   }
@@ -69,52 +63,9 @@ function createWindow() {
 function createTray() {
   const iconPath = path.join(__dirname, '../assets/tray-icon.png');
   const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
-  
   tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon);
-  
   updateTrayMenu();
-}
 
-function updateTrayMenu() {
-  const contextMenu = Menu.buildFromTemplate([
-    {
-      label: isConnected ? 'Connected 🔵' : 'Disconnected ⚪',
-      enabled: false
-    },
-    { type: 'separator' },
-    {
-      label: 'Open VPN Client',
-      click: () => {
-        mainWindow.show();
-        mainWindow.focus();
-      }
-    },
-    {
-      label: isConnected ? 'Disconnect' : 'Connect',
-      click: () => {
-        if (isConnected) {
-          disconnectVPN();
-        } else {
-          connectVPN();
-        }
-      }
-    },
-    { type: 'separator' },
-    {
-      label: 'Quit',
-      click: () => {
-        if (isConnected) {
-          disconnectVPN();
-        }
-        app.quit();
-      }
-    }
-  ]);
-  
-  tray.setToolTip(isConnected ? 'VPN Access Client - Connected' : 'VPN Access Client - Disconnected');
-  tray.setContextMenu(contextMenu);
-  
-  // Click to toggle window
   tray.on('click', () => {
     if (mainWindow.isVisible()) {
       mainWindow.hide();
@@ -125,99 +76,111 @@ function updateTrayMenu() {
   });
 }
 
-function connectVPN() {
+function updateTrayMenu() {
+  const status = state.isConnected ? 'Connected 🔵' : 'Disconnected ⚪';
+  tray.setToolTip(`VPN Access Client - ${status}`);
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: status, enabled: false },
+    { type: 'separator' },
+    {
+      label: 'Open VPN Client',
+      click: () => {
+        mainWindow.show();
+        mainWindow.focus();
+      }
+    },
+    {
+      label: state.isConnected ? 'Disconnect' : 'Connect',
+      click: () => toggleConnection()
+    },
+    { type: 'separator' },
+    {
+      label: 'Quit',
+      click: () => {
+        if (state.isConnected) disconnectVPN();
+        app.quit();
+      }
+    }
+  ]));
+}
+
+function manageConnection(action) {
   const configPath = store.get('configPath');
-  
+  const configName = path.basename(configPath || '', '.conf');
+
   if (!configPath || !fs.existsSync(configPath)) {
-    dialog.showErrorBox('Configuration Error', 'No VPN configuration found. Please import a config file.');
-    return;
+    throw new Error('No VPN configuration found');
   }
 
-  try {
-    const platform = process.platform;
-    
+  const platform = process.platform;
+
+  if (action === 'connect') {
     if (platform === 'win32') {
-      // Windows: Use wireguard.exe
-      execSync(`"${getWgPath()}" /installtunnelservice "${configPath}"`, { 
-        windowsHide: true 
-      });
+      execSync(`"${getWgPath()}" /installtunnelservice "${configPath}"`, { windowsHide: true });
     } else if (platform === 'darwin') {
-      // macOS: Use wireguard-go or wg-quick
-      const interfaceName = 'utun9';
-      wireguardProcess = spawn('wg-quick', ['up', configPath.replace('.conf', '')], {
-        detached: false
-      });
+      wireguardProcess = spawn('wg-quick', ['up', configName]);
     } else {
-      // Linux: Use wg-quick
-      const configName = path.basename(configPath, '.conf');
       execSync(`sudo wg-quick up ${configName}`);
     }
-    
-    isConnected = true;
-    currentConfig = configPath;
-    store.set('connected', true);
-    store.set('connectedAt', new Date().toISOString());
-    
-    mainWindow.webContents.send('connection-status', { connected: true });
+
+    state.isConnected = true;
+    state.currentConfig = configPath;
+    state.connectedAt = new Date().toISOString();
+  } else {
+    if (platform === 'win32' && configName) {
+      execSync(`"${getWgPath()}" /removetunnelservice ${configName}`, { windowsHide: true });
+    } else if (platform === 'darwin' && configName) {
+      execSync(`wg-quick down ${configName}`);
+    } else if (configName) {
+      execSync(`sudo wg-quick down ${configName}`);
+    }
+
+    state.isConnected = false;
+    state.currentConfig = null;
+    state.connectedAt = null;
+  }
+
+  store.set('connected', state.isConnected);
+  store.set('connectedAt', state.connectedAt);
+}
+
+function connectVPN() {
+  try {
+    manageConnection('connect');
+    notifyConnection('success');
+  } catch (error) {
+    dialog.showErrorBox('Connection Error', `Failed to connect: ${error.message}`);
+    state.isConnected = false;
+  } finally {
     updateTrayMenu();
-    
+    mainWindow.webContents.send('connection-status', { connected: state.isConnected });
+  }
+}
+
+function disconnectVPN() {
+  try {
+    manageConnection('disconnect');
+  } catch (error) {
+    console.error('Disconnect error:', error.message);
+  } finally {
+    updateTrayMenu();
+    mainWindow.webContents.send('connection-status', { connected: state.isConnected });
+  }
+}
+
+function toggleConnection() {
+  state.isConnected ? disconnectVPN() : connectVPN();
+  return { connected: state.isConnected };
+}
+
+function notifyConnection(type, message = '') {
+  if (type === 'success') {
     dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'VPN Connected',
       message: 'Successfully connected to VPN!',
       icon: 'info'
     });
-  } catch (error) {
-    dialog.showErrorBox('Connection Error', `Failed to connect: ${error.message}`);
-    isConnected = false;
-    updateTrayMenu();
-  }
-}
-
-function disconnectVPN() {
-  try {
-    const platform = process.platform;
-    
-    if (platform === 'win32') {
-      if (currentConfig) {
-        const configName = path.basename(currentConfig, '.conf');
-        execSync(`"${getWgPath()}" /removetunnelservice ${configName}`, { 
-          windowsHide: true 
-        });
-      }
-    } else if (platform === 'darwin') {
-      if (currentConfig) {
-        const configName = path.basename(currentConfig, '.conf');
-        execSync(`wg-quick down ${configName}`);
-      }
-    } else {
-      // Linux
-      if (currentConfig) {
-        const configName = path.basename(currentConfig, '.conf');
-        execSync(`sudo wg-quick down ${configName}`);
-      }
-    }
-    
-    isConnected = false;
-    currentConfig = null;
-    store.set('connected', false);
-    store.set('connectedAt', null);
-    
-    mainWindow.webContents.send('connection-status', { connected: false });
-    updateTrayMenu();
-  } catch (error) {
-    console.error('Disconnect error:', error.message);
-    isConnected = false;
-    updateTrayMenu();
-  }
-}
-
-function getConnectionStatus() {
-  try {
-    const output = execSync(`${getWgPath()} show`, { encoding: 'utf8' });
-    return output.trim().length > 0;
-  } catch {
-    return false;
   }
 }
 
@@ -231,79 +194,73 @@ ipcMain.handle('import-config', async () => {
 
   if (!result.canceled && result.filePaths.length > 0) {
     const configPath = result.filePaths[0];
+    const configName = path.basename(configPath);
     const configContent = fs.readFileSync(configPath, 'utf8');
-    
+
     store.set('configPath', configPath);
-    store.set('configName', path.basename(configPath));
-    
-    return { 
-      success: true, 
-      path: configPath,
-      name: path.basename(configPath),
-      content: configContent
-    };
+    store.set('configName', configName);
+
+    return { success: true, path: configPath, name: configName, content: configContent };
   }
-  
+
   return { success: false };
 });
 
-ipcMain.handle('get-stored-config', () => {
-  return {
-    configPath: store.get('configPath'),
-    configName: store.get('configName'),
-    connected: store.get('connected', false),
-    connectedAt: store.get('connectedAt')
-  };
-});
-
-ipcMain.handle('toggle-connection', () => {
-  if (isConnected) {
-    disconnectVPN();
-  } else {
-    connectVPN();
+ipcMain.handle('remove-config', () => {
+  if (state.isConnected) {
+    return { success: false, error: 'Please disconnect first' };
   }
-  return { connected: isConnected };
+  store.delete('configPath');
+  store.delete('configName');
+  return { success: true };
 });
 
-ipcMain.handle('get-connection-status', () => {
-  return { 
-    connected: isConnected,
-    connectedAt: store.get('connectedAt')
-  };
+ipcMain.handle('get-stored-config', () => ({
+  configPath: store.get('configPath'),
+  configName: store.get('configName'),
+  connected: state.isConnected,
+  connectedAt: state.connectedAt
+}));
+
+ipcMain.handle('toggle-connection', toggleConnection);
+
+ipcMain.handle('get-connection-status', () => ({
+  connected: state.isConnected,
+  connectedAt: state.connectedAt
+}));
+
+ipcMain.handle('get-platform', () => process.platform);
+
+ipcMain.handle('open-external', (url) => shell.openExternal(url));
+
+// Auto-connect setting
+ipcMain.handle('set-auto-connect', (value) => {
+  store.set('autoConnect', value);
+  return { success: true };
 });
 
-ipcMain.handle('get-platform', () => {
-  return process.platform;
-});
+ipcMain.handle('get-auto-connect', () => store.get('autoConnect', false));
 
 // App lifecycle
 app.whenReady().then(() => {
   createWindow();
   createTray();
-  
-  // Restore previous connection if auto-connect enabled
-  if (store.get('autoConnect', false) && store.get('connected', false)) {
+
+  if (store.get('autoConnect', false) && store.get('configPath')) {
     setTimeout(connectVPN, 2000);
   }
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  if (process.platform !== 'darwin') app.quit();
 });
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
 app.on('before-quit', () => {
-  if (isConnected) {
-    disconnectVPN();
-  }
+  if (state.isConnected) disconnectVPN();
 });
 
-// Set app name
 app.name = 'VPN Access Client';
