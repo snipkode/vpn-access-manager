@@ -27,7 +27,10 @@ export default function AdminDashboard({ token, userData }) {
         apiFetch('/admin/devices'),
       ]);
       setStats(statsData);
-      setUsers(usersData.users || []);
+      // Filter out admin users - only show regular users
+      const allUsers = usersData.users || [];
+      const regularUsers = allUsers.filter(user => user.role !== 'admin');
+      setUsers(regularUsers);
       setDevices(devicesData.devices || []);
     } catch (error) {
       showNotification('Failed to load admin data', 'error');
@@ -124,46 +127,57 @@ function Overview({ stats }) {
 function UsersTable({ users, onToggle }) {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* Info Box */}
+      <div className="bg-blue-50 border-b border-blue-100 px-6 py-3">
+        <div className="flex items-center gap-2 text-sm text-blue-700">
+          <span className="text-lg">ℹ️</span>
+          <span>Showing <strong>{users.length}</strong> regular user(s). Admin users are hidden from this list.</span>
+        </div>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
               <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Email</th>
-              <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Role</th>
               <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">VPN Access</th>
               <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {users.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                <td className="py-4 px-4 text-sm text-dark font-medium">{user.email}</td>
-                <td className="py-4 px-4">
-                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                    user.role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-500'
-                  }`}>
-                    {user.role}
-                  </span>
-                </td>
-                <td className="py-4 px-4">
-                  <span className={`text-sm font-medium ${user.vpn_enabled ? 'text-success' : 'text-gray-400'}`}>
-                    {user.vpn_enabled ? 'Enabled' : 'Disabled'}
-                  </span>
-                </td>
-                <td className="py-4 px-4">
-                  <button
-                    onClick={() => onToggle(user.id, user.vpn_enabled)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                      user.vpn_enabled 
-                        ? 'bg-red-50 text-red-500 hover:bg-red-100' 
-                        : 'bg-green-50 text-success hover:bg-green-100'
-                    }`}
-                  >
-                    {user.vpn_enabled ? 'Disable' : 'Enable'}
-                  </button>
+            {users.length === 0 ? (
+              <tr>
+                <td colSpan={3} className="py-12 text-center">
+                  <div className="text-gray-400">
+                    <span className="text-4xl mb-2 block">📭</span>
+                    <div className="text-sm font-medium">No regular users found</div>
+                  </div>
                 </td>
               </tr>
-            ))}
+            ) : (
+              users.map((user) => (
+                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="py-4 px-4 text-sm text-dark font-medium">{user.email}</td>
+                  <td className="py-4 px-4">
+                    <span className={`text-sm font-medium ${user.vpn_enabled ? 'text-success' : 'text-gray-400'}`}>
+                      {user.vpn_enabled ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4">
+                    <button
+                      onClick={() => onToggle(user.id, user.vpn_enabled)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        user.vpn_enabled
+                          ? 'bg-red-50 text-red-500 hover:bg-red-100'
+                          : 'bg-green-50 text-success hover:bg-green-100'
+                      }`}
+                    >
+                      {user.vpn_enabled ? 'Disable' : 'Enable'}
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

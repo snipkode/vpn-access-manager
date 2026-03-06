@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { useAuthStore, useUIStore, apiFetch } from '../store';
@@ -9,19 +9,35 @@ import Layout from '../components/Layout';
 import Dashboard from '../components/Dashboard';
 import MyDevices from '../components/MyDevices';
 import Wallet from '../components/Wallet';
+import PaymentForm from '../components/PaymentForm';
+import Referral from '../components/Referral';
+import ProfileEdit from '../components/ProfileEdit';
+import Notifications from '../components/Notifications';
 import AdminDashboard from '../components/AdminDashboard';
+import AdminBilling from '../components/AdminBilling';
+import AdminCredit from '../components/AdminCredit';
+import AdminReferral from '../components/AdminReferral';
+import PaymentSettings from '../components/PaymentSettings';
+import AdminSettings from '../components/AdminSettings';
 
 // Menu configuration
 const MENU_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: 'home' },
   { id: 'devices', label: 'Devices', icon: 'mobile' },
   { id: 'wallet', label: 'Wallet', icon: 'wallet' },
+  { id: 'payment', label: 'Payment', icon: 'credit-card' },
+  { id: 'referral', label: 'Referral', icon: 'gift' },
+  { id: 'profile', label: 'Profile', icon: 'user' },
+  { id: 'notifications', label: 'Notifications', icon: 'bell' },
 ];
 
 const ADMIN_ITEMS = [
-  { id: 'admin', label: 'Admin', icon: 'shield' },
-  { id: 'users', label: 'Users', icon: 'users' },
-  { id: 'credit', label: 'Credits', icon: 'coins' },
+  { id: 'admin-dashboard', label: 'Overview', icon: 'chart-line' },
+  { id: 'admin-billing', label: 'Billing', icon: 'file-invoice-dollar' },
+  { id: 'admin-credit', label: 'Credit', icon: 'coins' },
+  { id: 'admin-referral', label: 'Referrals', icon: 'users' },
+  { id: 'payment-settings', label: 'Payment Settings', icon: 'cog' },
+  { id: 'admin-settings', label: 'Settings', icon: 'sliders-h' },
 ];
 
 // Page components mapping
@@ -29,29 +45,39 @@ const PAGE_COMPONENTS = {
   dashboard: Dashboard,
   devices: MyDevices,
   wallet: Wallet,
-  admin: AdminDashboard,
-  users: AdminDashboard,
-  credit: AdminDashboard,
+  payment: PaymentForm,
+  referral: Referral,
+  profile: ProfileEdit,
+  notifications: Notifications,
+  'admin-dashboard': AdminDashboard,
+  'admin-billing': AdminBilling,
+  'admin-credit': AdminCredit,
+  'admin-referral': AdminReferral,
+  'payment-settings': PaymentSettings,
+  'admin-settings': AdminSettings,
 };
 
 export default function App() {
   const { user, token, userData, loading, setUser, clearUser, updateUserData } = useAuthStore();
   const { activePage, setActivePage, showNotification } = useUIStore();
+  const [initialized, setInitialized] = useState(false);
 
   // Initialize Firebase auth
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         const idToken = await firebaseUser.getIdToken();
-        
+
         try {
           const data = await apiFetch('/auth/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token: idToken }),
           });
-          
+
           setUser(firebaseUser, idToken, data.user);
+          // Auto redirect to dashboard after successful login
+          setActivePage('dashboard');
         } catch (error) {
           console.error('Auth verification failed:', error);
           setUser(firebaseUser, idToken, {
@@ -59,10 +85,12 @@ export default function App() {
             role: 'user',
             vpn_enabled: true
           });
+          setActivePage('dashboard');
         }
       } else {
         clearUser();
       }
+      setInitialized(true);
     });
 
     return () => unsubscribe();
@@ -94,7 +122,7 @@ export default function App() {
   };
 
   // Show loading screen
-  if (loading) {
+  if (loading || !initialized) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
         <div className="w-10 h-10 border-4 border-white/10 border-t-primary rounded-full animate-spin" />
@@ -108,10 +136,21 @@ export default function App() {
     return <Login onLogin={handleLogin} />;
   }
 
-  // Determine menu items based on role
+  // Determine menu items and layout based on role
   const isAdmin = userData?.role === 'admin';
-  const allMenuItems = [...MENU_ITEMS, ...(isAdmin ? ADMIN_ITEMS : [])];
-  const CurrentPage = PAGE_COMPONENTS[activePage] || Dashboard;
+  
+  // Separate menu items for admin and user
+  const userMenuItems = MENU_ITEMS; // User only sees user menu
+  const adminMenuItems = ADMIN_ITEMS; // Admin only sees admin menu
+  
+  // Use separate menu based on role
+  const allMenuItems = isAdmin ? adminMenuItems : userMenuItems;
+  
+  // Map active page to component
+  const CurrentPage = PAGE_COMPONENTS[activePage] || (isAdmin ? AdminDashboard : Dashboard);
+  
+  // Determine if current page is admin page
+  const isCurrentPageAdmin = ADMIN_ITEMS.some(item => item.id === activePage);
 
   return (
     <Layout
@@ -121,6 +160,8 @@ export default function App() {
       activePage={activePage}
       onPageChange={handlePageChange}
       onLogout={handleLogout}
+      isAdmin={isAdmin}
+      isCurrentPageAdmin={isCurrentPageAdmin}
     >
       <CurrentPage token={token} userData={userData} />
     </Layout>
