@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useAuthStore, useUIStore, apiFetch } from '../store';
+import { useAuthStore, useUIStore } from '../store';
+import { notificationsAPI } from '../lib/api';
 
 export default function Notifications({ token }) {
   const { user } = useAuthStore();
@@ -25,8 +26,8 @@ export default function Notifications({ token }) {
   const fetchData = async () => {
     try {
       const [prefsData, notificationsData] = await Promise.all([
-        apiFetch('/user/notifications'),
-        apiFetch('/user/notifications/history').catch(() => ({ notifications: [] })),
+        notificationsAPI.getNotifications(),
+        notificationsAPI.getHistory().catch(() => ({ notifications: [] })),
       ]);
       setPreferences(prefsData.preferences || preferences);
       setNotifications(notificationsData.notifications || []);
@@ -40,11 +41,7 @@ export default function Notifications({ token }) {
   const handleSave = async () => {
     setLoading(true);
     try {
-      await apiFetch('/user/notifications', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(preferences),
-      });
+      await notificationsAPI.updatePreferences(preferences);
       showNotification('Notification preferences saved');
     } catch (error) {
       showNotification(error.message || 'Failed to save preferences', 'error');

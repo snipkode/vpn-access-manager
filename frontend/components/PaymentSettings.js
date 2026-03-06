@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useUIStore, apiFetch } from '../store';
+import { useUIStore } from '../store';
+import { adminBillingAPI } from '../lib/api';
 
 export default function PaymentSettings({ token }) {
   const { showNotification } = useUIStore();
@@ -37,16 +38,16 @@ export default function PaymentSettings({ token }) {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const data = await apiFetch('/payment-settings/settings');
-      
+      const data = await adminBillingAPI.getSettings();
+
       setDebugInfo({
         rawSettings: data.settings,
         timestamp: new Date().toISOString(),
       });
-      
+
       setSettings(data.settings || settings);
       setBankAccounts(data.bank_accounts || []);
-      
+
       console.log('💳 Payment Settings Loaded:', data.settings);
     } catch (error) {
       console.error('Failed to fetch settings:', error);
@@ -65,7 +66,7 @@ export default function PaymentSettings({ token }) {
     setLoading(true);
     try {
       console.log('💾 Saving settings:', settings);
-      
+
       const payload = {
         billing_enabled: settings.billing_enabled,
         currency: settings.currency,
@@ -74,20 +75,16 @@ export default function PaymentSettings({ token }) {
         auto_approve: settings.auto_approve,
         notification_email: settings.notification_email,
       };
-      
+
       console.log('📤 Payload:', payload);
-      
-      const response = await apiFetch('/payment-settings/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      
+
+      const response = await adminBillingAPI.updateSettings(payload);
+
       console.log('📥 Response:', response);
-      
+
       // Verify the update
       await fetchData();
-      
+
       showNotification('Payment settings saved successfully!');
     } catch (error) {
       console.error('Save error:', error);
@@ -99,9 +96,9 @@ export default function PaymentSettings({ token }) {
 
   const handleToggleBilling = async () => {
     const newStatus = !settings.billing_enabled;
-    
+
     console.log('🔘 Toggle billing:', newStatus ? 'ON' : 'OFF');
-    
+
     try {
       // Update with ALL required fields
       const payload = {
@@ -111,20 +108,16 @@ export default function PaymentSettings({ token }) {
         max_amount: settings.max_amount || 1000000,
         auto_approve: settings.auto_approve || false,
       };
-      
+
       console.log('📤 Toggle payload:', payload);
-      
-      const updateResponse = await apiFetch('/payment-settings/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      
+
+      const updateResponse = await adminBillingAPI.updateSettings(payload);
+
       console.log('📥 Update response:', updateResponse);
-      
+
       // Force refresh to verify
       await fetchData();
-      
+
       // Check if actually updated
       if (settings.billing_enabled !== newStatus) {
         setSettings({ ...settings, billing_enabled: newStatus });

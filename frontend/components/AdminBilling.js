@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useUIStore, apiFetch } from '../store';
+import { useUIStore } from '../store';
+import { adminPaymentsAPI, formatCurrency } from '../lib/api';
 
 const tabs = [
   { id: 'pending', label: 'Pending', color: 'text-amber-500' },
@@ -28,8 +29,8 @@ export default function AdminBilling({ token }) {
   const fetchData = async () => {
     try {
       const [statsData, paymentsData] = await Promise.all([
-        apiFetch('/admin/billing/stats'),
-        apiFetch(`/admin/billing/payments?status=${activeTab === 'all' ? '' : activeTab}&limit=50`),
+        adminPaymentsAPI.getStats(),
+        adminPaymentsAPI.getPayments({ status: activeTab === 'all' ? '' : activeTab, limit: 50 }),
       ]);
       setStats(statsData.stats || null);
       setPayments(paymentsData.payments || []);
@@ -48,11 +49,7 @@ export default function AdminBilling({ token }) {
     if (!selectedPayment) return;
     setProcessing(true);
     try {
-      await apiFetch(`/admin/billing/payments/${selectedPayment.id}/approve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ admin_note: adminNote }),
-      });
+      await adminPaymentsAPI.approvePayment(selectedPayment.id, { admin_note: adminNote });
       showNotification('Payment approved successfully');
       setShowApproveModal(false);
       setSelectedPayment(null);
@@ -69,11 +66,7 @@ export default function AdminBilling({ token }) {
     if (!selectedPayment) return;
     setProcessing(true);
     try {
-      await apiFetch(`/admin/billing/payments/${selectedPayment.id}/reject`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: rejectReason, admin_note: rejectReason }),
-      });
+      await adminPaymentsAPI.rejectPayment(selectedPayment.id, { reason: rejectReason, admin_note: rejectReason });
       showNotification('Payment rejected');
       setShowRejectModal(false);
       setSelectedPayment(null);
@@ -469,12 +462,4 @@ function InfoRow({ label, value }) {
       <div className="text-sm font-medium text-dark">{value}</div>
     </div>
   );
-}
-
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(amount);
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useUIStore, apiFetch } from '../store';
+import { useUIStore } from '../store';
+import { adminUsersAPI, adminDevicesAPI, adminDashboardAPI } from '../lib/api';
 
 const tabs = [
   { id: 'overview', label: 'Overview' },
@@ -22,9 +23,9 @@ export default function AdminDashboard({ token, userData }) {
   const fetchData = async () => {
     try {
       const [statsData, usersData, devicesData] = await Promise.all([
-        apiFetch('/admin/stats'),
-        apiFetch('/admin/users'),
-        apiFetch('/admin/devices'),
+        adminDashboardAPI.getStats(),
+        adminUsersAPI.getUsers(),
+        adminDevicesAPI.getDevices(),
       ]);
       setStats(statsData);
       // Filter out admin users - only show regular users
@@ -41,11 +42,7 @@ export default function AdminDashboard({ token, userData }) {
 
   const toggleVpnAccess = async (userId, currentStatus) => {
     try {
-      await apiFetch(`/admin/users/${userId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vpn_enabled: !currentStatus }),
-      });
+      await adminUsersAPI.updateUser(userId, { vpn_enabled: !currentStatus });
       showNotification('User access updated');
       fetchData();
     } catch (error) {
@@ -56,7 +53,7 @@ export default function AdminDashboard({ token, userData }) {
   const revokeDevice = async (deviceId) => {
     if (!confirm('Revoke this device?')) return;
     try {
-      await apiFetch(`/admin/device/${deviceId}`, { method: 'DELETE' });
+      await adminDevicesAPI.deleteDevice(deviceId);
       showNotification('Device revoked');
       fetchData();
     } catch (error) {

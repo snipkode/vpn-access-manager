@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useUIStore, apiFetch } from '../store';
+import { useUIStore } from '../store';
+import { creditAPI, formatCurrency } from '../lib/api';
 
 export default function Wallet({ token }) {
   const [balance, setBalance] = useState(0);
@@ -14,8 +15,8 @@ export default function Wallet({ token }) {
   const fetchData = async () => {
     try {
       const [balanceData, transactionsData] = await Promise.all([
-        apiFetch('/credit/balance'),
-        apiFetch('/credit/transactions?limit=10'),
+        creditAPI.getBalance(),
+        creditAPI.getTransactions({ limit: 10 }),
       ]);
       setBalance(balanceData.balance || 0);
       setTransactions(transactionsData.transactions || []);
@@ -90,14 +91,6 @@ export default function Wallet({ token }) {
       </div>
     </div>
   );
-}
-
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(amount);
 }
 
 function getTxIcon(type) {

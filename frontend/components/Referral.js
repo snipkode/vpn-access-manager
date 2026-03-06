@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useAuthStore, useUIStore, apiFetch } from '../store';
+import { useAuthStore, useUIStore } from '../store';
+import { referralAPI, formatCurrency } from '../lib/api';
 
 export default function Referral({ token }) {
   const { user } = useAuthStore();
@@ -23,11 +24,10 @@ export default function Referral({ token }) {
 
   const fetchData = async () => {
     try {
-      const [codeData, statsData, earningsData, configData] = await Promise.all([
-        apiFetch('/referral/code'),
-        apiFetch('/referral/stats'),
-        apiFetch('/referral/earnings?limit=20'),
-        apiFetch('/referral/config'),
+      const [codeData, statsData, earningsData] = await Promise.all([
+        referralAPI.getCode(),
+        referralAPI.getStats(),
+        referralAPI.getEarnings(),
       ]);
 
       setReferralCode(codeData.referral_code || '');
@@ -35,7 +35,6 @@ export default function Referral({ token }) {
       setTier(codeData.tier || { name: 'Bronze', multiplier: 1 });
       setStats(statsData.referral || stats);
       setEarnings(earningsData.earnings || []);
-      setConfig(configData.config || null);
     } catch (error) {
       showNotification('Failed to load referral data', 'error');
     } finally {
@@ -294,12 +293,4 @@ function Step({ number, title, description, icon }) {
       </div>
     </div>
   );
-}
-
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(amount);
 }

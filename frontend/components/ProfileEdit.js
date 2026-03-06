@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useAuthStore, useUIStore, apiFetch } from '../store';
+import { useAuthStore, useUIStore } from '../store';
+import { userAPI, notificationsAPI } from '../lib/api';
 
 export default function ProfileEdit({ token }) {
   const { user, updateUserData } = useAuthStore();
@@ -31,8 +32,8 @@ export default function ProfileEdit({ token }) {
   const fetchData = async () => {
     try {
       const [profileData, prefsData] = await Promise.all([
-        apiFetch('/user/profile'),
-        apiFetch('/user/notifications'),
+        userAPI.getProfile(),
+        notificationsAPI.getNotifications(),
       ]);
       setProfile(profileData.profile || profile);
       setPreferences(prefsData.preferences || preferences);
@@ -46,11 +47,7 @@ export default function ProfileEdit({ token }) {
   const handleSaveProfile = async () => {
     setLoading(true);
     try {
-      await apiFetch('/user/profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profile),
-      });
+      await userAPI.updateProfile(profile);
       showNotification('Profile updated successfully');
       updateUserData(profile);
     } catch (error) {
@@ -63,11 +60,7 @@ export default function ProfileEdit({ token }) {
   const handleSavePreferences = async () => {
     setLoading(true);
     try {
-      await apiFetch('/user/notifications', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(preferences),
-      });
+      await notificationsAPI.updatePreferences(preferences);
       showNotification('Preferences updated successfully');
     } catch (error) {
       showNotification(error.message || 'Failed to update preferences', 'error');

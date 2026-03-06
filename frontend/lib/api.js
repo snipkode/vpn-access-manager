@@ -1,0 +1,898 @@
+/**
+ * VPN Access API Client
+ * Integrated with Swagger API documentation at http://localhost:3000/api-docs/
+ */
+
+import { useAuthStore } from '../store';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+
+/**
+ * Base API fetch with authentication
+ */
+export const apiFetch = async (endpoint, options = {}) => {
+  const token = useAuthStore.getState().token;
+
+  const headers = {
+    ...options.headers,
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  // Don't add Content-Type for FormData (let browser set it with boundary)
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(error.error || error.message || 'Request failed');
+  }
+
+  return res.json();
+};
+
+/**
+ * Auth API - Authentication and user management
+ */
+export const authAPI = {
+  /**
+   * Get current user profile
+   * GET /api/auth/profile
+   */
+  getProfile: async () => {
+    return apiFetch('/auth/profile');
+  },
+
+  /**
+   * Login with Firebase token
+   * POST /api/auth/login
+   */
+  login: async (firebaseToken) => {
+    return apiFetch('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ firebase_token: firebaseToken }),
+    });
+  },
+
+  /**
+   * Logout
+   * POST /api/auth/logout
+   */
+  logout: async () => {
+    return apiFetch('/auth/logout', { method: 'POST' });
+  },
+};
+
+/**
+ * User API - User profile management
+ */
+export const userAPI = {
+  /**
+   * Get user profile
+   * GET /api/user/profile
+   */
+  getProfile: async () => {
+    return apiFetch('/user/profile');
+  },
+
+  /**
+   * Update user profile
+   * PATCH /api/user/profile
+   */
+  updateProfile: async (data) => {
+    return apiFetch('/user/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
+/**
+ * VPN API - VPN devices and configurations
+ */
+export const vpnAPI = {
+  /**
+   * Get user's VPN devices
+   * GET /api/vpn/devices
+   */
+  getDevices: async () => {
+    return apiFetch('/vpn/devices');
+  },
+
+  /**
+   * Generate VPN config for new device
+   * POST /api/vpn/generate
+   */
+  generateConfig: async (deviceName) => {
+    return apiFetch('/vpn/generate', {
+      method: 'POST',
+      body: JSON.stringify({ device_name: deviceName }),
+    });
+  },
+
+  /**
+   * Delete/revoke a device
+   * DELETE /api/vpn/device/:id
+   */
+  deleteDevice: async (deviceId) => {
+    return apiFetch(`/vpn/device/${deviceId}`, { method: 'DELETE' });
+  },
+
+  /**
+   * Get device details
+   * GET /api/vpn/device/:id
+   */
+  getDevice: async (deviceId) => {
+    return apiFetch(`/vpn/device/${deviceId}`);
+  },
+};
+
+/**
+ * Billing API - Subscription and payments
+ */
+export const billingAPI = {
+  /**
+   * Get billing settings (plans, banks, etc.)
+   * GET /api/billing/settings
+   */
+  getSettings: async () => {
+    return apiFetch('/billing/settings');
+  },
+
+  /**
+   * Get user subscription
+   * GET /api/billing/subscription
+   */
+  getSubscription: async () => {
+    return apiFetch('/billing/subscription');
+  },
+
+  /**
+   * Get user payments history
+   * GET /api/billing/payments
+   */
+  getPayments: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/billing/payments?${queryString}` : '/billing/payments';
+    return apiFetch(url);
+  },
+
+  /**
+   * Submit payment proof
+   * POST /api/billing/payments
+   */
+  submitPayment: async (formData) => {
+    return apiFetch('/billing/payments', {
+      method: 'POST',
+      body: formData, // FormData object with proof_image, plan, bank_from, transfer_date
+    });
+  },
+
+  /**
+   * Get payment details
+   * GET /api/billing/payment/:id
+   */
+  getPayment: async (paymentId) => {
+    return apiFetch(`/billing/payment/${paymentId}`);
+  },
+};
+
+/**
+ * Credit API - User credit balance and transactions
+ */
+export const creditAPI = {
+  /**
+   * Get user credit balance
+   * GET /api/credit/balance
+   */
+  getBalance: async () => {
+    return apiFetch('/credit/balance');
+  },
+
+  /**
+   * Get credit transactions history
+   * GET /api/credit/transactions
+   */
+  getTransactions: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/credit/transactions?${queryString}` : '/credit/transactions';
+    return apiFetch(url);
+  },
+
+  /**
+   * Transfer credit to another user
+   * POST /api/credit/transfer
+   */
+  transfer: async (data) => {
+    return apiFetch('/credit/transfer', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
+/**
+ * Referral API - Referral program
+ */
+export const referralAPI = {
+  /**
+   * Get or create user's referral code
+   * GET /api/referral/code
+   */
+  getCode: async () => {
+    return apiFetch('/referral/code');
+  },
+
+  /**
+   * Get referral statistics
+   * GET /api/referral/stats
+   */
+  getStats: async () => {
+    return apiFetch('/referral/stats');
+  },
+
+  /**
+   * Get referral earnings history
+   * GET /api/referral/earnings
+   */
+  getEarnings: async () => {
+    return apiFetch('/referral/earnings');
+  },
+
+  /**
+   * Track referral signup
+   * POST /api/referral/track
+   */
+  track: async (data) => {
+    return apiFetch('/referral/track', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
+/**
+ * Notifications API - User notifications
+ */
+export const notificationsAPI = {
+  /**
+   * Get user notifications
+   * GET /api/notifications
+   */
+  getNotifications: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/notifications?${queryString}` : '/notifications';
+    return apiFetch(url);
+  },
+
+  /**
+   * Get notification history
+   * GET /api/notifications/history
+   */
+  getHistory: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/notifications/history?${queryString}` : '/notifications/history';
+    return apiFetch(url);
+  },
+
+  /**
+   * Mark notification as read
+   * PATCH /api/notifications/:id/read
+   */
+  markAsRead: async (notificationId) => {
+    return apiFetch(`/notifications/${notificationId}/read`, { method: 'PATCH' });
+  },
+
+  /**
+   * Mark all notifications as read
+   * PATCH /api/notifications/read-all
+   */
+  markAllAsRead: async () => {
+    return apiFetch('/notifications/read-all', { method: 'PATCH' });
+  },
+
+  /**
+   * Update notification preferences
+   * PATCH /api/notifications/preferences
+   */
+  updatePreferences: async (preferences) => {
+    return apiFetch('/notifications/preferences', {
+      method: 'PATCH',
+      body: JSON.stringify(preferences),
+    });
+  },
+};
+
+/**
+ * Admin Users API - User management (Admin only)
+ */
+export const adminUsersAPI = {
+  /**
+   * Get all users with filters
+   * GET /api/admin/users
+   */
+  getUsers: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/admin/users?${queryString}` : '/admin/users';
+    return apiFetch(url);
+  },
+
+  /**
+   * Get user details
+   * GET /api/admin/users/:id
+   */
+  getUser: async (userId) => {
+    return apiFetch(`/admin/users/${userId}`);
+  },
+
+  /**
+   * Update user (role, vpn_enabled, etc.)
+   * PATCH /api/admin/users/:id
+   */
+  updateUser: async (userId, data) => {
+    return apiFetch(`/admin/users/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Delete user
+   * DELETE /api/admin/users/:id
+   */
+  deleteUser: async (userId) => {
+    return apiFetch(`/admin/users/${userId}`, { method: 'DELETE' });
+  },
+
+  /**
+   * Get user devices
+   * GET /api/admin/users/:id/devices
+   */
+  getUserDevices: async (userId) => {
+    return apiFetch(`/admin/users/${userId}/devices`);
+  },
+
+  /**
+   * Get user payments
+   * GET /api/admin/users/:id/payments
+   */
+  getUserPayments: async (userId) => {
+    return apiFetch(`/admin/users/${userId}/payments`);
+  },
+
+  /**
+   * Get user transactions
+   * GET /api/admin/users/:id/transactions
+   */
+  getUserTransactions: async (userId) => {
+    return apiFetch(`/admin/users/${userId}/transactions`);
+  },
+
+  /**
+   * Enable VPN for user
+   * POST /api/admin/users/:id/enable-vpn
+   */
+  enableVpn: async (userId) => {
+    return apiFetch(`/admin/users/${userId}/enable-vpn`, { method: 'POST' });
+  },
+
+  /**
+   * Disable VPN for user
+   * POST /api/admin/users/:id/disable-vpn
+   */
+  disableVpn: async (userId) => {
+    return apiFetch(`/admin/users/${userId}/disable-vpn`, { method: 'POST' });
+  },
+
+  /**
+   * Reset user subscription
+   * POST /api/admin/users/:id/reset-subscription
+   */
+  resetSubscription: async (userId) => {
+    return apiFetch(`/admin/users/${userId}/reset-subscription`, { method: 'POST' });
+  },
+
+  /**
+   * Extend user subscription
+   * POST /api/admin/users/:id/extend-subscription
+   */
+  extendSubscription: async (userId, days) => {
+    return apiFetch(`/admin/users/${userId}/extend-subscription`, {
+      method: 'POST',
+      body: JSON.stringify({ days }),
+    });
+  },
+};
+
+/**
+ * Admin Payments API - Payment management (Admin only)
+ */
+export const adminPaymentsAPI = {
+  /**
+   * Get all payments with filters
+   * GET /api/admin/payments
+   */
+  getPayments: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/admin/payments?${queryString}` : '/admin/payments';
+    return apiFetch(url);
+  },
+
+  /**
+   * Get payment details
+   * GET /api/admin/payments/:id
+   */
+  getPayment: async (paymentId) => {
+    return apiFetch(`/admin/payments/${paymentId}`);
+  },
+
+  /**
+   * Approve payment
+   * POST /api/admin/payments/:id/approve
+   */
+  approvePayment: async (paymentId, data = {}) => {
+    return apiFetch(`/admin/payments/${paymentId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Reject payment
+   * POST /api/admin/payments/:id/reject
+   */
+  rejectPayment: async (paymentId, data = {}) => {
+    return apiFetch(`/admin/payments/${paymentId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Get statistics
+   * GET /api/admin/payments/stats
+   */
+  getStats: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/admin/payments/stats?${queryString}` : '/admin/payments/stats';
+    return apiFetch(url);
+  },
+};
+
+/**
+ * Admin Billing API - Billing management (Admin only)
+ */
+export const adminBillingAPI = {
+  /**
+   * Get billing dashboard data
+   * GET /api/admin/billing/dashboard
+   */
+  getDashboard: async () => {
+    return apiFetch('/admin/billing/dashboard');
+  },
+
+  /**
+   * Get billing settings
+   * GET /api/admin/billing/settings
+   */
+  getSettings: async () => {
+    return apiFetch('/admin/billing/settings');
+  },
+
+  /**
+   * Update billing settings
+   * PATCH /api/admin/billing/settings
+   */
+  updateSettings: async (data) => {
+    return apiFetch('/admin/billing/settings', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Get all plans
+   * GET /api/admin/billing/plans
+   */
+  getPlans: async () => {
+    return apiFetch('/admin/billing/plans');
+  },
+
+  /**
+   * Create new plan
+   * POST /api/admin/billing/plans
+   */
+  createPlan: async (data) => {
+    return apiFetch('/admin/billing/plans', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Update plan
+   * PATCH /api/admin/billing/plans/:id
+   */
+  updatePlan: async (planId, data) => {
+    return apiFetch(`/admin/billing/plans/${planId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Delete plan
+   * DELETE /api/admin/billing/plans/:id
+   */
+  deletePlan: async (planId) => {
+    return apiFetch(`/admin/billing/plans/${planId}`, { method: 'DELETE' });
+  },
+
+  /**
+   * Get bank accounts
+   * GET /api/admin/billing/bank-accounts
+   */
+  getBankAccounts: async () => {
+    return apiFetch('/admin/billing/bank-accounts');
+  },
+
+  /**
+   * Add bank account
+   * POST /api/admin/billing/bank-accounts
+   */
+  addBankAccount: async (data) => {
+    return apiFetch('/admin/billing/bank-accounts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Update bank account
+   * PATCH /api/admin/billing/bank-accounts/:id
+   */
+  updateBankAccount: async (bankId, data) => {
+    return apiFetch(`/admin/billing/bank-accounts/${bankId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Delete bank account
+   * DELETE /api/admin/billing/bank-accounts/:id
+   */
+  deleteBankAccount: async (bankId) => {
+    return apiFetch(`/admin/billing/bank-accounts/${bankId}`, { method: 'DELETE' });
+  },
+};
+
+/**
+ * Admin Credit API - Credit management (Admin only)
+ */
+export const adminCreditAPI = {
+  /**
+   * Get credit dashboard
+   * GET /api/admin/credit/dashboard
+   */
+  getDashboard: async () => {
+    return apiFetch('/admin/credit/dashboard');
+  },
+
+  /**
+   * Get all credit transactions
+   * GET /api/admin/credit/transactions
+   */
+  getTransactions: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/admin/credit/transactions?${queryString}` : '/admin/credit/transactions';
+    return apiFetch(url);
+  },
+
+  /**
+   * Get fraud alerts
+   * GET /api/admin/credit/fraud-alerts
+   */
+  getFraudAlerts: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/admin/credit/fraud-alerts?${queryString}` : '/admin/credit/fraud-alerts';
+    return apiFetch(url);
+  },
+
+  /**
+   * Review fraud alert
+   * PATCH /api/admin/credit/fraud-alerts/:id/review
+   */
+  reviewFraudAlert: async (alertId, action, notes = '') => {
+    return apiFetch(`/admin/credit/fraud-alerts/${alertId}/review`, {
+      method: 'PATCH',
+      body: JSON.stringify({ action, notes }),
+    });
+  },
+
+  /**
+   * Get credit statistics
+   * GET /api/admin/credit/stats
+   */
+  getStats: async () => {
+    return apiFetch('/admin/credit/stats');
+  },
+
+  /**
+   * Add credit to user
+   * POST /api/admin/credit/users/:id/add
+   */
+  addCredit: async (userId, data) => {
+    return apiFetch(`/admin/credit/users/${userId}/add`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Deduct credit from user
+   * POST /api/admin/credit/users/:id/deduct
+   */
+  deductCredit: async (userId, data) => {
+    return apiFetch(`/admin/credit/users/${userId}/deduct`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
+/**
+ * Admin Referral API - Referral management (Admin only)
+ */
+export const adminReferralAPI = {
+  /**
+   * Get referral dashboard
+   * GET /api/admin/referral/dashboard
+   */
+  getDashboard: async () => {
+    return apiFetch('/admin/referral/dashboard');
+  },
+
+  /**
+   * Get all referrals
+   * GET /api/admin/referral/referrals
+   */
+  getReferrals: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/admin/referral/referrals?${queryString}` : '/admin/referral/referrals';
+    return apiFetch(url);
+  },
+
+  /**
+   * Get referral settings
+   * GET /api/admin/referral/settings
+   */
+  getSettings: async () => {
+    return apiFetch('/admin/referral/settings');
+  },
+
+  /**
+   * Update referral settings
+   * PATCH /api/admin/referral/settings
+   */
+  updateSettings: async (data) => {
+    return apiFetch('/admin/referral/settings', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Update user tier
+   * PATCH /api/admin/referral/users/:id/tier
+   */
+  updateUserTier: async (userId, data) => {
+    return apiFetch(`/admin/referral/users/${userId}/tier`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Reset user fraud status
+   * POST /api/admin/referral/users/:id/reset-fraud
+   */
+  resetUserFraud: async (userId) => {
+    return apiFetch(`/admin/referral/users/${userId}/reset-fraud`, {
+      method: 'POST',
+    });
+  },
+};
+
+/**
+ * Admin Settings API - System settings (Admin only)
+ */
+export const adminSettingsAPI = {
+  /**
+   * Get all settings
+   * GET /api/admin/settings
+   */
+  getSettings: async () => {
+    return apiFetch('/admin/settings');
+  },
+
+  /**
+   * Update settings by category
+   * PATCH /api/admin/settings/:category
+   */
+  updateSettings: async (category, data) => {
+    return apiFetch(`/admin/settings/${category}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Test WhatsApp connection
+   * POST /api/admin/settings/whatsapp/test
+   */
+  testWhatsApp: async (data = {}) => {
+    return apiFetch('/admin/settings/whatsapp/test', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Test email connection
+   * POST /api/admin/settings/email/test
+   */
+  testEmail: async (data = {}) => {
+    return apiFetch('/admin/settings/email/test', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
+/**
+ * Admin Dashboard API - Dashboard statistics (Admin only)
+ */
+export const adminDashboardAPI = {
+  /**
+   * Get dashboard statistics
+   * GET /api/admin/dashboard/stats
+   */
+  getStats: async () => {
+    return apiFetch('/admin/dashboard/stats');
+  },
+
+  /**
+   * Get recent activity
+   * GET /api/admin/dashboard/activity
+   */
+  getActivity: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/admin/dashboard/activity?${queryString}` : '/admin/dashboard/activity';
+    return apiFetch(url);
+  },
+};
+
+/**
+ * Admin Devices API - Device management (Admin only)
+ */
+export const adminDevicesAPI = {
+  /**
+   * Get all devices
+   * GET /api/admin/devices
+   */
+  getDevices: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/admin/devices?${queryString}` : '/admin/devices';
+    return apiFetch(url);
+  },
+
+  /**
+   * Get device details
+   * GET /api/admin/devices/:id
+   */
+  getDevice: async (deviceId) => {
+    return apiFetch(`/admin/devices/${deviceId}`);
+  },
+
+  /**
+   * Delete device
+   * DELETE /api/admin/devices/:id
+   */
+  deleteDevice: async (deviceId) => {
+    return apiFetch(`/admin/devices/${deviceId}`, { method: 'DELETE' });
+  },
+
+  /**
+   * Reset device IP
+   * POST /api/admin/devices/:id/reset-ip
+   */
+  resetDeviceIP: async (deviceId) => {
+    return apiFetch(`/admin/devices/${deviceId}/reset-ip`, { method: 'POST' });
+  },
+};
+
+/**
+ * Export all API modules
+ */
+export default {
+  auth: authAPI,
+  user: userAPI,
+  vpn: vpnAPI,
+  billing: billingAPI,
+  credit: creditAPI,
+  referral: referralAPI,
+  notifications: notificationsAPI,
+  admin: {
+    users: adminUsersAPI,
+    payments: adminPaymentsAPI,
+    billing: adminBillingAPI,
+    credit: adminCreditAPI,
+    referral: adminReferralAPI,
+    settings: adminSettingsAPI,
+    dashboard: adminDashboardAPI,
+    devices: adminDevicesAPI,
+  },
+};
+
+/**
+ * Utility functions
+ */
+export const formatCurrency = (amount) => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+  }).format(amount);
+};
+
+export const formatDate = (dateString, options = {}) => {
+  const defaultOptions = {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  };
+  return new Date(dateString).toLocaleDateString('id-ID', { ...defaultOptions, ...options });
+};
+
+export const formatDateTime = (dateString) => {
+  return new Date(dateString).toLocaleString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+export const getStatusStyle = (status) => {
+  const styles = {
+    pending: 'bg-amber-100 text-amber-700',
+    approved: 'bg-green-100 text-green-700',
+    rejected: 'bg-red-100 text-red-700',
+    blocked: 'bg-purple-100 text-purple-700',
+    completed: 'bg-green-100 text-green-700',
+    failed: 'bg-gray-100 text-gray-600',
+    active: 'bg-green-100 text-green-700',
+    inactive: 'bg-gray-100 text-gray-600',
+  };
+  return styles[status] || 'bg-gray-100 text-gray-600';
+};
+
+export const getRiskStyle = (level) => {
+  const styles = {
+    low: 'bg-green-100 text-green-700',
+    medium: 'bg-amber-100 text-amber-700',
+    high: 'bg-red-100 text-red-700',
+    critical: 'bg-purple-100 text-purple-700',
+  };
+  return styles[level] || 'bg-gray-100 text-gray-600';
+};

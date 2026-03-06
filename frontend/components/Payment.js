@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useUIStore, useBillingStore, apiFetch, formatCurrency } from '../store';
+import { useUIStore, useBillingStore } from '../store';
+import { billingAPI, formatCurrency } from '../lib/api';
 
 const PLANS = {
   monthly: { price: 50000, duration: 30, label: 'Monthly' },
@@ -32,24 +33,24 @@ export default function Payment({ token }) {
 
   const fetchData = async () => {
     try {
-      const [plansData, historyData] = await Promise.all([
-        apiFetch('/billing/plans'),
-        apiFetch('/billing/history?limit=10'),
+      const [settingsData, historyData] = await Promise.all([
+        billingAPI.getSettings(),
+        billingAPI.getPayments({ limit: 10 }),
       ]);
 
       // Update global billing store
       setBillingData({
-        billing_enabled: plansData.billing_enabled || false,
-        currency: plansData.currency || 'IDR',
-        plans: plansData.plans || [],
-        bank_accounts: plansData.bank_accounts || [],
+        billing_enabled: settingsData.billing_enabled || false,
+        currency: settingsData.currency || 'IDR',
+        plans: settingsData.plans || [],
+        bank_accounts: settingsData.bank_accounts || [],
       });
 
       setPaymentHistory(historyData.payments || []);
 
       // Set default amount based on selected plan
-      if (plansData.plans && plansData.plans.length > 0) {
-        const defaultPlan = plansData.plans.find(p => p.id === selectedPlan) || plansData.plans[0];
+      if (settingsData.plans && settingsData.plans.length > 0) {
+        const defaultPlan = settingsData.plans.find(p => p.id === selectedPlan) || settingsData.plans[0];
         setAmount(defaultPlan.price);
       }
     } catch (error) {
@@ -129,10 +130,7 @@ export default function Payment({ token }) {
       formData.append('notes', notes);
       formData.append('proof', proofFile);
 
-      await apiFetch('/billing/submit', {
-        method: 'POST',
-        body: formData,
-      });
+      await billingAPI.submitPayment(formData);
 
       showNotification('Payment submitted successfully! Please wait for admin approval.');
       

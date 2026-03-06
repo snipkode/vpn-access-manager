@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useUIStore, apiFetch } from '../store';
+import { useUIStore } from '../store';
+import { adminSettingsAPI } from '../lib/api';
 
 export default function Settings() {
   const { showNotification } = useUIStore();
@@ -15,7 +16,7 @@ export default function Settings() {
 
   const fetchSettings = async () => {
     try {
-      const data = await apiFetch('/admin/settings');
+      const data = await adminSettingsAPI.getSettings();
       setSettings(data.settings || data);
     } catch (error) {
       // Settings might not be available for non-admin
@@ -25,11 +26,7 @@ export default function Settings() {
   const handleSave = async () => {
     setLoading(true);
     try {
-      await apiFetch('/admin/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings),
-      });
+      await adminSettingsAPI.updateSettings('general', settings);
       showNotification('Settings saved');
     } catch (error) {
       showNotification('Failed to save settings', 'error');

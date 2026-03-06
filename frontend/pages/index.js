@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
-import { useAuthStore, useUIStore, apiFetch } from '../store';
+import { useAuthStore, useUIStore } from '../store';
+import { authAPI, referralAPI } from '../lib/api';
 
 // Components
 import Login from '../components/Login';
@@ -69,28 +70,20 @@ export default function App() {
         const idToken = await firebaseUser.getIdToken();
 
         try {
-          const data = await apiFetch('/auth/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: idToken }),
-          });
+          const data = await authAPI.login(idToken);
 
           setUser(firebaseUser, idToken, data.user);
-          
+
           // Track referral if exists in localStorage
           const pendingRefCode = localStorage.getItem('pending_referral_code');
           if (pendingRefCode) {
             try {
-              await apiFetch('/referral/track', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  referrer_code: pendingRefCode,
-                  metadata: {
-                    signup_method: 'google_oauth',
-                    signup_page: 'index'
-                  }
-                }),
+              await referralAPI.track({
+                referrer_code: pendingRefCode,
+                metadata: {
+                  signup_method: 'google_oauth',
+                  signup_page: 'index'
+                }
               });
               showNotification('Referral tracked! 🎉');
               localStorage.removeItem('pending_referral_code');
@@ -98,7 +91,7 @@ export default function App() {
               console.log('Referral tracking:', error.message);
             }
           }
-          
+
           // Auto redirect to dashboard
           setActivePage('dashboard');
         } catch (error) {

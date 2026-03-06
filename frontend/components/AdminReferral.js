@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useUIStore, apiFetch } from '../store';
+import { useUIStore } from '../store';
+import { adminReferralAPI, formatCurrency } from '../lib/api';
 
 export default function AdminReferral({ token }) {
   const { showNotification } = useUIStore();
@@ -16,11 +17,11 @@ export default function AdminReferral({ token }) {
   const fetchData = async () => {
     try {
       const [statsData, referralsData, configData] = await Promise.all([
-        apiFetch('/admin/referral/stats').catch(() => ({ stats: null })),
-        apiFetch('/admin/referral/list?limit=100'),
-        apiFetch('/admin/referral/config').catch(() => ({ config: null })),
+        adminReferralAPI.getDashboard().then(d => d.stats || null).catch(() => null),
+        adminReferralAPI.getReferrals({ limit: 100 }),
+        adminReferralAPI.getSettings().catch(() => ({ config: null })),
       ]);
-      setStats(statsData.stats || null);
+      setStats(statsData);
       setReferrals(referralsData.referrals || []);
       setConfig(configData.config || null);
     } catch (error) {
@@ -32,11 +33,7 @@ export default function AdminReferral({ token }) {
 
   const handleToggleTier = async (userId, newTier) => {
     try {
-      await apiFetch(`/admin/referral/users/${userId}/tier`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier: newTier }),
-      });
+      await adminReferralAPI.updateUserTier(userId, { tier: newTier });
       showNotification('User tier updated');
       fetchData();
     } catch (error) {
@@ -47,9 +44,7 @@ export default function AdminReferral({ token }) {
   const handleResetFraud = async (userId) => {
     if (!confirm('Reset fraud flags for this user?')) return;
     try {
-      await apiFetch(`/admin/referral/users/${userId}/reset-fraud`, {
-        method: 'POST',
-      });
+      await adminReferralAPI.resetUserFraud(userId);
       showNotification('Fraud flags reset');
       fetchData();
     } catch (error) {
@@ -356,12 +351,4 @@ function InfoRow({ label, value }) {
       <div className="text-sm font-medium text-dark">{value}</div>
     </div>
   );
-}
-
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(amount);
 }

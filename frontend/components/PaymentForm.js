@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useUIStore, useBillingStore, apiFetch, formatCurrency } from '../store';
+import { useUIStore, useBillingStore } from '../store';
+import { billingAPI, formatCurrency } from '../lib/api';
 
 const PLANS = {
   monthly: { price: 50000, duration: 30, label: 'Monthly' },
@@ -32,8 +33,8 @@ export default function PaymentForm({ token }) {
     try {
       setLoading(true);
       const [plansData, historyData] = await Promise.all([
-        apiFetch('/billing/plans'),
-        apiFetch('/billing/history?limit=10'),
+        billingAPI.getSettings(),
+        billingAPI.getPayments({ limit: 10 }),
       ]);
 
       // Update global billing store
@@ -426,14 +427,6 @@ export default function PaymentForm({ token }) {
       )}
     </div>
   );
-}
-
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(amount);
 }
 
 const styles = {

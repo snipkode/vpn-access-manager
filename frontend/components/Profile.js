@@ -1,7 +1,8 @@
 import { useAuthStore } from '../store';
+import { userAPI } from '../lib/api';
 
 export default function Profile() {
-  const { user, userData } = useAuthStore();
+  const { user, userData, updateUserData } = useAuthStore();
 
   return (
     <div className="max-w-[500px] mx-auto">

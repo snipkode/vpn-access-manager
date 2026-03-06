@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useVpnStore, useSubscriptionStore, useUIStore, apiFetch } from '../store';
+import { useVpnStore, useSubscriptionStore, useUIStore } from '../store';
+import { vpnAPI, billingAPI } from '../lib/api';
 
 export default function Dashboard({ token, userData }) {
   const { devices, setDevices, selectedDevice, setSelectedDevice, generating, setGenerating } = useVpnStore();
@@ -15,8 +16,8 @@ export default function Dashboard({ token, userData }) {
   const fetchData = async () => {
     try {
       const [devicesData, subData] = await Promise.all([
-        apiFetch('/vpn/devices'),
-        apiFetch('/billing/subscription'),
+        vpnAPI.getDevices(),
+        billingAPI.getSubscription(),
       ]);
       setDevices(devicesData.devices || []);
       setSubscription(subData.subscription || null);
@@ -35,12 +36,7 @@ export default function Dashboard({ token, userData }) {
 
     setGenerating(true);
     try {
-      const data = await apiFetch('/vpn/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceName }),
-      });
-
+      const data = await vpnAPI.generateConfig(deviceName);
       showNotification('Device added successfully!');
       setDeviceName('');
       setSelectedDevice({ ...data, isNew: true });
@@ -54,7 +50,7 @@ export default function Dashboard({ token, userData }) {
 
   const revokeDevice = async (deviceId) => {
     try {
-      await apiFetch(`/vpn/device/${deviceId}`, { method: 'DELETE' });
+      await vpnAPI.deleteDevice(deviceId);
       showNotification('Device removed');
       setSelectedDevice(null);
       fetchData();
