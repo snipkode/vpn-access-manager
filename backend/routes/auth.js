@@ -80,6 +80,12 @@ router.post('/verify', async (req, res) => {
     });
   } catch (error) {
     console.error('Auth verify error:', error.message);
+    if (error.code === 'auth/id-token-expired' || error.message.includes('expired')) {
+      return res.status(401).json({ 
+        error: 'Token expired', 
+        message: 'Please sign in again to get a fresh token' 
+      });
+    }
     res.status(401).json({ error: 'Invalid token', details: error.message });
   }
 });
@@ -131,6 +137,12 @@ router.get('/me', async (req, res) => {
     });
   } catch (error) {
     console.error('Get user error:', error.message);
+    if (error.code === 'auth/id-token-expired' || error.message.includes('expired')) {
+      return res.status(401).json({ 
+        error: 'Token expired', 
+        message: 'Please sign in again to get a fresh token' 
+      });
+    }
     res.status(401).json({ error: 'Invalid token', details: error.message });
   }
 });

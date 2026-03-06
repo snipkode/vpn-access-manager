@@ -19,8 +19,12 @@ const verifyAdmin = async (req, res, next) => {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await auth.verifyIdToken(token);
+    console.log('🔐 Admin auth attempt - Token received:', token ? 'yes' : 'no');
     
+    // Firebase ID tokens expire after 1 hour - frontend should refresh
+    const decodedToken = await auth.verifyIdToken(token);
+    console.log('✅ Token verified for user:', decodedToken.uid);
+
     const userDoc = await db.collection('users').doc(decodedToken.uid).get();
     if (!userDoc.exists || userDoc.data().role !== 'admin') {
       return res.status(403).json({ error: 'Admin access required' });
@@ -29,6 +33,18 @@ const verifyAdmin = async (req, res, next) => {
     req.user = decodedToken;
     next();
   } catch (error) {
+    console.error('❌ Admin auth error:', {
+      message: error.message,
+      code: error.code,
+      errorInfo: error.errorInfo
+    });
+    // Check for token expiration
+    if (error.code === 'auth/id-token-expired' || error.message.includes('expired')) {
+      return res.status(401).json({ 
+        error: 'Token expired', 
+        message: 'Please refresh your authentication token' 
+      });
+    }
     res.status(401).json({ error: 'Invalid token', details: error.message });
   }
 };
