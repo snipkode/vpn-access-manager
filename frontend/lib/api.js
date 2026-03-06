@@ -141,10 +141,10 @@ export const vpnAPI = {
 export const billingAPI = {
   /**
    * Get billing settings (plans, banks, etc.)
-   * GET /api/billing/settings
+   * GET /api/payment-settings/config
    */
   getSettings: async () => {
-    return apiFetch('/billing/settings');
+    return apiFetch('/payment-settings/config');
   },
 
   /**
@@ -157,20 +157,20 @@ export const billingAPI = {
 
   /**
    * Get user payments history
-   * GET /api/billing/payments
+   * GET /api/billing/history
    */
   getPayments: async (params = {}) => {
     const queryString = new URLSearchParams(params).toString();
-    const url = queryString ? `/billing/payments?${queryString}` : '/billing/payments';
+    const url = queryString ? `/billing/history?${queryString}` : '/billing/history';
     return apiFetch(url);
   },
 
   /**
    * Submit payment proof
-   * POST /api/billing/payments
+   * POST /api/billing/submit
    */
   submitPayment: async (formData) => {
-    return apiFetch('/billing/payments', {
+    return apiFetch('/billing/submit', {
       method: 'POST',
       body: formData, // FormData object with proof_image, plan, bank_from, transfer_date
     });
@@ -414,32 +414,33 @@ export const adminUsersAPI = {
 
 /**
  * Admin Payments API - Payment management (Admin only)
+ * Note: Backend routes are at /api/admin/billing/*
  */
 export const adminPaymentsAPI = {
   /**
    * Get all payments with filters
-   * GET /api/admin/payments
+   * GET /api/admin/billing/payments
    */
   getPayments: async (params = {}) => {
     const queryString = new URLSearchParams(params).toString();
-    const url = queryString ? `/admin/payments?${queryString}` : '/admin/payments';
+    const url = queryString ? `/admin/billing/payments?${queryString}` : '/admin/billing/payments';
     return apiFetch(url);
   },
 
   /**
    * Get payment details
-   * GET /api/admin/payments/:id
+   * GET /api/admin/billing/payments/:id
    */
   getPayment: async (paymentId) => {
-    return apiFetch(`/admin/payments/${paymentId}`);
+    return apiFetch(`/admin/billing/payments/${paymentId}`);
   },
 
   /**
    * Approve payment
-   * POST /api/admin/payments/:id/approve
+   * POST /api/admin/billing/payments/:id/approve
    */
   approvePayment: async (paymentId, data = {}) => {
-    return apiFetch(`/admin/payments/${paymentId}/approve`, {
+    return apiFetch(`/admin/billing/payments/${paymentId}/approve`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -447,10 +448,10 @@ export const adminPaymentsAPI = {
 
   /**
    * Reject payment
-   * POST /api/admin/payments/:id/reject
+   * POST /api/admin/billing/payments/:id/reject
    */
   rejectPayment: async (paymentId, data = {}) => {
-    return apiFetch(`/admin/payments/${paymentId}/reject`, {
+    return apiFetch(`/admin/billing/payments/${paymentId}/reject`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -458,11 +459,11 @@ export const adminPaymentsAPI = {
 
   /**
    * Get statistics
-   * GET /api/admin/payments/stats
+   * GET /api/admin/billing/stats
    */
   getStats: async (params = {}) => {
     const queryString = new URLSearchParams(params).toString();
-    const url = queryString ? `/admin/payments/stats?${queryString}` : '/admin/payments/stats';
+    const url = queryString ? `/admin/billing/stats?${queryString}` : '/admin/billing/stats';
     return apiFetch(url);
   },
 };
@@ -481,18 +482,18 @@ export const adminBillingAPI = {
 
   /**
    * Get billing settings
-   * GET /api/admin/billing/settings
+   * GET /api/payment-settings/settings
    */
   getSettings: async () => {
-    return apiFetch('/admin/billing/settings');
+    return apiFetch('/payment-settings/settings');
   },
 
   /**
    * Update billing settings
-   * PATCH /api/admin/billing/settings
+   * PATCH /api/payment-settings/settings
    */
   updateSettings: async (data) => {
-    return apiFetch('/admin/billing/settings', {
+    return apiFetch('/payment-settings/settings', {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
@@ -654,60 +655,68 @@ export const adminCreditAPI = {
  */
 export const adminReferralAPI = {
   /**
-   * Get referral dashboard
-   * GET /api/admin/referral/dashboard
+   * Get referral stats (admin overview)
+   * GET /api/admin/referral/stats
    */
-  getDashboard: async () => {
-    return apiFetch('/admin/referral/dashboard');
+  getStats: async () => {
+    return apiFetch('/admin/referral/stats');
   },
 
   /**
-   * Get all referrals
-   * GET /api/admin/referral/referrals
+   * Get user referral details
+   * GET /api/admin/referral/users/:id
    */
-  getReferrals: async (params = {}) => {
+  getUser: async (userId) => {
+    return apiFetch(`/admin/referral/users/${userId}`);
+  },
+
+  /**
+   * Get referral events with filters
+   * GET /api/admin/referral/events
+   */
+  getEvents: async (params = {}) => {
     const queryString = new URLSearchParams(params).toString();
-    const url = queryString ? `/admin/referral/referrals?${queryString}` : '/admin/referral/referrals';
+    const url = queryString ? `/admin/referral/events?${queryString}` : '/admin/referral/events';
     return apiFetch(url);
   },
 
   /**
-   * Get referral settings
-   * GET /api/admin/referral/settings
+   * Get referral config/settings
+   * GET /api/admin/referral/config
    */
-  getSettings: async () => {
-    return apiFetch('/admin/referral/settings');
+  getConfig: async () => {
+    return apiFetch('/admin/referral/config');
   },
 
   /**
-   * Update referral settings
-   * PATCH /api/admin/referral/settings
+   * Update referral config/settings
+   * PATCH /api/admin/referral/config
    */
-  updateSettings: async (data) => {
-    return apiFetch('/admin/referral/settings', {
+  updateConfig: async (data) => {
+    return apiFetch('/admin/referral/config', {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
   },
 
   /**
-   * Update user tier
-   * PATCH /api/admin/referral/users/:id/tier
+   * Get fraud suspects
+   * GET /api/admin/referral/fraud/suspects
    */
-  updateUserTier: async (userId, data) => {
-    return apiFetch(`/admin/referral/users/${userId}/tier`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
+  getFraudSuspects: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/admin/referral/fraud/suspects?${queryString}` : '/admin/referral/fraud/suspects';
+    return apiFetch(url);
   },
 
   /**
-   * Reset user fraud status
-   * POST /api/admin/referral/users/:id/reset-fraud
+   * Review fraud event
+   * PATCH /api/admin/referral/events/:id/review
    */
-  resetUserFraud: async (userId) => {
-    return apiFetch(`/admin/referral/users/${userId}/reset-fraud`, {
-      method: 'POST',
+  reviewEvent: async (eventId, data) => {
+    return apiFetch(`/admin/referral/events/${eventId}/review`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
     });
   },
 };
@@ -722,6 +731,14 @@ export const adminSettingsAPI = {
    */
   getSettings: async () => {
     return apiFetch('/admin/settings');
+  },
+
+  /**
+   * Get settings by category
+   * GET /api/admin/settings/:category
+   */
+  getCategory: async (category) => {
+    return apiFetch(`/admin/settings/${category}`);
   },
 
   /**

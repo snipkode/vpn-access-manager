@@ -51,47 +51,79 @@ function createRateLimiter({ windowMs, max, message, keyGenerator }) {
 }
 
 // Rate limiters for different endpoints
+// Development mode: 1000 requests for all endpoints
+// Production mode: Specific limits per endpoint
 export const rateLimiters = {
-  // Strict limit for payment submission (prevent spam)
+  // Payment submission
   billingSubmit: createRateLimiter({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: process.env.NODE_ENV === 'development' ? 100 : 5,
-    message: 'Too many payment submissions. Maximum 5 per hour.',
+    max: process.env.NODE_ENV === 'development' ? 1000 : 5,
+    message: process.env.NODE_ENV === 'development' 
+      ? 'Too many payment submissions. Maximum 1000 per hour.' 
+      : 'Too many payment submissions. Maximum 5 per hour.',
   }),
 
-  // Moderate limit for viewing payment history
+  // Viewing payment history
   billingView: createRateLimiter({
     windowMs: 60 * 60 * 1000, // 1 hour
     max: process.env.NODE_ENV === 'development' ? 1000 : 300,
-    message: 'Too many requests. Maximum 300 per hour.',
+    message: process.env.NODE_ENV === 'development' 
+      ? 'Too many requests. Maximum 1000 per hour.' 
+      : 'Too many requests. Maximum 300 per hour.',
   }),
 
-  // Higher limit for admin actions
+  // Admin actions
   adminActions: createRateLimiter({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: process.env.NODE_ENV === 'development' ? 1000 : 100,
-    message: 'Too many admin requests. Maximum 100 per hour.',
+    max: process.env.NODE_ENV === 'development' ? 1000 : 500,
+    message: process.env.NODE_ENV === 'development' 
+      ? 'Too many admin requests. Maximum 1000 per hour.' 
+      : 'Too many admin requests. Maximum 500 per hour.',
+  }),
+
+  // Admin billing view (for dashboard polling)
+  adminBillingView: createRateLimiter({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: process.env.NODE_ENV === 'development' ? 1000 : 1000,
+    message: process.env.NODE_ENV === 'development' 
+      ? 'Too many billing requests. Maximum 1000 per hour.' 
+      : 'Too many billing requests. Maximum 1000 per hour.',
+  }),
+
+  // Admin billing write operations
+  adminBillingWrite: createRateLimiter({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: process.env.NODE_ENV === 'development' ? 1000 : 50,
+    message: process.env.NODE_ENV === 'development' 
+      ? 'Too many billing operations. Maximum 1000 per hour.' 
+      : 'Too many billing operations. Maximum 50 per hour.',
   }),
 
   // General API rate limit
   general: createRateLimiter({
     windowMs: 60 * 1000, // 1 minute
-    max: process.env.NODE_ENV === 'development' ? 100 : 30,
-    message: 'Too many requests. Maximum 30 per minute.',
+    max: process.env.NODE_ENV === 'development' ? 1000 : 30,
+    message: process.env.NODE_ENV === 'development' 
+      ? 'Too many requests. Maximum 1000 per minute.' 
+      : 'Too many requests. Maximum 30 per minute.',
   }),
 
-  // Auth endpoints (stricter to prevent brute force)
+  // Auth endpoints (keep strict even in dev for security testing)
   auth: createRateLimiter({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 10,
-    message: 'Too many authentication attempts. Please try again in 15 minutes.',
+    max: process.env.NODE_ENV === 'development' ? 1000 : 10,
+    message: process.env.NODE_ENV === 'development' 
+      ? 'Too many authentication attempts. Maximum 1000 per 15 minutes.' 
+      : 'Too many authentication attempts. Maximum 10 per 15 minutes.',
   }),
 
-  // VPN generation (prevent abuse)
+  // VPN generation
   vpnGenerate: createRateLimiter({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 10,
-    message: 'Too many VPN config generations. Maximum 10 per hour.',
+    max: process.env.NODE_ENV === 'development' ? 1000 : 10,
+    message: process.env.NODE_ENV === 'development' 
+      ? 'Too many VPN config generations. Maximum 1000 per hour.' 
+      : 'Too many VPN config generations. Maximum 10 per hour.',
   }),
 };
 

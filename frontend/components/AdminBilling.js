@@ -24,10 +24,11 @@ export default function AdminBilling({ token }) {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [activeTab]);
 
   const fetchData = async () => {
     try {
+      setLoading(true);
       const [statsData, paymentsData] = await Promise.all([
         adminPaymentsAPI.getStats(),
         adminPaymentsAPI.getPayments({ status: activeTab === 'all' ? '' : activeTab, limit: 50 }),
@@ -35,15 +36,12 @@ export default function AdminBilling({ token }) {
       setStats(statsData.stats || null);
       setPayments(paymentsData.payments || []);
     } catch (error) {
+      console.error('Failed to load billing data:', error);
       showNotification('Failed to load billing data', 'error');
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchData();
-  }, [activeTab]);
 
   const handleApprove = async () => {
     if (!selectedPayment) return;

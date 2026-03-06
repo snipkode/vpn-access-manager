@@ -55,19 +55,32 @@ router.get('/transactions', verifyAdmin, rateLimiters.adminActions, async (req, 
       query = query.where('user_id', '==', userId);
     }
 
-    const transactionsSnapshot = await query.get();
+    let transactionsSnapshot;
+    try {
+      transactionsSnapshot = await query.get();
+    } catch (indexError) {
+      // Handle missing index error - fetch without filters
+      console.warn('⚠️ Firestore index missing, fetching without filters:', indexError.message);
+      
+      // Fallback: Get all transactions and filter in-memory
+      const allQuery = db.collection('credit_transactions')
+        .orderBy('created_at', 'desc')
+        .limit(200); // Limit to avoid too many reads
+      
+      transactionsSnapshot = await allQuery.get();
+    }
 
     const transactions = await Promise.all(
       transactionsSnapshot.docs.map(async doc => {
         const data = doc.data();
         // Get user emails for display
         let fromEmail = null, toEmail = null;
-        
+
         if (data.from_user_id) {
           const fromUser = await db.collection('users').doc(data.from_user_id).get();
           fromEmail = fromUser.exists ? fromUser.data().email : null;
         }
-        
+
         if (data.to_user_id) {
           const toUser = await db.collection('users').doc(data.to_user_id).get();
           toEmail = toUser.exists ? toUser.data().email : null;
@@ -82,7 +95,18 @@ router.get('/transactions', verifyAdmin, rateLimiters.adminActions, async (req, 
       })
     );
 
-    res.json({ transactions });
+    // Filter in-memory if needed (fallback)
+    let filteredTransactions = transactions;
+    if (type || status || userId) {
+      filteredTransactions = transactions.filter(tx => {
+        if (type && tx.type !== type) return false;
+        if (status && tx.status !== status) return false;
+        if (userId && tx.user_id !== userId) return false;
+        return true;
+      });
+    }
+
+    res.json({ transactions: filteredTransactions });
   } catch (error) {
     console.error('Get transactions error:', error.message);
     res.status(500).json({

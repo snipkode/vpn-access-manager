@@ -464,22 +464,42 @@ router.get('/plans', async (req, res) => {
     // Get active bank accounts from database
     let bank_accounts = [];
     if (settings.billing_enabled) {
-      const banksSnapshot = await db.collection('bank_accounts')
-        .where('active', '==', true)
-        .orderBy('order', 'asc')
-        .get();
+      try {
+        const banksSnapshot = await db.collection('bank_accounts')
+          .where('active', '==', true)
+          .orderBy('order', 'asc')
+          .get();
 
-      bank_accounts = banksSnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          bank: data.bank,
-          account_number: data.account_number,
-          account_name: data.account_name,
-          description: data.description,
-          qr_code_url: data.qr_code_url,
-        };
-      });
+        bank_accounts = banksSnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            bank: data.bank,
+            account_number: data.account_number,
+            account_name: data.account_name,
+            description: data.description,
+            qr_code_url: data.qr_code_url,
+          };
+        });
+      } catch (indexError) {
+        console.error('Bank accounts query failed (missing index):', indexError.message);
+        // Fallback: get banks without ordering
+        const banksSnapshot = await db.collection('bank_accounts')
+          .where('active', '==', true)
+          .get();
+        
+        bank_accounts = banksSnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            bank: data.bank,
+            account_number: data.account_number,
+            account_name: data.account_name,
+            description: data.description,
+            qr_code_url: data.qr_code_url,
+          };
+        });
+      }
     }
 
     const plans = Object.entries(PLANS).map(([key, value]) => ({

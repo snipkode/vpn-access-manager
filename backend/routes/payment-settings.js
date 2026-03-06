@@ -3,6 +3,13 @@ import { auth, db } from '../config/firebase.js';
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * tags:
+ *   name: Payment Settings
+ *   description: Payment system configuration (admin only for write operations)
+ */
+
 // Middleware to verify admin
 const verifyAdmin = async (req, res, next) => {
   try {
@@ -127,31 +134,52 @@ router.get('/banks', async (req, res) => {
     const settings = settingsDoc.exists ? settingsDoc.data() : {};
 
     if (!settings.billing_enabled) {
-      return res.status(503).json({ 
+      return res.status(503).json({
         error: 'Billing is currently disabled',
         message: 'Payment functionality is temporarily unavailable'
       });
     }
 
-    const banksSnapshot = await db.collection('bank_accounts')
-      .where('active', '==', true)
-      .orderBy('order', 'asc')
-      .get();
+    let bank_accounts = [];
+    try {
+      const banksSnapshot = await db.collection('bank_accounts')
+        .where('active', '==', true)
+        .orderBy('order', 'asc')
+        .get();
 
-    const bank_accounts = banksSnapshot.docs.map(doc => {
-      const data = doc.data();
-      // Hide sensitive info for public endpoint
-      return {
-        id: doc.id,
-        bank: data.bank,
-        account_number: data.account_number,
-        account_name: data.account_name,
-        description: data.description,
-        qr_code_url: data.qr_code_url,
-      };
-    });
+      bank_accounts = banksSnapshot.docs.map(doc => {
+        const data = doc.data();
+        // Hide sensitive info for public endpoint
+        return {
+          id: doc.id,
+          bank: data.bank,
+          account_number: data.account_number,
+          account_name: data.account_name,
+          description: data.description,
+          qr_code_url: data.qr_code_url,
+        };
+      });
+    } catch (indexError) {
+      console.error('Bank accounts query failed (missing index):', indexError.message);
+      // Fallback: get banks without ordering
+      const banksSnapshot = await db.collection('bank_accounts')
+        .where('active', '==', true)
+        .get();
+      
+      bank_accounts = banksSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          bank: data.bank,
+          account_number: data.account_number,
+          account_name: data.account_name,
+          description: data.description,
+          qr_code_url: data.qr_code_url,
+        };
+      });
+    }
 
-    res.json({ 
+    res.json({
       bank_accounts,
       currency: settings.currency || 'IDR',
     });
@@ -339,9 +367,85 @@ router.get('/status', async (req, res) => {
       maintenance_mode: !settings.billing_enabled,
     });
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Failed to get billing status', 
-      details: error.message 
+    res.status(500).json({
+      error: 'Failed to get billing status',
+      details: error.message
+    });
+  }
+});
+
+// Get payment config info (public - for users to check if billing is enabled)
+/**
+ * @swagger
+ * /api/payment-settings/config:
+ *   get:
+ *     summary: Get payment system configuration (Public - No auth required)
+ *     tags: [Payment Settings]
+ *     description: Check if billing is enabled and if users can submit payments
+ *     responses:
+ *       200:
+ *         description: Payment config retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 billing_enabled:
+ *                   type: boolean
+ *                   description: Whether billing system is enabled
+ *                 currency:
+ *                   type: string
+ *                   example: IDR
+ *                 has_bank_accounts:
+ *                   type: boolean
+ *                   description: Whether there are active bank accounts configured
+ *                 bank_accounts_count:
+ *                   type: integer
+ *                   description: Number of active bank accounts
+ *                 can_submit_payment:
+ *                   type: boolean
+ *                   description: Whether users can submit payment proofs
+ *                 message:
+ *                   type: string
+ *                   nullable: true
+ *                   description: Info message if billing is disabled or no banks configured
+ *       500:
+ *         description: Failed to get payment config
+ */
+router.get('/config', async (req, res) => {
+  try {
+    const settingsDoc = await db.collection('payment_settings').doc('config').get();
+    const settings = settingsDoc.exists ? settingsDoc.data() : {};
+
+    // Get active bank accounts count (without exposing details if disabled)
+    let bank_accounts_count = 0;
+    let has_bank_accounts = false;
+    
+    if (settings.billing_enabled) {
+      const banksSnapshot = await db.collection('bank_accounts')
+        .where('active', '==', true)
+        .get();
+      
+      bank_accounts_count = banksSnapshot.size;
+      has_bank_accounts = banksSnapshot.size > 0;
+    }
+
+    res.json({
+      billing_enabled: settings.billing_enabled || false,
+      currency: settings.currency || 'IDR',
+      has_bank_accounts,
+      bank_accounts_count,
+      can_submit_payment: settings.billing_enabled && has_bank_accounts,
+      message: !settings.billing_enabled 
+        ? 'Billing is currently disabled. Please contact admin for payment information.'
+        : !has_bank_accounts
+        ? 'No bank accounts configured. Please contact admin.'
+        : null,
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to get payment config',
+      details: error.message
     });
   }
 });

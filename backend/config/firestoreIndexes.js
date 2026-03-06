@@ -175,6 +175,23 @@ export const firestoreIndexes = [
           { fieldPath: 'created_at', order: 'DESCENDING' }
         ]
       },
+      // Get transactions by type and status (for admin filtering)
+      {
+        fields: [
+          { fieldPath: 'type', order: 'ASCENDING' },
+          { fieldPath: 'status', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      },
+      // Get transactions by user_id and type and status
+      {
+        fields: [
+          { fieldPath: 'user_id', order: 'ASCENDING' },
+          { fieldPath: 'type', order: 'ASCENDING' },
+          { fieldPath: 'status', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      },
       // Get pending review transactions
       {
         fields: [

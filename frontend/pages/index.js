@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
-import { auth, googleProvider } from '../lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, googleProvider, db } from '../lib/firebase';
 import { useAuthStore, useUIStore } from '../store';
-import { authAPI, referralAPI } from '../lib/api';
+import { referralAPI } from '../lib/api';
 
 // Components
 import Login from '../components/Login';
@@ -20,6 +21,8 @@ import AdminCredit from '../components/AdminCredit';
 import AdminReferral from '../components/AdminReferral';
 import PaymentSettings from '../components/PaymentSettings';
 import AdminSettings from '../components/AdminSettings';
+import AdminGuard from '../components/AdminGuard';
+import Unauthorized from '../components/Unauthorized';
 
 // Menu configuration
 const MENU_ITEMS = [
@@ -42,6 +45,7 @@ const ADMIN_ITEMS = [
 ];
 
 // Page components mapping
+// Admin pages are wrapped with AdminGuard for protection
 const PAGE_COMPONENTS = {
   dashboard: Dashboard,
   devices: MyDevices,
@@ -50,12 +54,12 @@ const PAGE_COMPONENTS = {
   referral: Referral,
   profile: ProfileEdit,
   notifications: Notifications,
-  'admin-dashboard': AdminDashboard,
-  'admin-billing': AdminBilling,
-  'admin-credit': AdminCredit,
-  'admin-referral': AdminReferral,
-  'payment-settings': PaymentSettings,
-  'admin-settings': AdminSettings,
+  'admin-dashboard': AdminGuard(AdminDashboard),
+  'admin-billing': AdminGuard(AdminBilling),
+  'admin-credit': AdminGuard(AdminCredit),
+  'admin-referral': AdminGuard(AdminReferral),
+  'payment-settings': AdminGuard(PaymentSettings),
+  'admin-settings': AdminGuard(AdminSettings),
 };
 
 export default function App() {
@@ -63,45 +67,84 @@ export default function App() {
   const { activePage, setActivePage, showNotification } = useUIStore();
   const [initialized, setInitialized] = useState(false);
 
-  // Initialize Firebase auth
+  // Initialize Firebase auth + Firestore user data
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         const idToken = await firebaseUser.getIdToken();
 
-        try {
-          const data = await authAPI.login(idToken);
+        // Fetch or create user data from Firestore
+        const userRef = doc(db, 'users', firebaseUser.uid);
+        let userDoc = await getDoc(userRef);
 
-          setUser(firebaseUser, idToken, data.user);
-
-          // Track referral if exists in localStorage
-          const pendingRefCode = localStorage.getItem('pending_referral_code');
-          if (pendingRefCode) {
-            try {
-              await referralAPI.track({
-                referrer_code: pendingRefCode,
-                metadata: {
-                  signup_method: 'google_oauth',
-                  signup_page: 'index'
-                }
-              });
-              showNotification('Referral tracked! 🎉');
-              localStorage.removeItem('pending_referral_code');
-            } catch (error) {
-              console.log('Referral tracking:', error.message);
-            }
-          }
-
-          // Auto redirect to dashboard
-          setActivePage('dashboard');
-        } catch (error) {
-          console.error('Auth verification failed:', error);
-          setUser(firebaseUser, idToken, {
+        let userData = {};
+        
+        if (userDoc.exists()) {
+          // User exists in Firestore
+          userData = userDoc.data();
+          console.log('📄 User data from Firestore:', userData);
+        } else {
+          // New user - create document in Firestore
+          userData = {
             email: firebaseUser.email,
-            role: 'user',
-            vpn_enabled: true
-          });
-          setActivePage('dashboard');
+            name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+            photoURL: firebaseUser.photoURL,
+            role: 'user', // Default role
+            vpn_enabled: true,
+            provider: firebaseUser.providerData[0]?.providerId || 'google.com',
+            emailVerified: firebaseUser.emailVerified,
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString(),
+          };
+          
+          console.log('📝 Creating new user in Firestore:', userData);
+          await setDoc(userRef, userData);
+        }
+
+        // Ensure userData has required fields (even if missing in Firestore)
+        userData = {
+          ...userData,
+          email: userData.email || firebaseUser.email,
+          name: userData.name || firebaseUser.displayName || firebaseUser.email.split('@')[0],
+          photoURL: userData.photoURL || firebaseUser.photoURL,
+          role: userData.role || 'user',
+          vpn_enabled: userData.vpn_enabled !== undefined ? userData.vpn_enabled : true,
+          provider: userData.provider || firebaseUser.providerData[0]?.providerId || 'google.com',
+          uid: firebaseUser.uid,
+          emailVerified: userData.emailVerified !== undefined ? userData.emailVerified : firebaseUser.emailVerified,
+        };
+
+        // Debug: Log user data
+        console.log('🔐 Firebase Auth:', {
+          email: firebaseUser.email,
+          uid: firebaseUser.uid,
+          role: userData.role,
+        });
+
+        // Set user with complete profile data
+        setUser(firebaseUser, idToken, userData);
+
+        // Auto redirect to dashboard based on role from Firestore
+        const targetPage = userData.role === 'admin' ? 'admin-dashboard' : 'dashboard';
+        console.log('🎯 Redirecting to:', targetPage, '(role:', userData.role + ')');
+        setActivePage(targetPage);
+
+        // Track referral if exists in localStorage
+        const pendingRefCode = localStorage.getItem('pending_referral_code');
+        if (pendingRefCode) {
+          try {
+            await referralAPI.track({
+              referrer_code: pendingRefCode,
+              metadata: {
+                signup_method: 'google_oauth',
+                signup_page: 'index'
+              }
+            });
+            showNotification('Referral tracked! 🎉');
+            localStorage.removeItem('pending_referral_code');
+          } catch (error) {
+            console.log('Referral tracking:', error.message);
+          }
         }
       } else {
         clearUser();
@@ -156,19 +199,24 @@ export default function App() {
 
   // Determine menu items and layout based on role
   const isAdmin = userData?.role === 'admin';
-  
+
   // Separate menu items for admin and user
   const userMenuItems = MENU_ITEMS; // User only sees user menu
   const adminMenuItems = ADMIN_ITEMS; // Admin only sees admin menu
-  
+
   // Use separate menu based on role
   const allMenuItems = isAdmin ? adminMenuItems : userMenuItems;
-  
+
   // Map active page to component
   const CurrentPage = PAGE_COMPONENTS[activePage] || (isAdmin ? AdminDashboard : Dashboard);
-  
+
   // Determine if current page is admin page
   const isCurrentPageAdmin = ADMIN_ITEMS.some(item => item.id === activePage);
+
+  // SECURITY GUARD: Prevent non-admin from accessing admin pages
+  if (isCurrentPageAdmin && !isAdmin) {
+    return <Unauthorized />;
+  }
 
   return (
     <Layout

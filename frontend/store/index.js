@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { authAPI } from '../lib/api';
 
 // Auth Store
 export const useAuthStore = create((set) => ({
@@ -12,28 +11,16 @@ export const useAuthStore = create((set) => ({
   clearUser: () => set({ user: null, token: null, userData: null, loading: false }),
   updateUserData: (data) => set((state) => ({ userData: { ...state.userData, ...data } })),
   setLoading: (loading) => set({ loading }),
-  
-  // Login with Firebase token
-  login: async (firebaseToken) => {
-    const response = await authAPI.login(firebaseToken);
-    set({
-      user: response.user,
-      token: response.token,
-      userData: response.user_data,
-      loading: false,
-    });
-    return response;
-  },
-  
-  // Logout
+
+  // Logout (Firebase only - no backend call)
   logout: async () => {
-    await authAPI.logout();
     set({ user: null, token: null, userData: null, loading: false });
   },
-  
-  // Sync user data from API
+
+  // Sync user data from API (optional - if you need to fetch from backend)
   syncUserData: async () => {
     try {
+      const { authAPI } = await import('../lib/api');
       const userData = await authAPI.getProfile();
       set({ userData, loading: false });
       return userData;

@@ -16,16 +16,17 @@ export default function AdminReferral({ token }) {
 
   const fetchData = async () => {
     try {
-      const [statsData, referralsData, configData] = await Promise.all([
-        adminReferralAPI.getDashboard().then(d => d.stats || null).catch(() => null),
-        adminReferralAPI.getReferrals({ limit: 100 }),
-        adminReferralAPI.getSettings().catch(() => ({ config: null })),
+      const [statsData, eventsData, configData] = await Promise.all([
+        adminReferralAPI.getStats(),
+        adminReferralAPI.getEvents({ limit: 100 }),
+        adminReferralAPI.getConfig(),
       ]);
-      setStats(statsData);
-      setReferrals(referralsData.referrals || []);
+      setStats(statsData.stats || null);
+      setReferrals(eventsData.events || []);
       setConfig(configData.config || null);
     } catch (error) {
-      showNotification('Failed to load referral data', 'error');
+      console.error('Failed to load referral data:', error);
+      showNotification('Failed to load referral data: ' + error.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -33,10 +34,21 @@ export default function AdminReferral({ token }) {
 
   const handleToggleTier = async (userId, newTier) => {
     try {
-      await adminReferralAPI.updateUserTier(userId, { tier: newTier });
+      // Get user data first
+      const userData = await adminReferralAPI.getUser(userId);
+      const currentData = userData.user || {};
+      
+      // Update tier via config (backend doesn't have direct tier update endpoint)
+      await adminReferralAPI.updateConfig({
+        user_id: userId,
+        tier: newTier,
+        action: 'update_tier'
+      });
+      
       showNotification('User tier updated');
       fetchData();
     } catch (error) {
+      console.error('Failed to update tier:', error);
       showNotification(error.message || 'Failed to update tier', 'error');
     }
   };
@@ -44,10 +56,15 @@ export default function AdminReferral({ token }) {
   const handleResetFraud = async (userId) => {
     if (!confirm('Reset fraud flags for this user?')) return;
     try {
-      await adminReferralAPI.resetUserFraud(userId);
+      // Backend doesn't have reset-fraud endpoint, use config update
+      await adminReferralAPI.updateConfig({
+        user_id: userId,
+        action: 'reset_fraud'
+      });
       showNotification('Fraud flags reset');
       fetchData();
     } catch (error) {
+      console.error('Failed to reset fraud:', error);
       showNotification(error.message || 'Failed to reset fraud flags', 'error');
     }
   };

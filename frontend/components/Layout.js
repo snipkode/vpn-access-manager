@@ -135,11 +135,21 @@ export default function Layout({
           {/* User Profile */}
           <div className="p-4 border-t border-gray-100 bg-gray-50 flex-shrink-0">
             <div className="flex items-center gap-3 mb-3">
-              <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${theme.gradient} flex items-center justify-center text-white font-semibold flex-shrink-0`}>
-                {user?.email?.[0]?.toUpperCase() || 'U'}
-              </div>
+              {userData?.photoURL ? (
+                <img
+                  src={userData.photoURL}
+                  alt={userData.name || user?.email}
+                  className="w-10 h-10 rounded-full object-cover border-2 border-white flex-shrink-0"
+                />
+              ) : (
+                <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${theme.gradient} flex items-center justify-center text-white font-semibold flex-shrink-0`}>
+                  {user?.email?.[0]?.toUpperCase() || 'U'}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-dark truncate">{user?.email?.split('@')[0]}</div>
+                <div className="text-sm font-medium text-dark truncate">
+                  {userData?.name || user?.email?.split('@')[0] || 'User'}
+                </div>
                 {isAdmin && (
                   <div className={`text-xs ${theme.primaryText} font-medium`}>Administrator</div>
                 )}

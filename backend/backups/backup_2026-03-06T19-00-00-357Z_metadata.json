@@ -1,0 +1,98 @@
+{
+  "backup_id": "backup_2026-03-06T19-00-00-357Z",
+  "started_at": "2026-03-06T19:00:00.357Z",
+  "collections": [
+    {
+      "collection": "users",
+      "count": 1,
+      "size": 351,
+      "status": "success"
+    },
+    {
+      "collection": "devices",
+      "count": 0,
+      "size": 102,
+      "status": "success"
+    },
+    {
+      "collection": "payments",
+      "count": 0,
+      "size": 103,
+      "status": "success"
+    },
+    {
+      "collection": "credit_transactions",
+      "count": 0,
+      "size": 114,
+      "status": "success"
+    },
+    {
+      "collection": "user_credits",
+      "count": 5,
+      "size": 1459,
+      "status": "success"
+    },
+    {
+      "collection": "fraud_alerts",
+      "count": 0,
+      "size": 107,
+      "status": "success"
+    },
+    {
+      "collection": "fraud_log",
+      "count": 0,
+      "size": 104,
+      "status": "success"
+    },
+    {
+      "collection": "bank_accounts",
+      "count": 0,
+      "size": 108,
+      "status": "success"
+    },
+    {
+      "collection": "payment_settings",
+      "count": 1,
+      "size": 436,
+      "status": "success"
+    },
+    {
+      "collection": "email_settings",
+      "count": 0,
+      "size": 109,
+      "status": "success"
+    },
+    {
+      "collection": "cron_settings",
+      "count": 0,
+      "size": 108,
+      "status": "success"
+    },
+    {
+      "collection": "fraud_config",
+      "count": 0,
+      "size": 107,
+      "status": "success"
+    },
+    {
+      "collection": "user_preferences",
+      "count": 0,
+      "size": 111,
+      "status": "success"
+    },
+    {
+      "collection": "audit_logs",
+      "count": 873,
+      "size": 676266,
+      "status": "success"
+    }
+  ],
+  "total_documents": 880,
+  "total_size": 679585,
+  "compressed_size": 38890,
+  "encrypted": false,
+  "status": "completed",
+  "compressed": true,
+  "backup_file": "backup_2026-03-06T19-00-00-357Z.tar.gz",
+  "completed_at": "2026-03-06T19:00:01.970Z"
+}

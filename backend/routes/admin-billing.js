@@ -33,7 +33,7 @@ const verifyAdmin = async (req, res, next) => {
 };
 
 // Get all payments (with filters)
-router.get('/payments', verifyAdmin, rateLimiters.adminActions, async (req, res) => {
+router.get('/payments', verifyAdmin, rateLimiters.adminBillingView, async (req, res) => {
   try {
     const { status, limit = 50 } = req.query;
 
@@ -100,7 +100,7 @@ router.get('/payments/:id', verifyAdmin, async (req, res) => {
 });
 
 // Approve payment
-router.post('/payments/:id/approve', verifyAdmin, async (req, res) => {
+router.post('/payments/:id/approve', verifyAdmin, rateLimiters.adminBillingWrite, async (req, res) => {
   try {
     const { id } = req.params;
     const { admin_note } = req.body;
@@ -130,18 +130,47 @@ router.post('/payments/:id/approve', verifyAdmin, async (req, res) => {
       updated_at: new Date().toISOString(),
     });
 
-    // Extend user subscription
+    // Get user data
     const userRef = db.collection('users').doc(paymentData.user_id);
     const userDoc = await userRef.get();
 
     let userEmail = null;
+    let creditBalance = 0;
     if (userDoc.exists) {
       const userData = userDoc.data();
       userEmail = userData.email;
+      creditBalance = userData.credit_balance || 0;
+    }
 
-      // Calculate new subscription end date
-      let currentEnd = userData.subscription_end
-        ? new Date(userData.subscription_end)
+    // Check if this is a top-up (plan === 'topup' or no duration)
+    const isTopup = paymentData.plan === 'topup' || !paymentData.duration_days || paymentData.duration_days === 0;
+
+    if (isTopup) {
+      // For top-up: Add credit to user balance
+      const newBalance = creditBalance + paymentData.amount;
+      
+      await userRef.update({
+        credit_balance: newBalance,
+        updated_at: new Date().toISOString(),
+      });
+
+      // Create credit transaction record
+      const transactionRef = db.collection('credit_transactions').doc();
+      await transactionRef.set({
+        user_id: paymentData.user_id,
+        type: 'topup',
+        amount: paymentData.amount,
+        status: 'completed',
+        description: 'Top-up approved',
+        related_payment_id: id,
+        created_at: new Date().toISOString(),
+      });
+
+      console.log(`✅ Top-up approved: Added ${paymentData.amount} to user ${paymentData.user_id}`);
+    } else {
+      // For subscription: Extend subscription end date
+      let currentEnd = userDoc.exists && userDoc.data().subscription_end
+        ? new Date(userDoc.data().subscription_end)
         : new Date();
 
       // If subscription already expired, start from now
@@ -159,16 +188,26 @@ router.post('/payments/:id/approve', verifyAdmin, async (req, res) => {
         subscription_plan: paymentData.plan,
         updated_at: new Date().toISOString(),
       });
+
+      console.log(`✅ Subscription extended: Added ${paymentData.duration_days} days to user ${paymentData.user_id}`);
     }
 
     // Send email notification to user
     if (userEmail) {
       try {
-        await emailNotifications.notifyPaymentApproved(
-          userEmail,
-          paymentData,
-          paymentData.duration_days
-        );
+        if (isTopup) {
+          await emailNotifications.notifyPaymentApproved(
+            userEmail,
+            paymentData,
+            0 // No days added for topup
+          );
+        } else {
+          await emailNotifications.notifyPaymentApproved(
+            userEmail,
+            paymentData,
+            paymentData.duration_days
+          );
+        }
       } catch (emailError) {
         console.error('Failed to send approval email:', emailError.message);
       }
@@ -176,8 +215,9 @@ router.post('/payments/:id/approve', verifyAdmin, async (req, res) => {
 
     res.json({
       message: 'Payment approved successfully',
-      subscription_extended: true,
-      days_added: paymentData.duration_days,
+      type: isTopup ? 'topup' : 'subscription',
+      credit_added: isTopup ? paymentData.amount : 0,
+      days_added: isTopup ? 0 : paymentData.duration_days,
     });
   } catch (error) {
     console.error('Approve payment error:', error.message);
@@ -189,7 +229,7 @@ router.post('/payments/:id/approve', verifyAdmin, async (req, res) => {
 });
 
 // Reject payment
-router.post('/payments/:id/reject', verifyAdmin, async (req, res) => {
+router.post('/payments/:id/reject', verifyAdmin, rateLimiters.adminBillingWrite, async (req, res) => {
   try {
     const { id } = req.params;
     const { admin_note, reason } = req.body;
@@ -252,7 +292,7 @@ router.post('/payments/:id/reject', verifyAdmin, async (req, res) => {
 });
 
 // Get billing statistics
-router.get('/billing/stats', verifyAdmin, async (req, res) => {
+router.get('/stats', verifyAdmin, rateLimiters.adminBillingView, async (req, res) => {
   try {
     const allPayments = await db.collection('payments').get();
 
@@ -271,12 +311,12 @@ router.get('/billing/stats', verifyAdmin, async (req, res) => {
 
     allPayments.forEach(doc => {
       const data = doc.data();
-      
+
       if (data.status === 'pending') stats.pending++;
       else if (data.status === 'approved') {
         stats.approved++;
         stats.total_revenue += data.amount;
-        
+
         const createdAt = new Date(data.created_at);
         if (createdAt.getMonth() === thisMonth && createdAt.getFullYear() === thisYear) {
           stats.this_month_revenue += data.amount;
@@ -288,15 +328,16 @@ router.get('/billing/stats', verifyAdmin, async (req, res) => {
     res.json({ stats });
   } catch (error) {
     console.error('Get billing stats error:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to get billing statistics', 
-      details: error.message 
+    res.status(500).json({
+      error: 'Failed to get billing statistics',
+      details: error.message
     });
   }
 });
 
 // Get pending payments count (for notification badge)
-router.get('/payments/pending/count', verifyAdmin, async (req, res) => {
+// This endpoint is frequently polled by frontend, so we use a more lenient limiter
+router.get('/payments/pending/count', verifyAdmin, rateLimiters.adminBillingView, async (req, res) => {
   try {
     const pendingSnapshot = await db.collection('payments')
       .where('status', '==', 'pending')
