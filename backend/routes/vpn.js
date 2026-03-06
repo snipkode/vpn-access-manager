@@ -83,6 +83,8 @@ router.post('/generate', verifyAuth, async (req, res) => {
     }
 
     const userData = userDoc.data();
+    
+    // Check if VPN access is enabled
     if (!userData.vpn_enabled) {
       return res.status(403).json({
         error: 'VPN access not enabled',
@@ -90,6 +92,24 @@ router.post('/generate', verifyAuth, async (req, res) => {
       });
     }
 
+    // Check if subscription is active (not expired)
+    const now = new Date();
+    const subscriptionEnd = userData.subscription_end 
+      ? new Date(userData.subscription_end) 
+      : null;
+    
+    if (!subscriptionEnd || subscriptionEnd < now) {
+      return res.status(403).json({
+        error: 'Subscription expired',
+        message: 'Your subscription has expired. Please top up to continue.',
+        subscription_end: userData.subscription_end,
+        expired_days: subscriptionEnd 
+          ? Math.floor((now - subscriptionEnd) / (1000 * 60 * 60 * 24))
+          : 0,
+      });
+    }
+
+    // Check device limit
     const devicesRef = db.collection('devices').where('user_id', '==', uid);
     const devicesSnapshot = await devicesRef.get();
 
@@ -100,6 +120,7 @@ router.post('/generate', verifyAuth, async (req, res) => {
       });
     }
 
+    // Generate VPN config
     const usedIPs = devicesSnapshot.docs.map((doc) => doc.data().ip_address);
     const newIP = getNextAvailableIP(usedIPs);
     const { privateKey, publicKey } = generateKeypair();
@@ -127,6 +148,8 @@ router.post('/generate', verifyAuth, async (req, res) => {
       config,
       qr: qrCodeData,
       created_at: new Date().toISOString(),
+      subscription_end: userData.subscription_end,
+      days_remaining: Math.floor((subscriptionEnd - now) / (1000 * 60 * 60 * 24)),
     });
   } catch (error) {
     console.error('Generate VPN config error:', error.message);

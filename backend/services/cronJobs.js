@@ -155,7 +155,7 @@ async function checkExpiredSubscriptions() {
     for (const doc of usersSnapshot.docs) {
       const user = doc.data();
       const userEmail = user.email;
-      
+
       if (!userEmail) continue;
 
       // Send expired notification
@@ -169,13 +169,14 @@ async function checkExpiredSubscriptions() {
         console.log(`[Cron] Sent expired notification to ${userEmail}`);
       }
 
-      // Disable VPN access for expired subscriptions (optional - can be configured)
-      // Uncomment if you want to auto-disable
-      // await db.collection('users').doc(doc.id).update({
-      //   vpn_enabled: false,
-      //   updated_at: new Date().toISOString(),
-      // });
-      // disabledCount++;
+      // Disable VPN access for expired subscriptions
+      await db.collection('users').doc(doc.id).update({
+        vpn_enabled: false,
+        updated_at: new Date().toISOString(),
+      });
+      disabledCount++;
+
+      console.log(`[Cron] Disabled VPN for ${userEmail} (expired: ${user.subscription_end})`);
 
       // Add delay to avoid rate limiting
       await sleep(1000);
