@@ -8,10 +8,35 @@ export default function Dashboard({ token, userData }) {
   const { showNotification } = useUIStore();
   const [deviceName, setDeviceName] = useState('');
   const [loading, setLoading] = useState(true);
+  const [deviceType, setDeviceType] = useState('');
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  const deviceSuggestions = [
+    { type: 'iphone', label: 'iPhone', icon: '📱', prefix: 'iPhone' },
+    { type: 'android', label: 'Android', icon: '📱', prefix: 'Android' },
+    { type: 'ipad', label: 'iPad', icon: '📟', prefix: 'iPad' },
+    { type: 'laptop', label: 'Laptop', icon: '💻', prefix: 'Laptop' },
+    { type: 'desktop', label: 'Desktop', icon: '🖥️', prefix: 'Desktop' },
+  ];
+
+  const selectDeviceType = (type) => {
+    setDeviceType(type);
+    const suggestion = deviceSuggestions.find(s => s.type === type);
+    if (suggestion) {
+      const count = devices.filter(d => 
+        d.device_name.toLowerCase().includes(suggestion.prefix.toLowerCase())
+      ).length;
+      const timestamp = new Date().toLocaleTimeString('id-ID', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false 
+      }).replace(/:/g, '');
+      setDeviceName(`${suggestion.prefix} ${count + 1} - ${timestamp}`);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -120,7 +145,7 @@ export default function Dashboard({ token, userData }) {
       {/* VPN Configuration */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
         <h2 className="text-base font-semibold text-dark mb-4">VPN Configuration</h2>
-        
+
         {!userData?.vpn_enabled ? (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
             <span className="text-4xl mb-3 block">⚠️</span>
@@ -129,12 +154,35 @@ export default function Dashboard({ token, userData }) {
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Device Type Quick Select */}
+            <div className="flex flex-wrap gap-2">
+              {deviceSuggestions.map((suggestion) => (
+                <button
+                  key={suggestion.type}
+                  onClick={() => selectDeviceType(suggestion.type)}
+                  disabled={devices.length >= 3 || generating}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                    deviceType === suggestion.type
+                      ? 'bg-primary text-white shadow-md shadow-primary/30'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  } ${devices.length >= 3 || generating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <span>{suggestion.icon}</span>
+                  <span>{suggestion.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Device Name Input */}
             <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
                 value={deviceName}
-                onChange={(e) => setDeviceName(e.target.value)}
-                placeholder="Device name (e.g., iPhone, MacBook)"
+                onChange={(e) => {
+                  setDeviceName(e.target.value);
+                  setDeviceType('');
+                }}
+                placeholder="Device name (e.g., iPhone 1, MacBook Pro)"
                 disabled={devices.length >= 3 || generating}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-dark text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-gray-100 transition-all"
               />
@@ -142,8 +190,8 @@ export default function Dashboard({ token, userData }) {
                 onClick={generateConfig}
                 disabled={generating || devices.length >= 3 || !deviceName.trim()}
                 className={`w-full sm:w-auto px-6 py-3 bg-primary text-white rounded-xl text-base font-semibold whitespace-nowrap transition-all ${
-                  generating || devices.length >= 3 
-                    ? 'opacity-50 cursor-not-allowed' 
+                  generating || devices.length >= 3
+                    ? 'opacity-50 cursor-not-allowed'
                     : 'hover:bg-primary/90 active:scale-95'
                 }`}
               >
@@ -212,37 +260,159 @@ export default function Dashboard({ token, userData }) {
 
 // Device Modal Component
 function DeviceModal({ device, onClose, onRevoke, onDownload }) {
+  const [activeTab, setActiveTab] = useState('qrcode');
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div 
-        className="bg-white rounded-3xl w-full max-w-md max-h-[90vh] overflow-auto shadow-2xl" 
+      <div
+        className="bg-white rounded-3xl w-full max-w-lg max-h-[90vh] overflow-auto shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex justify-between items-center p-5 border-b border-gray-100 sticky top-0 bg-white rounded-t-3xl">
-          <div className="text-lg font-semibold text-dark">{device.device_name}</div>
+          <div>
+            <div className="text-lg font-semibold text-dark">{device.device_name}</div>
+            <div className="text-xs text-gray-400 font-mono mt-0.5">{device.ip_address}</div>
+          </div>
           <button onClick={onClose} className="text-gray-400 hover:text-dark text-xl p-1 transition-colors">✕</button>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex border-b border-gray-100 sticky top-[73px] bg-white">
+          <button
+            onClick={() => setActiveTab('qrcode')}
+            className={`flex-1 py-3 text-sm font-medium transition-all ${
+              activeTab === 'qrcode'
+                ? 'text-primary border-b-2 border-primary'
+                : 'text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            📱 QR Code
+          </button>
+          <button
+            onClick={() => setActiveTab('config')}
+            className={`flex-1 py-3 text-sm font-medium transition-all ${
+              activeTab === 'config'
+                ? 'text-primary border-b-2 border-primary'
+                : 'text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            ⚙️ Config
+          </button>
+          <button
+            onClick={() => setActiveTab('guide')}
+            className={`flex-1 py-3 text-sm font-medium transition-all ${
+              activeTab === 'guide'
+                ? 'text-primary border-b-2 border-primary'
+                : 'text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            📖 Panduan
+          </button>
         </div>
 
         {/* Content */}
         <div className="p-5 space-y-4">
-          <InfoRow label="IP Address" value={device.ip_address} />
-          <InfoRow label="Status" value={device.status} />
-          <InfoRow label="Created" value={new Date(device.created_at).toLocaleDateString()} />
+          {/* Device Info */}
+          <div className="grid grid-cols-2 gap-3">
+            <InfoCard label="Status" value={device.status} active={device.status === 'active'} />
+            <InfoCard label="Created" value={new Date(device.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} />
+          </div>
 
-          {device.qr && (
-            <div className="bg-gray-50 rounded-xl p-5 text-center">
-              <div className="text-sm text-gray-400 mb-3">Scan to Connect</div>
-              <div className="inline-block bg-white p-3 rounded-lg shadow-sm" dangerouslySetInnerHTML={{ __html: device.qr }} />
+          {/* QR Code Tab */}
+          {activeTab === 'qrcode' && (
+            <div className="space-y-4">
+              {device.qr ? (
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 text-center border border-gray-200">
+                  <div className="text-sm font-semibold text-gray-500 mb-4 uppercase tracking-wide">Scan to Connect</div>
+                  <div className="flex justify-center">
+                    <div
+                      className="qr-code-container bg-white p-4 rounded-2xl shadow-md"
+                      style={{
+                        display: 'inline-block',
+                        maxWidth: '100%',
+                        width: 'fit-content'
+                      }}
+                      dangerouslySetInnerHTML={{ __html: device.qr }}
+                    />
+                  </div>
+                  <div className="text-xs text-gray-400 mt-4">
+                    Use WireGuard app to scan this QR code
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gray-50 rounded-xl p-8 text-center">
+                  <div className="text-5xl mb-3">⚠️</div>
+                  <div className="text-sm text-gray-500">QR Code not available</div>
+                </div>
+              )}
             </div>
           )}
 
-          {device.config && (
-            <div>
-              <div className="text-sm text-gray-400 mb-2">Configuration</div>
-              <pre className="bg-gray-900 rounded-xl p-4 text-xs font-mono text-green-400 overflow-auto max-h-60 leading-relaxed">
-                {device.config}
-              </pre>
+          {/* Config Tab */}
+          {activeTab === 'config' && (
+            <div className="space-y-3">
+              {device.config ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Configuration File</div>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(device.config);
+                      }}
+                      className="text-xs text-primary hover:text-primary/80 font-medium"
+                    >
+                      📋 Copy
+                    </button>
+                  </div>
+                  <pre className="bg-gray-900 rounded-xl p-4 text-xs font-mono text-green-400 overflow-auto max-h-80 leading-relaxed">
+                    {device.config}
+                  </pre>
+                </>
+              ) : (
+                <div className="bg-gray-50 rounded-xl p-8 text-center">
+                  <div className="text-5xl mb-3">📄</div>
+                  <div className="text-sm text-gray-500">Configuration not available</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Guide Tab */}
+          {activeTab === 'guide' && (
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="text-sm font-semibold text-blue-800 mb-2">📥 Step 1: Download WireGuard App</div>
+                <p className="text-xs text-blue-700 leading-relaxed">
+                  Download dan install aplikasi WireGuard dari App Store (iOS), Google Play Store (Android), 
+                  atau website resmi WireGuard untuk desktop.
+                </p>
+              </div>
+
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <div className="text-sm font-semibold text-green-800 mb-2">📱 Step 2: Scan QR Code / Import Config</div>
+                <p className="text-xs text-green-700 leading-relaxed">
+                  <strong>Mobile:</strong> Buka aplikasi WireGuard, tap "+" dan pilih "Scan from QR code".<br />
+                  <strong>Desktop:</strong> Buka aplikasi WireGuard, pilih "Import tunnel from file" dan download config dari tab Config.
+                </p>
+              </div>
+
+              <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                <div className="text-sm font-semibold text-purple-800 mb-2">🔌 Step 3: Connect to VPN</div>
+                <p className="text-xs text-purple-700 leading-relaxed">
+                  Setelah konfigurasi berhasil diimport, tap tombol power/connect di aplikasi WireGuard 
+                  untuk mulai menggunakan VPN.
+                </p>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <div className="text-sm font-semibold text-amber-800 mb-2">💡 Tips</div>
+                <ul className="text-xs text-amber-700 leading-relaxed space-y-1">
+                  <li>• Pastikan koneksi internet aktif saat connect</li>
+                  <li>• VPN akan aktif hingga Anda disconnect manual</li>
+                  <li>• Anda bisa menambahkan maksimal 3 devices</li>
+                </ul>
+              </div>
             </div>
           )}
         </div>
@@ -250,17 +420,17 @@ function DeviceModal({ device, onClose, onRevoke, onDownload }) {
         {/* Actions */}
         <div className="flex gap-3 p-5 border-t border-gray-100 sticky bottom-0 bg-white rounded-b-3xl">
           {device.config && (
-            <button 
-              onClick={onDownload} 
-              className="flex-1 flex items-center justify-center gap-2 py-3 bg-gray-100 text-primary rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+            <button
+              onClick={onDownload}
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-gray-100 text-primary rounded-xl font-semibold hover:bg-gray-200 transition-all active:scale-[0.98]"
             >
               <i className="fas fa-download" />
               Download
             </button>
           )}
-          <button 
-            onClick={onRevoke} 
-            className="flex-1 flex items-center justify-center gap-2 py-3 bg-red-50 text-red-500 rounded-xl font-semibold hover:bg-red-100 transition-colors"
+          <button
+            onClick={onRevoke}
+            className="flex-1 flex items-center justify-center gap-2 py-3 bg-red-50 text-red-500 rounded-xl font-semibold hover:bg-red-100 transition-all active:scale-[0.98]"
           >
             <i className="fas fa-trash" />
             Remove
@@ -271,11 +441,14 @@ function DeviceModal({ device, onClose, onRevoke, onDownload }) {
   );
 }
 
-function InfoRow({ label, value }) {
+function InfoCard({ label, value, active = false }) {
   return (
-    <div className="flex justify-between items-center py-3 border-b border-gray-100 last:border-0">
-      <span className="text-sm text-gray-400">{label}</span>
-      <span className="text-sm text-dark font-medium">{value}</span>
+    <div className="bg-gray-50 rounded-xl p-3 text-center">
+      <div className="text-xs text-gray-400 mb-1">{label}</div>
+      <div className={`text-sm font-semibold ${active ? 'text-success' : 'text-dark'}`}>
+        {active && <span className="inline-block w-2 h-2 rounded-full bg-success mr-1.5" />}
+        {value}
+      </div>
     </div>
   );
 }
