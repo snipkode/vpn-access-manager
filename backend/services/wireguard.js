@@ -48,19 +48,19 @@ export function generateKeypair() {
 export function addPeer(publicKey, ipAddress) {
   try {
     const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
-    
+
     console.log(`Adding WireGuard peer: ${publicKey} with IP: ${ipAddress}`);
-    
+
     execSync(`wg set ${WG_INTERFACE} peer ${publicKey} allowed-ips ${ipAddress}/32`, {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 5000
     });
-    
-    execSync(`wg syncconf ${WG_INTERFACE} <(wg-quick strip ${WG_INTERFACE})`, {
+
+    execSync(`wg-quick strip ${WG_INTERFACE} | wg setconf ${WG_INTERFACE} /dev/stdin`, {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 5000
     });
-    
+
     console.log('WireGuard peer added successfully');
     return true;
   } catch (error) {
@@ -74,19 +74,19 @@ export function addPeer(publicKey, ipAddress) {
 export function removePeer(publicKey) {
   try {
     const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
-    
+
     console.log(`Removing WireGuard peer: ${publicKey}`);
-    
+
     execSync(`wg set ${WG_INTERFACE} peer ${publicKey} remove`, {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 5000
     });
-    
-    execSync(`wg syncconf ${WG_INTERFACE} <(wg-quick strip ${WG_INTERFACE})`, {
+
+    execSync(`wg-quick strip ${WG_INTERFACE} | wg setconf ${WG_INTERFACE} /dev/stdin`, {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 5000
     });
-    
+
     console.log('WireGuard peer removed successfully');
     return true;
   } catch (error) {

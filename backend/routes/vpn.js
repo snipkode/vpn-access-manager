@@ -310,18 +310,18 @@ router.delete('/device/:id',
       const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
       
       console.log(`Removing WireGuard peer: ${sanitizedPublicKey}`);
-      
+
       // Use sanitized key and quoted to prevent shell injection
       execSync(`wg set ${WG_INTERFACE} peer '${sanitizedPublicKey}' remove`, {
         stdio: ['pipe', 'pipe', 'pipe'],
         timeout: 5000
       });
-      
-      execSync(`wg syncconf ${WG_INTERFACE} <(wg-quick strip ${WG_INTERFACE})`, {
+
+      execSync(`wg-quick strip ${WG_INTERFACE} | wg setconf ${WG_INTERFACE} /dev/stdin`, {
         stdio: ['pipe', 'pipe', 'pipe'],
         timeout: 5000
       });
-      
+
       console.log('WireGuard peer removed successfully');
     } catch (wgError) {
       // Log error but don't fail the request

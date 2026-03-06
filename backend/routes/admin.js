@@ -171,7 +171,7 @@ router.delete('/device/:id', verifyAdmin, async (req, res) => {
       const { execSync } = await import('child_process');
       const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
       execSync(`wg set ${WG_INTERFACE} peer ${deviceData.public_key} remove`);
-      execSync(`wg syncconf ${WG_INTERFACE} <(wg-quick strip ${WG_INTERFACE})`);
+      execSync(`wg-quick strip ${WG_INTERFACE} | wg setconf ${WG_INTERFACE} /dev/stdin`);
     } catch (wgError) {
       console.error('WireGuard remove error:', wgError.message);
     }
