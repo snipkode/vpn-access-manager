@@ -23,34 +23,76 @@ export function getNextAvailableIP(usedIPs) {
   throw new Error('No available IP addresses');
 }
 
-// Generate WireGuard keypair
+// Generate WireGuard keypair with error handling
 export function generateKeypair() {
-  const privateKey = execSync('wg genkey').toString().trim();
-  const publicKey = execSync(`echo "${privateKey}" | wg pubkey`).toString().trim();
-  return { privateKey, publicKey };
-}
-
-// Add peer to WireGuard
-export function addPeer(publicKey, ipAddress) {
   try {
-    execSync(`wg set ${WG_INTERFACE} peer ${publicKey} allowed-ips ${ipAddress}/32`);
-    execSync(`wg syncconf ${WG_INTERFACE} <(wg-quick strip ${WG_INTERFACE})`);
-    return true;
+    const privateKey = execSync('wg genkey', {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 5000
+    }).toString().trim();
+    
+    const publicKey = execSync(`echo "${privateKey}" | wg pubkey`, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 5000
+    }).toString().trim();
+    
+    return { privateKey, publicKey };
   } catch (error) {
-    console.error('Failed to add peer:', error.message);
-    throw error;
+    const errorMsg = `Failed to generate WireGuard keypair: ${error.message}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
 }
 
-// Remove peer from WireGuard
-export function removePeer(publicKey) {
+// Add peer to WireGuard with error handling
+export function addPeer(publicKey, ipAddress) {
   try {
-    execSync(`wg set ${WG_INTERFACE} peer ${publicKey} remove`);
-    execSync(`wg syncconf ${WG_INTERFACE} <(wg-quick strip ${WG_INTERFACE})`);
+    const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
+    
+    console.log(`Adding WireGuard peer: ${publicKey} with IP: ${ipAddress}`);
+    
+    execSync(`wg set ${WG_INTERFACE} peer ${publicKey} allowed-ips ${ipAddress}/32`, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 5000
+    });
+    
+    execSync(`wg syncconf ${WG_INTERFACE} <(wg-quick strip ${WG_INTERFACE})`, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 5000
+    });
+    
+    console.log('WireGuard peer added successfully');
     return true;
   } catch (error) {
-    console.error('Failed to remove peer:', error.message);
-    throw error;
+    const errorMsg = `Failed to add WireGuard peer: ${error.message}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
+  }
+}
+
+// Remove peer from WireGuard with error handling
+export function removePeer(publicKey) {
+  try {
+    const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
+    
+    console.log(`Removing WireGuard peer: ${publicKey}`);
+    
+    execSync(`wg set ${WG_INTERFACE} peer ${publicKey} remove`, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 5000
+    });
+    
+    execSync(`wg syncconf ${WG_INTERFACE} <(wg-quick strip ${WG_INTERFACE})`, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 5000
+    });
+    
+    console.log('WireGuard peer removed successfully');
+    return true;
+  } catch (error) {
+    const errorMsg = `Failed to remove WireGuard peer: ${error.message}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
 }
 

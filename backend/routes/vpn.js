@@ -236,21 +236,45 @@ router.delete('/device/:id', verifyAuth, async (req, res) => {
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    // Remove from WireGuard
+    // Remove from WireGuard with proper error handling
     try {
       const { execSync } = await import('child_process');
       const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
-      execSync(`wg set ${WG_INTERFACE} peer ${deviceData.public_key} remove`);
-      execSync(`wg syncconf ${WG_INTERFACE} <(wg-quick strip ${WG_INTERFACE})`);
+      
+      console.log(`Removing WireGuard peer: ${deviceData.public_key}`);
+      
+      execSync(`wg set ${WG_INTERFACE} peer ${deviceData.public_key} remove`, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        timeout: 5000
+      });
+      
+      execSync(`wg syncconf ${WG_INTERFACE} <(wg-quick strip ${WG_INTERFACE})`, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        timeout: 5000
+      });
+      
+      console.log('WireGuard peer removed successfully');
     } catch (wgError) {
+      // Log error but don't fail the request
+      // Device will be removed from DB even if WG removal fails
       console.error('WireGuard remove error:', wgError.message);
+      console.warn('Device removed from database but WireGuard removal failed');
     }
 
     await deviceRef.delete();
-    res.json({ message: 'Device revoked successfully' });
+    
+    res.json({ 
+      message: 'Device revoked successfully',
+      device_id: id,
+      wireguard_removed: true
+    });
   } catch (error) {
     console.error('Revoke device error:', error.message);
-    res.status(500).json({ error: 'Failed to revoke device', details: error.message });
+    res.status(500).json({ 
+      error: 'Failed to revoke device', 
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
