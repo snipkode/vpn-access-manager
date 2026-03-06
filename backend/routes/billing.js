@@ -10,6 +10,13 @@ import { emailNotifications } from '../services/email.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const router = express.Router();
 
+/**
+ * @swagger
+ * tags:
+ *   name: Billing
+ *   description: Payment submission and subscription management
+ */
+
 // Configure multer for proof upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -86,7 +93,55 @@ const PLANS = {
   yearly: { price: 480000, duration: 365, label: 'Yearly (20% off)' },
 };
 
-// Submit payment proof
+/**
+ * @swagger
+ * /api/billing/submit:
+ *   post:
+ *     summary: Submit payment proof for subscription
+ *     tags: [Billing]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - proof
+ *               - amount
+ *               - plan
+ *               - bank_from
+ *               - transfer_date
+ *             properties:
+ *               proof:
+ *                 type: string
+ *                 format: binary
+ *                 description: Payment proof image (JPEG, PNG, PDF) - max 5MB
+ *               amount:
+ *                 type: integer
+ *                 example: 50000
+ *               plan:
+ *                 type: string
+ *                 enum: [monthly, quarterly, yearly]
+ *               bank_from:
+ *                 type: string
+ *                 example: BCA
+ *               transfer_date:
+ *                 type: string
+ *                 format: date
+ *               notes:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Payment proof submitted successfully
+ *       400:
+ *         description: Invalid plan, amount, or missing required fields
+ *       401:
+ *         description: Unauthorized
+ *       503:
+ *         description: Billing disabled
+ */
 router.post('/submit', 
   verifyAuth, 
   checkBillingEnabled,
@@ -208,7 +263,40 @@ router.post('/submit',
   }
 });
 
-// Get user's payment history
+/**
+ * @swagger
+ * /api/billing/history:
+ *   get:
+ *     summary: Get user's payment history
+ *     tags: [Billing]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [pending, approved, rejected]
+ *     responses:
+ *       200:
+ *         description: Payment history retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 payments:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Payment'
+ *       500:
+ *         description: Failed to get payment history
+ */
 router.get('/history', verifyAuth, rateLimiters.billingView, async (req, res) => {
   try {
     const { uid } = req.user;
@@ -240,7 +328,35 @@ router.get('/history', verifyAuth, rateLimiters.billingView, async (req, res) =>
   }
 });
 
-// Get user's subscription status
+/**
+ * @swagger
+ * /api/billing/subscription:
+ *   get:
+ *     summary: Get user's subscription status
+ *     tags: [Billing]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Subscription status retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 subscription:
+ *                   type: object
+ *                   properties:
+ *                     active: { type: boolean }
+ *                     plan: { type: string }
+ *                     plan_label: { type: string }
+ *                     subscription_end: { type: string, format: date-time }
+ *                     days_remaining: { type: integer }
+ *                     vpn_enabled: { type: boolean }
+ *                     total_purchases: { type: integer }
+ *       404:
+ *         description: User not found
+ */
 router.get('/subscription', verifyAuth, rateLimiters.billingView, async (req, res) => {
   try {
     const { uid } = req.user;
@@ -303,7 +419,42 @@ router.get('/subscription', verifyAuth, rateLimiters.billingView, async (req, re
   }
 });
 
-// Get available plans
+/**
+ * @swagger
+ * /api/billing/plans:
+ *   get:
+ *     summary: Get available subscription plans and bank accounts
+ *     tags: [Billing]
+ *     responses:
+ *       200:
+ *         description: Available plans retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 billing_enabled: { type: boolean }
+ *                 currency: { type: string, example: IDR }
+ *                 plans:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: string }
+ *                       price: { type: integer }
+ *                       duration: { type: integer }
+ *                       label: { type: string }
+ *                       price_formatted: { type: string }
+ *                 bank_accounts:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: string }
+ *                       bank: { type: string }
+ *                       account_number: { type: string }
+ *                       account_name: { type: string }
+ */
 router.get('/plans', async (req, res) => {
   try {
     // Check if billing is enabled

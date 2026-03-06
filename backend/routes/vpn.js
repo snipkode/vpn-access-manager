@@ -6,6 +6,13 @@ import { generateKeypair, addPeer, generateConfig, getNextAvailableIP } from '..
 const router = express.Router();
 const MAX_DEVICES = 3;
 
+/**
+ * @swagger
+ * tags:
+ *   name: VPN
+ *   description: VPN configuration and device management
+ */
+
 // Auth middleware
 const verifyAuth = async (req, res, next) => {
   try {
@@ -23,7 +30,48 @@ const verifyAuth = async (req, res, next) => {
   }
 };
 
-// Generate VPN configuration
+/**
+ * @swagger
+ * /api/vpn/generate:
+ *   post:
+ *     summary: Generate VPN configuration for a new device
+ *     tags: [VPN]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               deviceName:
+ *                 type: string
+ *                 example: 'iPhone 14'
+ *     responses:
+ *       200:
+ *         description: VPN configuration generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 device_id: { type: string }
+ *                 device_name: { type: string }
+ *                 ip_address: { type: string }
+ *                 public_key: { type: string }
+ *                 config: { type: string }
+ *                 qr: { type: string }
+ *                 created_at: { type: string, format: date-time }
+ *       403:
+ *         description: VPN access not enabled
+ *       400:
+ *         description: Device limit reached (max 3 devices)
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Failed to generate VPN config
+ */
 router.post('/generate', verifyAuth, async (req, res) => {
   try {
     const { uid } = req.user;
@@ -86,7 +134,29 @@ router.post('/generate', verifyAuth, async (req, res) => {
   }
 });
 
-// Get user's devices
+/**
+ * @swagger
+ * /api/vpn/devices:
+ *   get:
+ *     summary: Get user's VPN devices
+ *     tags: [VPN]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of user's devices
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 devices:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Device'
+ *       500:
+ *         description: Failed to get devices
+ */
 router.get('/devices', verifyAuth, async (req, res) => {
   try {
     const { uid } = req.user;
@@ -101,7 +171,31 @@ router.get('/devices', verifyAuth, async (req, res) => {
   }
 });
 
-// Revoke own device
+/**
+ * @swagger
+ * /api/vpn/device/{id}:
+ *   delete:
+ *     summary: Revoke user's VPN device
+ *     tags: [VPN]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Device ID
+ *     responses:
+ *       200:
+ *         description: Device revoked successfully
+ *       403:
+ *         description: Unauthorized - Device belongs to another user
+ *       404:
+ *         description: Device not found
+ *       500:
+ *         description: Failed to revoke device
+ */
 router.delete('/device/:id', verifyAuth, async (req, res) => {
   try {
     const { uid } = req.user;

@@ -3,7 +3,53 @@ import { auth, db } from '../config/firebase.js';
 
 const router = express.Router();
 
-// Verify Firebase token and get/create user
+/**
+ * @swagger
+ * tags:
+ *   name: Auth
+ *   description: Authentication and user verification endpoints
+ */
+
+/**
+ * @swagger
+ * /api/auth/verify:
+ *   post:
+ *     summary: Verify Firebase token and get/create user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: Firebase ID token
+ *     responses:
+ *       200:
+ *         description: User verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     uid: { type: string }
+ *                     email: { type: string }
+ *                     role: { type: string }
+ *                     vpn_enabled: { type: boolean }
+ *                 token:
+ *                   type: object
+ *       400:
+ *         description: Token is required
+ *       401:
+ *         description: Invalid token
+ */
 router.post('/verify', async (req, res) => {
   try {
     const { token } = req.body;
@@ -39,6 +85,26 @@ router.post('/verify', async (req, res) => {
 });
 
 // Get current user info
+/**
+ * @swagger
+ * /api/auth/me:
+ *   get:
+ *     summary: Get current user info
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User information retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized - Invalid token
+ *       404:
+ *         description: User not found
+ */
 router.get('/me', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;

@@ -3,6 +3,13 @@ import { auth, db } from '../config/firebase.js';
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * tags:
+ *   name: Admin
+ *   description: Admin-only user and device management
+ */
+
 // Middleware to verify admin
 const verifyAdmin = async (req, res, next) => {
   try {
@@ -26,7 +33,31 @@ const verifyAdmin = async (req, res, next) => {
   }
 };
 
-// Get all users
+/**
+ * @swagger
+ * /api/admin/users:
+ *   get:
+ *     summary: Get all users (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/User'
+ *       403:
+ *         description: Admin access required
+ *       500:
+ *         description: Failed to get users
+ */
 router.get('/users', verifyAdmin, async (req, res) => {
   try {
     const usersSnapshot = await db.collection('users').orderBy('created_at', 'desc').get();

@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import swaggerUi from 'swagger-ui-express';
+import swaggerSpec from './config/swagger.js';
 
 // Route imports
 import authRoutes from './routes/auth.js';
@@ -76,6 +78,61 @@ app.use('/api/referral', referralRoutes);
 app.use('/api/admin/referral', adminReferralRoutes);
 app.use('/uploads', express.static('uploads'));
 
+// Swagger documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'VPN Access API Docs',
+}));
+app.use('/api-docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+
+/**
+ * @swagger
+ * tags:
+ *   name: Health
+ *   description: Health check and API info endpoints
+ */
+
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Health check endpoint
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Server is healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Health'
+ *
+ * /api:
+ *   get:
+ *     summary: API information
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: API information retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 name: { type: string, example: 'VPN Access Backend API' }
+ *                 version: { type: string, example: '1.0.0' }
+ *                 endpoints:
+ *                   type: object
+ *                   properties:
+ *                     auth: { type: string }
+ *                     vpn: { type: string }
+ *                     billing: { type: string }
+ *                     credit: { type: string }
+ *                     admin: { type: string }
+ */
 // Health & info endpoints
 app.get('/health', (req, res) => res.json({
   status: 'ok',
