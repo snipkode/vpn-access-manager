@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:no-swc": "NEXT_TELEMETRY_DISABLED=1 node --no-optimize --max-old-space-size=4096 node_modules/.bin/next build",
     "start": "next start"
   },
   "dependencies": {

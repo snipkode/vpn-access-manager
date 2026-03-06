@@ -9,7 +9,7 @@ import Layout from '../components/Layout';
 import Dashboard from '../components/Dashboard';
 import MyDevices from '../components/MyDevices';
 import Wallet from '../components/Wallet';
-import PaymentForm from '../components/PaymentForm';
+import Payment from '../components/Payment';
 import Referral from '../components/Referral';
 import ProfileEdit from '../components/ProfileEdit';
 import Notifications from '../components/Notifications';
@@ -45,7 +45,7 @@ const PAGE_COMPONENTS = {
   dashboard: Dashboard,
   devices: MyDevices,
   wallet: Wallet,
-  payment: PaymentForm,
+  payment: Payment,
   referral: Referral,
   profile: ProfileEdit,
   notifications: Notifications,
@@ -76,7 +76,30 @@ export default function App() {
           });
 
           setUser(firebaseUser, idToken, data.user);
-          // Auto redirect to dashboard after successful login
+          
+          // Track referral if exists in localStorage
+          const pendingRefCode = localStorage.getItem('pending_referral_code');
+          if (pendingRefCode) {
+            try {
+              await apiFetch('/referral/track', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  referrer_code: pendingRefCode,
+                  metadata: {
+                    signup_method: 'google_oauth',
+                    signup_page: 'index'
+                  }
+                }),
+              });
+              showNotification('Referral tracked! 🎉');
+              localStorage.removeItem('pending_referral_code');
+            } catch (error) {
+              console.log('Referral tracking:', error.message);
+            }
+          }
+          
+          // Auto redirect to dashboard
           setActivePage('dashboard');
         } catch (error) {
           console.error('Auth verification failed:', error);
@@ -100,6 +123,8 @@ export default function App() {
   const handleLogin = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
+      // Note: Auth state change will handle the rest via onAuthStateChanged
+      // Referral tracking will happen if ref code is in localStorage
     } catch (error) {
       showNotification('Login failed: ' + error.message, 'error');
     }

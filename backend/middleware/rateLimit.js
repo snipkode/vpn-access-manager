@@ -55,28 +55,28 @@ export const rateLimiters = {
   // Strict limit for payment submission (prevent spam)
   billingSubmit: createRateLimiter({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 5,
+    max: process.env.NODE_ENV === 'development' ? 100 : 5,
     message: 'Too many payment submissions. Maximum 5 per hour.',
   }),
 
   // Moderate limit for viewing payment history
   billingView: createRateLimiter({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 30,
-    message: 'Too many requests. Maximum 30 per hour.',
+    max: process.env.NODE_ENV === 'development' ? 1000 : 300,
+    message: 'Too many requests. Maximum 300 per hour.',
   }),
 
   // Higher limit for admin actions
   adminActions: createRateLimiter({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 100,
+    max: process.env.NODE_ENV === 'development' ? 1000 : 100,
     message: 'Too many admin requests. Maximum 100 per hour.',
   }),
 
   // General API rate limit
   general: createRateLimiter({
     windowMs: 60 * 1000, // 1 minute
-    max: 30,
+    max: process.env.NODE_ENV === 'development' ? 100 : 30,
     message: 'Too many requests. Maximum 30 per minute.',
   }),
 

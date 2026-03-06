@@ -2,21 +2,54 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Users collection
-    match /users/{userId} {
-      // User can read their own data
-      allow read: if request.auth != null && request.auth.uid == userId;
-      
-      // Only admins can write to users collection
-      allow write: if request.auth != null && 
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null && 
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
-    // Devices collection
+    // Helper function to check if user owns the resource
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Helper function to validate email format
+    function isValidEmail(email) {
+      return email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+    
+    // Helper function to validate phone number format
+    function isValidPhone(phone) {
+      return phone == null || phone.matches('^\\+?[1-9]\\d{1,14}$');
+    }
+
+    // ==================== USERS COLLECTION ====================
+    match /users/{userId} {
+      // User can read their own data
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // User can create their own profile on signup
+      allow create: if request.auth != null && request.auth.uid == userId;
+      
+      // User can update their own profile (limited fields)
+      allow update: if isOwner(userId) && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'display_name', 'phone', 'whatsapp', 'avatar_url', 
+          'updated_at', 'subscription_plan', 'subscription_end'
+        ]);
+      
+      // Admin can update any user
+      allow update: if isAdmin();
+      
+      // Only admin can delete users
+      allow delete: if isAdmin();
+    }
+
+    // ==================== DEVICES COLLECTION ====================
     match /devices/{deviceId} {
       // User can read their own devices
       allow read: if request.auth != null && 
-        resource.data.user_id == request.auth.uid;
+        (resource.data.user_id == request.auth.uid || isAdmin());
       
       // User can create their own devices
       allow create: if request.auth != null && 
@@ -26,9 +59,200 @@ service cloud.firestore {
       allow update: if request.auth != null && 
         resource.data.user_id == request.auth.uid;
       
-      // User can delete their own devices
+      // User can delete their own devices, or admin can delete any
       allow delete: if request.auth != null && 
-        resource.data.user_id == request.auth.uid;
+        (resource.data.user_id == request.auth.uid || isAdmin());
+    }
+
+    // ==================== PAYMENTS COLLECTION ====================
+    match /payments/{paymentId} {
+      // User can read their own payments
+      allow read: if request.auth != null && 
+        (resource.data.user_id == request.auth.uid || isAdmin());
+      
+      // User can create their own payments
+      allow create: if request.auth != null && 
+        request.resource.data.user_id == request.auth.uid &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.amount is number &&
+        request.resource.data.amount > 0;
+      
+      // User cannot update payments (only admin can)
+      allow update: if false;
+      
+      // Admin can update payment status
+      allow update: if isAdmin() && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'admin_note', 'approved_by', 'approved_at', 
+          'rejected_at', 'updated_at'
+        ]);
+      
+      // Only admin can delete payments
+      allow delete: if isAdmin();
+    }
+
+    // ==================== CREDIT_TRANSACTIONS COLLECTION ====================
+    match /credit_transactions/{transactionId} {
+      // Users can read their own transactions (as sender or receiver)
+      allow read: if request.auth != null && 
+        (resource.data.from_user_id == request.auth.uid || 
+         resource.data.to_user_id == request.auth.uid ||
+         isAdmin());
+      
+      // Users can create transactions (system will validate)
+      allow create: if request.auth != null && 
+        (request.resource.data.from_user_id == request.auth.uid ||
+         isAdmin());
+      
+      // Only admin can update transactions (for review)
+      allow update: if isAdmin() && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'admin_note', 'reviewed_by', 'reviewed_at',
+          'blocked_reason', 'completed_at', 'updated_at'
+        ]);
+      
+      // Only admin can delete transactions
+      allow delete: if isAdmin();
+    }
+
+    // ==================== REFERRALS COLLECTION ====================
+    match /referrals/{referralId} {
+      // User can read their own referral data
+      allow read: if request.auth != null && 
+        (resource.data.user_id == request.auth.uid || isAdmin());
+      
+      // System creates referral on signup (via Cloud Functions)
+      allow create: if request.auth != null;
+      
+      // Only admin can update referrals
+      allow update: if isAdmin();
+      
+      // Only admin can delete referrals
+      allow delete: if isAdmin();
+    }
+
+    // ==================== REFERRAL_EVENTS COLLECTION ====================
+    match /referral_events/{eventId} {
+      // Referrer can read their own events
+      allow read: if request.auth != null && 
+        (resource.data.referrer_id == request.auth.uid || isAdmin());
+      
+      // System creates events (via Cloud Functions)
+      allow create: if request.auth != null;
+      
+      // Only admin can update events
+      allow update: if isAdmin();
+      
+      // Only admin can delete events
+      allow delete: if isAdmin();
+    }
+
+    // ==================== FRAUD_ALERTS COLLECTION ====================
+    match /fraud_alerts/{alertId} {
+      // Only admin can read fraud alerts
+      allow read: if isAdmin();
+      
+      // System creates alerts (via Cloud Functions)
+      allow create: if request.auth != null;
+      
+      // Only admin can update alerts
+      allow update: if isAdmin();
+      
+      // Only admin can delete alerts
+      allow delete: if isAdmin();
+    }
+
+    // ==================== PAYMENT_SETTINGS COLLECTION ====================
+    match /payment_settings/{settingId} {
+      // Anyone can read settings (for billing status check)
+      allow read: if true;
+      
+      // Only admin can update settings
+      allow update: if isAdmin();
+      
+      // Only admin can create settings
+      allow create: if isAdmin();
+      
+      // Only admin can delete settings
+      allow delete: if isAdmin();
+    }
+
+    // ==================== BANK_ACCOUNTS COLLECTION ====================
+    match /bank_accounts/{accountId} {
+      // Anyone can read active bank accounts
+      allow read: if true;
+      
+      // Only admin can write bank accounts
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ==================== SETTINGS COLLECTION ====================
+    match /settings/{category} {
+      // Admin can read all settings
+      allow read: if isAdmin();
+      
+      // Only admin can write settings
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ==================== USER_PREFERENCES COLLECTION ====================
+    match /user_preferences/{userId} {
+      // User can read their own preferences
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // User can create/update their own preferences
+      allow create, update: if isOwner(userId);
+      
+      // Admin can read/write any preferences
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ==================== AUDIT_LOGS COLLECTION ====================
+    match /audit_logs/{logId} {
+      // Only admin can read audit logs
+      allow read: if isAdmin();
+      
+      // System creates logs (via middleware)
+      allow create: if request.auth != null;
+      
+      // No one can update or delete audit logs
+      allow update, delete: if false;
+    }
+
+    // ==================== BACKUPS COLLECTION ====================
+    match /backups/{backupId} {
+      // Only admin can read backups
+      allow read: if isAdmin();
+      
+      // System creates backups (via Cloud Functions)
+      allow create: if request.auth != null;
+      
+      // Only admin can delete backups
+      allow delete: if isAdmin();
+    }
+
+    // ==================== NOTIFICATIONS COLLECTION ====================
+    match /notifications/{notificationId} {
+      // User can read their own notifications
+      allow read: if request.auth != null && 
+        (resource.data.user_id == request.auth.uid || isAdmin());
+      
+      // System creates notifications
+      allow create: if request.auth != null;
+      
+      // User can update their own notifications (mark as read)
+      allow update: if request.auth != null && 
+        resource.data.user_id == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'read_at']);
+      
+      // Only admin can delete notifications
+      allow delete: if isAdmin();
+    }
+
+    // ==================== DENY RULES (Default) ====================
+    // Deny all access by default
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

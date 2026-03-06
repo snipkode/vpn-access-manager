@@ -55,6 +55,31 @@ export const useUIStore = create((set) => ({
   },
 }));
 
+// Billing/Payment Store
+export const useBillingStore = create((set) => ({
+  billingEnabled: false,
+  currency: 'IDR',
+  plans: [],
+  bankAccounts: [],
+  loading: true,
+
+  setBillingData: (data) => set({
+    billingEnabled: data.billing_enabled || false,
+    currency: data.currency || 'IDR',
+    plans: data.plans || [],
+    bankAccounts: data.bank_accounts || [],
+    loading: false,
+  }),
+  setBillingEnabled: (enabled) => set({ billingEnabled: enabled }),
+  resetBilling: () => set({
+    billingEnabled: false,
+    currency: 'IDR',
+    plans: [],
+    bankAccounts: [],
+    loading: true,
+  }),
+}));
+
 // API helper
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 

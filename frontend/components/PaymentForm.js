@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+import { useUIStore, useBillingStore, apiFetch, formatCurrency } from '../store';
 
 const PLANS = {
   monthly: { price: 50000, duration: 30, label: 'Monthly' },
@@ -9,6 +8,8 @@ const PLANS = {
 };
 
 export default function PaymentForm({ token }) {
+  const { showNotification } = useUIStore();
+  const { billingEnabled, plans, bankAccounts, setBillingData } = useBillingStore();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
@@ -24,44 +25,34 @@ export default function PaymentForm({ token }) {
   const [proofFile, setProofFile] = useState(null);
   const [proofPreview, setProofPreview] = useState(null);
 
-  // Payment data
-  const [plans, setPlans] = useState([]);
-  const [bankAccounts, setBankAccounts] = useState([]);
+  // Payment history (keep local as it's specific to this component)
   const [paymentHistory, setPaymentHistory] = useState([]);
-  const [billingEnabled, setBillingEnabled] = useState(false);
-
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   const fetchData = async () => {
     try {
-      const headers = { Authorization: `Bearer ${token}` };
-
-      const [plansRes, historyRes] = await Promise.all([
-        fetch(`${API_URL}/billing/plans`, { headers }),
-        fetch(`${API_URL}/billing/history?limit=10`, { headers }),
+      setLoading(true);
+      const [plansData, historyData] = await Promise.all([
+        apiFetch('/billing/plans'),
+        apiFetch('/billing/history?limit=10'),
       ]);
 
-      if (plansRes.ok) {
-        const data = await plansRes.json();
-        setPlans(data.plans || []);
-        setBankAccounts(data.bank_accounts || []);
-        setBillingEnabled(data.billing_enabled || false);
-        // Set default amount based on selected plan
-        if (data.plans && data.plans.length > 0) {
-          const defaultPlan = data.plans.find(p => p.id === selectedPlan) || data.plans[0];
-          setAmount(defaultPlan.price);
-        }
-      }
+      // Update global billing store
+      setBillingData({
+        billing_enabled: plansData.billing_enabled || false,
+        currency: plansData.currency || 'IDR',
+        plans: plansData.plans || [],
+        bank_accounts: plansData.bank_accounts || [],
+      });
 
-      if (historyRes.ok) {
-        const data = await historyRes.json();
-        setPaymentHistory(data.payments || []);
+      setPaymentHistory(historyData.payments || []);
+
+      // Set default amount
+      if (plansData.plans && plansData.plans.length > 0) {
+        const defaultPlan = plansData.plans.find(p => p.id === selectedPlan) || plansData.plans[0];
+        setAmount(defaultPlan.price);
       }
     } catch (error) {
-      setError('Failed to load payment data');
-      console.error('Fetch data error:', error);
+      showNotification('Failed to load payment data', 'error');
     } finally {
       setLoading(false);
     }
@@ -69,7 +60,7 @@ export default function PaymentForm({ token }) {
 
   const handlePlanChange = (planId) => {
     setSelectedPlan(planId);
-    const plan = PLANS[planId];
+    const plan = plans.find(p => p.id === planId);
     if (plan) {
       setAmount(plan.price);
     }
