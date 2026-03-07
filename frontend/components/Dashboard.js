@@ -211,6 +211,44 @@ export default function Dashboard({ token, userData }) {
     }
   };
 
+  const disableDevice = async (deviceId) => {
+    try {
+      await vpnAPI.disableDevice(deviceId);
+      showNotification('Device disabled - VPN access suspended');
+      setSelectedDevice(null);
+      fetchData();
+    } catch (error) {
+      console.error('🔴 Disable device error:', error);
+      if (error.code === 'RATE_LIMIT' || error.status === 429) {
+        showNotification(
+          `⏱️ Too many attempts. Please wait ${error.retryAfter || 30} seconds.`,
+          'error'
+        );
+      } else {
+        showNotification(error.message || 'Failed to disable device', 'error');
+      }
+    }
+  };
+
+  const reactivateDevice = async (deviceId) => {
+    try {
+      await vpnAPI.reactivateDevice(deviceId);
+      showNotification('Device reactivated - VPN access restored');
+      setSelectedDevice(null);
+      fetchData();
+    } catch (error) {
+      console.error('🔴 Reactivate device error:', error);
+      if (error.code === 'RATE_LIMIT' || error.status === 429) {
+        showNotification(
+          `⏱️ Too many attempts. Please wait ${error.retryAfter || 30} seconds.`,
+          'error'
+        );
+      } else {
+        showNotification(error.message || 'Failed to reactivate device', 'error');
+      }
+    }
+  };
+
   const downloadConfig = (config, name) => {
     const safeName = name?.replace(/\s+/g, '-').toLowerCase() || 'vpn-config';
     const filename = `${safeName}.conf`;
@@ -427,6 +465,22 @@ export default function Dashboard({ token, userData }) {
               showNotification('Device ID not found', 'error');
             }
           }}
+          onDisable={() => {
+            const deviceId = selectedDevice.id || selectedDevice.device_id || selectedDevice.public_key;
+            if (deviceId) {
+              disableDevice(deviceId);
+            } else {
+              showNotification('Device ID not found', 'error');
+            }
+          }}
+          onReactivate={() => {
+            const deviceId = selectedDevice.id || selectedDevice.device_id || selectedDevice.public_key;
+            if (deviceId) {
+              reactivateDevice(deviceId);
+            } else {
+              showNotification('Device ID not found', 'error');
+            }
+          }}
           onDownload={() => {
             if (selectedDevice.config) {
               downloadConfig(selectedDevice.config, selectedDevice.device_name || selectedDevice.ip_address || 'vpn-config');
@@ -443,6 +497,8 @@ export default function Dashboard({ token, userData }) {
 function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) {
   const [activeTab, setActiveTab] = useState('qrcode');
   const deletingDevice = useRequestPending('delete_vpn_device');
+  const disablingDevice = useRequestPending('disable_vpn_device');
+  const reactivatingDevice = useRequestPending('reactivate_vpn_device');
 
   // Get device ID and name with fallbacks
   const deviceId = device.id || device.device_id || device.public_key;
@@ -453,6 +509,7 @@ function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) 
   console.log('🔵 DeviceModal rendered - device:', device);
   console.log('🔵 DeviceModal - deviceId:', deviceId);
   console.log('🔵 DeviceModal - displayName:', displayName);
+  console.log('🔵 DeviceModal - status:', device.status);
 
   // Guard: device must have an ID
   if (!deviceId) {
@@ -657,6 +714,7 @@ function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) 
 
         {/* Actions */}
         <div className="flex gap-3 p-5 border-t border-gray-100 sticky bottom-0 bg-white rounded-b-3xl">
+          {/* Show Download button only if config is available */}
           {device.config && !fetchingConfig && (
             <button
               onClick={onDownload}
@@ -666,6 +724,37 @@ function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) 
               Download
             </button>
           )}
+          
+          {/* Show Disable/Reactivate based on status */}
+          {device.status === 'disabled' ? (
+            <button
+              onClick={onReactivate}
+              disabled={reactivatingDevice || fetchingConfig}
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-50 text-green-600 rounded-xl font-semibold hover:bg-green-100 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {reactivatingDevice ? (
+                <span className="w-4 h-4 border-2 border-green-600/30 border-t-green-600 rounded-full animate-spin" />
+              ) : (
+                <i className="fas fa-check-circle" />
+              )}
+              {reactivatingDevice ? 'Reactivating...' : 'Reactivate'}
+            </button>
+          ) : device.status === 'active' ? (
+            <button
+              onClick={onDisable}
+              disabled={disablingDevice || fetchingConfig}
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-amber-50 text-amber-600 rounded-xl font-semibold hover:bg-amber-100 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {disablingDevice ? (
+                <span className="w-4 h-4 border-2 border-amber-600/30 border-t-amber-600 rounded-full animate-spin" />
+              ) : (
+                <i className="fas fa-pause-circle" />
+              )}
+              {disablingDevice ? 'Disabling...' : 'Disable'}
+            </button>
+          ) : null}
+          
+          {/* Hard Remove button - always show for revoked or active devices */}
           <button
             onClick={onRevoke}
             disabled={deletingDevice || fetchingConfig}
