@@ -61,9 +61,16 @@ export default function App() {
   const [initialized, setInitialized] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
-  // Initialize Firebase auth + Firestore user data
+  // Initialize Firebase auth + Firestore user data with timeout
   useEffect(() => {
+    let timeoutId;
+    
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      // Clear timeout when auth state changes
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      
       if (firebaseUser) {
         const idToken = await firebaseUser.getIdToken();
 
@@ -118,10 +125,7 @@ export default function App() {
         // Set user with complete profile data
         setUser(firebaseUser, idToken, userData);
 
-        // Skip subscription fetch here - let Dashboard/Onboarding handle it
-        // This prevents blocking the initial load
-        setSubLoading(false);
-        console.log('✅ User initialized, skipping subscription fetch in index.js');
+        console.log('✅ User initialized successfully');
 
         // Auto redirect to dashboard based on role from Firestore
         const targetPage = userData.role === 'admin' ? 'admin-dashboard' : 'dashboard';
@@ -156,14 +160,14 @@ export default function App() {
           try {
             // Firebase tokens expire after 1 hour, refresh every 55 minutes
             const REFRESH_INTERVAL = 55 * 60 * 1000; // 55 minutes in ms
-            
+
             setInterval(async () => {
               const currentUser = auth.currentUser;
               if (currentUser) {
                 try {
                   const freshToken = await currentUser.getIdToken(true);
                   console.log('🔄 Auto-refreshed Firebase token');
-                  
+
                   // Update store with fresh token
                   const { userData: currentUserData } = useAuthStore.getState();
                   setUser(currentUser, freshToken, currentUserData);
@@ -172,7 +176,7 @@ export default function App() {
                 }
               }
             }, REFRESH_INTERVAL);
-            
+
             console.log('⏰ Token auto-refresh scheduled every 55 minutes');
           } catch (error) {
             console.error('❌ Failed to setup token refresh:', error);
@@ -186,7 +190,18 @@ export default function App() {
       setInitialized(true);
     });
 
-    return () => unsubscribe();
+    // Fallback timeout - set initialized after 3 seconds even if auth doesn't fire
+    timeoutId = setTimeout(() => {
+      console.warn('⏱️ Auth initialization timeout - forcing initialized state');
+      setInitialized(true);
+    }, 3000);
+
+    return () => {
+      unsubscribe();
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, []);
 
   // Handle login
