@@ -111,9 +111,32 @@ router.get('/users', verifyAdmin, async (req, res) => {
       ...doc.data(),
     }));
 
+    console.log(`[Admin Users] Query returned ${users.length} users`, { 
+      role_filter: role, 
+      vpn_filter: vpn_enabled 
+    });
+
     res.json({ users });
   } catch (error) {
     console.error('Get users error:', error.message);
+    // If error is about index, return all users without filter
+    if (error.code === 'FAILED_PRECONDITION' || error.message.includes('index')) {
+      console.log('[Admin Users] Firestore index missing, returning all users');
+      const allUsersSnapshot = await db.collection('users').orderBy('created_at', 'desc').get();
+      const allUsers = allUsersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // Filter client-side if role specified
+      let filteredUsers = allUsers;
+      if (role) {
+        filteredUsers = allUsers.filter(u => u.role === role);
+      }
+      if (vpn_enabled !== undefined) {
+        const vpnEnabled = vpn_enabled === 'true';
+        filteredUsers = filteredUsers.filter(u => u.vpn_enabled === vpnEnabled);
+      }
+      
+      return res.json({ users: filteredUsers });
+    }
     res.status(500).json({ error: 'Failed to get users', details: error.message });
   }
 });

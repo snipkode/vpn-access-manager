@@ -33,16 +33,17 @@ export default function AdminDashboard({ token, userData }) {
     try {
       const [statsData, usersData, devicesData] = await Promise.all([
         adminDashboardAPI.getStats(),
-        adminUsersAPI.getUsers({ role: 'user' }), // Only get regular users (not admin)
+        adminUsersAPI.getUsers(), // Get all users (no filter)
         adminDevicesAPI.getDevices(),
       ]);
       setStats(statsData);
       
-      // Filter out current logged-in user and users with same email
+      // Filter: exclude admins and current logged-in user
       const allUsers = usersData.users || [];
       const filteredUsers = allUsers.filter(u => 
-        u.id !== user?.uid && 
-        u.email !== user?.email
+        u.role !== 'admin' && // Exclude admin users
+        u.id !== user?.uid && // Exclude current user
+        u.email !== user?.email // Backup filter by email
       );
       
       setUsers(filteredUsers);
