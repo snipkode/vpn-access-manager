@@ -28,7 +28,6 @@ const MENU_ITEMS = [
   { id: 'wallet', label: 'Wallet', icon: 'account_balance_wallet' },
   { id: 'payment', label: 'Payment', icon: 'payment' },
   { id: 'referral', label: 'Referral', icon: 'people' },
-  { id: 'profile', label: 'Profile', icon: 'person' },
 ];
 
 const ADMIN_ITEMS = [
