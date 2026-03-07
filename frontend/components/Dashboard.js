@@ -588,21 +588,13 @@ function DeviceModal({ device, onClose, onRevoke, onDisable, onReactivate, onDow
                 <div className="bg-gradient-to-br from-gray-50 to-gray-100/80 dark:from-[#2C2C2E] dark:to-[#252527] rounded-2xl p-6 sm:p-8 text-center border border-gray-200/50 dark:border-[#38383A]/50">
                   <div className="text-sm sm:text-base font-semibold text-gray-500 dark:text-gray-400 mb-6 uppercase tracking-wider">Scan to Connect</div>
                   <div className="flex justify-center">
-                    {/* QR Code - Force square 200x200 with overflow hidden */}
-                    <div 
-                      className="bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-black/30 border-2 border-gray-300 dark:border-gray-600 overflow-hidden"
+                    {/* QR Code PNG - 200x200px */}
+                    <img
+                      src={device.qr}
+                      alt="WireGuard QR Code"
+                      className="w-[200px] h-[200px] rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-black/30 border-2 border-gray-300 dark:border-gray-600 bg-white"
                       style={{ width: '200px', height: '200px' }}
-                    >
-                      <div
-                        dangerouslySetInnerHTML={{
-                          __html: device.qr
-                            .replace(/<svg/, '<svg width="200" height="200" viewBox="0 0 200 200" preserveAspectRatio="xMidYMid meet" style="display:block;width:200px;height:200px;">')
-                            .replace(/width="[^"]*"/g, '')
-                            .replace(/height="[^"]*"/g, '')
-                            .replace(/viewBox="[^"]*"/g, '')
-                        }}
-                      />
-                    </div>
+                    />
                   </div>
                   <div className="mt-6 space-y-2">
                     <div className="text-sm sm:text-base text-gray-600 dark:text-gray-300 font-medium">
