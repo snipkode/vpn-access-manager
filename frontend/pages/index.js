@@ -120,28 +120,41 @@ export default function App() {
         // Set user with complete profile data
         setUser(firebaseUser, idToken, userData);
 
-        // Check subscription status for onboarding flow
-        try {
-          const subData = await billingAPI.getSubscription();
-          console.log('📊 Subscription data:', subData);
-          setSubscription(subData.subscription || null);
+        // Check subscription status for onboarding flow with timeout
+        const fetchSubscriptionWithTimeout = async () => {
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Subscription fetch timeout')), 5000);
+          });
 
-          // Show onboarding for new users without active subscription
-          const isActive = subData.subscription?.status === 'active';
-          const isNewUser = !userData.lastPaymentAt && !userData.subscription_end_at;
+          const fetchPromise = billingAPI.getSubscription();
 
-          console.log('🎯 Onboarding check:', { isActive, isNewUser, hasSubscription: !!subData.subscription });
+          try {
+            console.log('📊 Fetching subscription data...');
+            const subData = await Promise.race([fetchPromise, timeoutPromise]);
+            console.log('📊 Subscription data:', subData);
+            setSubscription(subData.subscription || null);
 
-          if (!isActive && isNewUser) {
+            // Show onboarding for new users without active subscription
+            const isActive = subData.subscription?.status === 'active';
+            const isNewUser = !userData.lastPaymentAt && !userData.subscription_end_at;
+
+            console.log('🎯 Onboarding check:', { isActive, isNewUser, hasSubscription: !!subData.subscription });
+
+            if (!isActive && isNewUser) {
+              setShowOnboarding(true);
+            }
+          } catch (error) {
+            console.error('❌ Failed to fetch subscription:', error.message);
+            // Still show onboarding if we can't fetch subscription
             setShowOnboarding(true);
+          } finally {
+            // Always set subLoading to false after fetch completes (success or error)
+            console.log('✅ Subscription fetch completed, setting subLoading to false');
+            setSubLoading(false);
           }
-        } catch (error) {
-          console.error('❌ Failed to fetch subscription:', error.message);
-          // Still show onboarding if we can't fetch subscription
-          setShowOnboarding(true);
-        } finally {
-          setSubLoading(false);
-        }
+        };
+
+        fetchSubscriptionWithTimeout();
 
         // Auto redirect to dashboard based on role from Firestore
         const targetPage = userData.role === 'admin' ? 'admin-dashboard' : 'dashboard';
