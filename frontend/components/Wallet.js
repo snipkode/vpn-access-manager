@@ -7,7 +7,7 @@ import Icon from './ui/Icon';
 
 export default function Wallet({ token }) {
   const { showNotification } = useUIStore();
-  const { bankAccounts, plans, setBillingData } = useBillingStore();
+  const { plans, setBillingData } = useBillingStore();
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState([]);
   const [topups, setTopups] = useState([]);
@@ -147,7 +147,7 @@ export default function Wallet({ token }) {
           </div>
 
           {/* Bank Accounts Info */}
-          <BankAccountsDisplay bankAccounts={bankAccounts} />
+          <BankAccountsDisplay bankAccounts={bankAccountsLocal} />
 
           {/* Reusable Payment Form in topup mode */}
           <PaymentForm
