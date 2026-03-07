@@ -376,9 +376,10 @@ export default function LoginPage() {
               {/* Language Toggle */}
               <button
                 onClick={toggleLang}
-                className="px-3 py-1.5 text-sm font-medium text-gray-400 hover:text-white transition-colors whitespace-nowrap"
+                className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-semibold text-gray-300 hover:text-white transition-all whitespace-nowrap backdrop-blur-sm"
               >
-                {t.language}
+                <span className="text-base">{t.language.split(' ')[0]}</span>
+                <span className="text-xs opacity-70">{t.language.split(' ')[1]}</span>
               </button>
 
               {/* CTA Button */}
