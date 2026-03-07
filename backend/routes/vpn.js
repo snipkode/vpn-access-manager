@@ -117,7 +117,8 @@ function isValidDocId(id) {
 router.post('/generate', verifyAuth, async (req, res) => {
   try {
     const { uid } = req.user;
-    let { deviceName } = req.body;
+    // Support both camelCase and snake_case for device name
+    let deviceName = req.body.deviceName || req.body.device_name;
 
     // Log received device name
     console.log('🟢 Generate VPN config request:', {
