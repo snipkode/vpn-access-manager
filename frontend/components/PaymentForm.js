@@ -23,12 +23,24 @@ export default function PaymentForm({
   // Form state
   const [amount, setAmount] = useState(defaultAmount || (mode === 'topup' ? 50000 : plans[0]?.price || 50000));
   const [selectedPlan, setSelectedPlan] = useState(mode === 'plan' && plans[0]?.id ? plans[0].id : null);
-  const [bankFrom, setBankFrom] = useState('');
+  const [selectedBank, setSelectedBank] = useState(bankAccounts[0]?.id || '');
   const [transferDate, setTransferDate] = useState(new Date().toISOString().split('T')[0]); // Auto-set today
   const [notes, setNotes] = useState('');
+  const [copiedBankId, setCopiedBankId] = useState(null);
 
   // Get today's date for min attribute
   const today = new Date().toISOString().split('T')[0];
+
+  const handleCopyAccountNumber = async (bankId, accountNumber) => {
+    try {
+      await navigator.clipboard.writeText(accountNumber);
+      setCopiedBankId(bankId);
+      showNotification('Nomor rekening berhasil disalin!', 'success');
+      setTimeout(() => setCopiedBankId(null), 2000);
+    } catch (error) {
+      showNotification('Gagal menyalin nomor rekening', 'error');
+    }
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -69,6 +81,11 @@ export default function PaymentForm({
     }
   };
 
+  const handleBankChange = (bankId) => {
+    setSelectedBank(bankId);
+    setCopiedBankId(null); // Reset copy state when bank changes
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
@@ -91,16 +108,19 @@ export default function PaymentForm({
         throw new Error('Bukti transfer wajib diupload');
       }
 
+      // Get selected bank details
+      const selectedBankDetails = bankAccounts.find(b => b.id === selectedBank);
+
       // Create form data
       const formData = new FormData();
       formData.append('amount', amount.toString());
-      
+
       // Add plan info if in plan mode
       if (mode === 'plan' && selectedPlan) {
         formData.append('plan', selectedPlan);
       }
-      
-      formData.append('bank_from', bankFrom);
+
+      formData.append('bank_from', selectedBankDetails?.bank || '');
       formData.append('transfer_date', transferDate);
       formData.append('notes', notes || '');
       formData.append('proof', proofFile);
@@ -108,16 +128,16 @@ export default function PaymentForm({
       await billingAPI.submitPayment(formData);
 
       setUploadProgress(100);
-      const successMessage = mode === 'topup' 
+      const successMessage = mode === 'topup'
         ? '✅ Top-up berhasil dikirim! Menunggu persetujuan admin.'
         : '✅ Pembayaran berhasil dikirim! Menunggu persetujuan admin.';
-      
+
       showNotification(successMessage);
 
       // Reset form
       setProofFile(null);
       setProofPreview(null);
-      setBankFrom('');
+      setSelectedBank(bankAccounts[0]?.id || '');
       setTransferDate(new Date().toISOString().split('T')[0]); // Reset to today
       setNotes('');
       setAmount(defaultAmount || (mode === 'topup' ? 50000 : plans[0]?.price || 50000));
@@ -191,22 +211,21 @@ export default function PaymentForm({
         </p>
       </div>
 
-      {/* Bank From - Dropdown */}
+      {/* Bank Penerima - Dropdown with Account Number Display */}
       <div>
         <label className="block text-[10px] sm:text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5 sm:mb-2">
           <Icon name="account_balance" variant="round" size="small" className="text-[#007AFF] mr-1 sm:mr-1.5" />
-          Bank / E-Wallet Pengirim
+          Bank / E-Wallet Penerima
         </label>
         <select
-          value={bankFrom}
-          onChange={(e) => setBankFrom(e.target.value)}
-          className="w-full px-3 sm:px-4 py-[10px] sm:py-[12px] bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#38383A] rounded-lg sm:rounded-xl text-dark dark:text-white text-[14px] sm:text-[15px] focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 outline-none transition-all appearance-none cursor-pointer"
+          value={selectedBank}
+          onChange={(e) => handleBankChange(e.target.value)}
+          className="w-full px-3 sm:px-4 py-[10px] sm:py-[12px] bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#38383A] rounded-lg sm:rounded-xl text-dark dark:text-white text-[14px] sm:text-[15px] focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 outline-none transition-all appearance-none cursor-pointer mb-2"
           required
         >
-          <option value="">Pilih Bank / E-Wallet</option>
           {bankAccounts.length > 0 ? (
             bankAccounts.map((bank) => (
-              <option key={bank.id} value={bank.bank}>
+              <option key={bank.id} value={bank.id}>
                 {bank.bank} - {bank.account_name}
               </option>
             ))
@@ -223,6 +242,68 @@ export default function PaymentForm({
             </>
           )}
         </select>
+
+        {/* Selected Bank Account Number with Copy */}
+        {bankAccounts.length > 0 && selectedBank && (
+          <div className="bg-gradient-to-br from-[#F2F2F7] dark:from-[#1C1C1E] to-white dark:to-[#2C2C2E] rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-100 dark:border-[#38383A] shadow-sm">
+            <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 bg-white dark:bg-[#2C2C2E] rounded-lg sm:rounded-xl flex items-center justify-center text-2xl sm:text-3xl shadow-sm flex-shrink-0">
+                🏦
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[14px] sm:text-[17px] font-bold text-dark dark:text-white tracking-tight truncate">
+                  {bankAccounts.find(b => b.id === selectedBank)?.bank}
+                </div>
+                <div className="text-[12px] sm:text-[13px] text-gray-400 dark:text-gray-500 font-medium truncate">
+                  {bankAccounts.find(b => b.id === selectedBank)?.account_name}
+                </div>
+              </div>
+            </div>
+            <div className="bg-white dark:bg-[#2C2C2E] rounded-md sm:rounded-xl p-2.5 sm:p-3 border border-gray-100 dark:border-[#38383A]">
+              <div className="text-[9px] sm:text-[11px] text-gray-400 dark:text-gray-500 font-semibold uppercase tracking-wider mb-1">Nomor Rekening</div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 text-lg sm:text-2xl font-mono font-bold text-dark dark:text-white tracking-tight truncate">
+                  {bankAccounts.find(b => b.id === selectedBank)?.account_number}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopyAccountNumber(selectedBank, bankAccounts.find(b => b.id === selectedBank)?.account_number)}
+                  className={`flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-[11px] font-semibold transition-all flex-shrink-0 ${
+                    copiedBankId === selectedBank
+                      ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                      : 'bg-[#007AFF]/10 text-[#007AFF] hover:bg-[#007AFF]/20 active:scale-95'
+                  }`}
+                >
+                  {copiedBankId === selectedBank ? (
+                    <>
+                      <Icon name="check_circle" variant="round" size="small" className="w-4 h-4" />
+                      <span className="hidden sm:inline">Disalin!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="content_copy" variant="round" size="small" className="w-4 h-4" />
+                      <span className="hidden sm:inline">Salin</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+            {bankAccounts.find(b => b.id === selectedBank)?.description && (
+              <p className="text-[12px] sm:text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed mt-2 sm:mt-3">
+                {bankAccounts.find(b => b.id === selectedBank)?.description}
+              </p>
+            )}
+            {bankAccounts.find(b => b.id === selectedBank)?.qr_code_url && (
+              <div className="mt-2 sm:mt-3 text-center">
+                <img
+                  src={bankAccounts.find(b => b.id === selectedBank)?.qr_code_url}
+                  alt="QR Code"
+                  className="max-h-28 sm:max-h-36 mx-auto rounded-md sm:rounded-lg shadow-sm border border-gray-100 dark:border-[#38383A]"
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Transfer Date */}
