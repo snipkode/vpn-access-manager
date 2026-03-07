@@ -5,7 +5,7 @@ import { useRequestPending } from '../components/RequestBlockingOverlay';
 
 export default function Dashboard({ token, userData }) {
   const { devices, setDevices, selectedDevice, setSelectedDevice, updateDeviceConfig } = useVpnStore();
-  const { showNotification } = useUIStore();
+  const { showNotification, setActivePage } = useUIStore();
   const [deviceName, setDeviceName] = useState('');
   const [loading, setLoading] = useState(true);
   const [fetchingConfig, setFetchingConfig] = useState(false);
@@ -233,6 +233,59 @@ export default function Dashboard({ token, userData }) {
 
   return (
     <div className="max-w-[700px] mx-auto space-y-6">
+      {/* No Subscription Banner */}
+      {!subLoading && (!subscription || !subscription.active) && (
+        <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 to-cyan-600 rounded-2xl p-6 shadow-xl">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute inset-0" style={{
+              backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
+              backgroundSize: '20px 20px'
+            }} />
+          </div>
+          
+          <div className="relative z-10">
+            <div className="flex items-start gap-4">
+              {/* Icon */}
+              <div className="flex-shrink-0 w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              
+              {/* Content */}
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-white mb-2">
+                  Activate Your VPN Access
+                </h3>
+                <p className="text-white/90 text-sm mb-4 leading-relaxed">
+                  Subscribe now to get unlimited access to our premium VPN service. 
+                  Fast, secure, and reliable connection starting from Rp 50,000/month.
+                </p>
+                
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {['⚡ Lightning Fast', '🔒 AES-256 Encryption', '🌍 Global Servers', '📱 Multi-Device'].map((feature, i) => (
+                    <span key={i} className="inline-flex items-center px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs font-medium text-white">
+                      {feature}
+                    </span>
+                  ))}
+                </div>
+                
+                <button
+                  onClick={() => setActivePage('payment')}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-white text-blue-600 rounded-xl font-semibold text-sm hover:bg-white/90 transition-all transform hover:scale-105 shadow-lg"
+                >
+                  <span>Subscribe Now</span>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Subscription Card */}
       {subscription && !subLoading && (
         <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-5 sm:p-6 shadow-sm border border-gray-100 dark:border-[#38383A]">
@@ -275,7 +328,29 @@ export default function Dashboard({ token, userData }) {
       <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-5 sm:p-6 shadow-sm border border-gray-100 dark:border-[#38383A]">
         <h2 className="text-sm sm:text-base font-semibold text-dark dark:text-white mb-4">Add New Device</h2>
 
-        {!userData?.vpn_enabled ? (
+        {/* Show lock screen when no subscription */}
+        {!subLoading && (!subscription || !subscription.active) ? (
+          <div className="bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#38383A] rounded-xl p-6 sm:p-8 text-center">
+            <div className="w-16 h-16 bg-gray-200 dark:bg-[#38383A] rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <div className="text-sm sm:text-base font-semibold text-dark dark:text-white mb-1">Subscription Required</div>
+            <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-4">
+              You need an active subscription to add VPN devices
+            </div>
+            <button
+              onClick={() => setActivePage('payment')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white dark:bg-primary-600 rounded-xl text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary-700 transition-all"
+            >
+              <span>View Plans</span>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </button>
+          </div>
+        ) : !userData?.vpn_enabled ? (
           <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-200/30 rounded-xl p-5 sm:p-6 text-center">
             <span className="text-3xl sm:text-4xl mb-2 sm:mb-3 block">⚠️</span>
             <div className="text-sm sm:text-base font-semibold text-dark dark:text-white mb-1">VPN Access Disabled</div>
@@ -322,7 +397,20 @@ export default function Dashboard({ token, userData }) {
           <span className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 font-medium">{devices.length}/3</span>
         </div>
 
-        {devices.length === 0 ? (
+        {/* Show lock screen when no subscription */}
+        {!subLoading && (!subscription || !subscription.active) ? (
+          <div className="bg-gray-50 dark:bg-[#2C2C2E] rounded-xl p-6 sm:p-10 text-center">
+            <div className="w-16 h-16 bg-gray-200 dark:bg-[#38383A] rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <div className="text-sm sm:text-base font-semibold text-dark dark:text-white mb-1">Subscription Required</div>
+            <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+              Subscribe to view and manage your devices
+            </div>
+          </div>
+        ) : devices.length === 0 ? (
           <div className="bg-gray-50 dark:bg-[#2C2C2E] rounded-xl p-6 sm:p-10 text-center">
             <span className="text-4xl sm:text-5xl mb-3 sm:mb-4 block opacity-50">📱</span>
             <div className="text-sm sm:text-base font-semibold text-dark dark:text-white mb-1">No devices yet</div>

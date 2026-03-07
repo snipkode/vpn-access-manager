@@ -1,9 +1,6 @@
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { signInWithPopup } from 'firebase/auth';
-import { auth, googleProvider } from '../lib/firebase';
-import { useUIStore } from '../store';
 
 const translations = {
   en: {
@@ -248,34 +245,11 @@ const translations = {
   }
 };
 
-// Design Tokens
-const colors = {
-  primary: {
-    50: '#eff6ff',
-    100: '#dbeafe',
-    200: '#bfdbfe',
-    300: '#93c5fd',
-    400: '#60a5fa',
-    500: '#3b82f6',
-    600: '#2563eb',
-    700: '#1d4ed8',
-    800: '#1e40af',
-    900: '#1e3a8a'
-  },
-  cyan: {
-    400: '#22d3ee',
-    500: '#06b6d4',
-    600: '#0891b2'
-  }
-};
-
-export default function LoginPage() {
+export default function LandingPage() {
   const router = useRouter();
-  const { showNotification } = useUIStore();
   const [lang, setLang] = useState('en');
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [loggingIn, setLoggingIn] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -283,7 +257,7 @@ export default function LoginPage() {
     // Handle referral code from URL - save to localStorage
     if (router.isReady && router.query.ref) {
       localStorage.setItem('pending_referral_code', router.query.ref);
-      console.log('💾 Referral code saved from login page:', router.query.ref);
+      console.log('💾 Referral code saved from URL:', router.query.ref);
     }
 
     const handleScroll = () => {
@@ -303,32 +277,9 @@ export default function LoginPage() {
     return refCode ? `${basePath}?ref=${refCode}` : basePath;
   };
 
-  const handleLogin = async () => {
-    try {
-      setLoggingIn(true);
-      await signInWithPopup(auth, googleProvider);
-      showNotification('Login successful! Redirecting...');
-      // Redirect will happen via auth state change in index.js
-      router.push('/');
-    } catch (error) {
-      showNotification('Login failed: ' + error.message, 'error');
-      setLoggingIn(false);
-    }
-  };
-
-  // Show loading state
-  if (loggingIn) {
-    return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
-        <div className="w-10 h-10 border-4 border-white/10 border-t-primary rounded-full animate-spin" />
-        <p className="text-gray-400 text-sm">Signing in with Google...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-black text-white antialiased">
-      {/* Gradient Background - Fixed positioning */}
+      {/* Gradient Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl opacity-50" />
         <div className="absolute top-1/2 -left-40 w-96 h-96 bg-cyan-600/10 rounded-full blur-3xl opacity-30" />
@@ -363,13 +314,21 @@ export default function LoginPage() {
                 {t.language}
               </button>
 
+              {/* Login Link */}
+              <Link
+                href={getLinkWithRef('/login')}
+                className="hidden sm:block px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
+              >
+                Login
+              </Link>
+
               {/* CTA Button */}
-              <button
-                onClick={handleLogin}
+              <Link
+                href={getLinkWithRef('/login')}
                 className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-xl text-sm font-semibold transition-all transform hover:scale-105 shadow-lg shadow-blue-500/25"
               >
                 {t.ctaPrimary}
-              </button>
+              </Link>
             </div>
           </div>
         </div>
@@ -413,12 +372,12 @@ export default function LoginPage() {
             <div className={`flex flex-col sm:flex-row gap-4 justify-center items-center mb-16 transition-all duration-700 delay-400 ${
               mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
             }`}>
-              <button
-                onClick={handleLogin}
+              <Link
+                href={getLinkWithRef('/login')}
                 className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-2xl font-semibold text-base transition-all transform hover:scale-105 shadow-xl shadow-blue-500/25"
               >
                 {t.ctaPrimary}
-              </button>
+              </Link>
               <a
                 href="#pricing"
                 className="w-full sm:w-auto px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl font-semibold text-base transition-all backdrop-blur-sm"
@@ -534,8 +493,8 @@ export default function LoginPage() {
                   ))}
                 </ul>
 
-                <button
-                  onClick={handleLogin}
+                <Link
+                  href={getLinkWithRef('/login')}
                   className={`block w-full py-4 rounded-xl font-semibold text-center transition-all ${
                     plan.popular
                       ? 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 shadow-lg shadow-blue-500/25'
@@ -543,7 +502,7 @@ export default function LoginPage() {
                   }`}
                 >
                   {t.ctaPrimary}
-                </button>
+                </Link>
               </div>
             ))}
           </div>
@@ -565,12 +524,12 @@ export default function LoginPage() {
               <p className="text-lg text-gray-400 mb-8">
                 {t.ctaSubtitle}
               </p>
-              <button
-                onClick={handleLogin}
+              <Link
+                href={getLinkWithRef('/login')}
                 className="inline-block px-12 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-2xl font-semibold text-lg transition-all transform hover:scale-105 shadow-xl shadow-blue-500/25"
               >
                 {t.ctaButton}
-              </button>
+              </Link>
               <p className="text-sm text-gray-500 mt-4">
                 {t.ctaNote}
               </p>
@@ -604,7 +563,7 @@ export default function LoginPage() {
               <ul className="space-y-3 text-sm text-gray-500">
                 <li><a href="#features" className="hover:text-white transition-colors">{t.footerFeatures}</a></li>
                 <li><a href="#pricing" className="hover:text-white transition-colors">{t.footerPricing}</a></li>
-                <li><a href={getLinkWithRef('/login')} className="hover:text-white transition-colors">{t.footerDownload}</a></li>
+                <li><Link href={getLinkWithRef('/login')} className="hover:text-white transition-colors">{t.footerDownload}</Link></li>
               </ul>
             </div>
 
