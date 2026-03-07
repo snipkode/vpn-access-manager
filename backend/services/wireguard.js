@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+import fs from 'fs';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -49,23 +50,52 @@ export function generateKeypair() {
 export function addPeer(publicKey, ipAddress) {
   try {
     const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
+    const CONFIG_PATH = `/etc/wireguard/${WG_INTERFACE}.conf`;
 
     console.log(`Adding WireGuard peer: ${publicKey} with IP: ${ipAddress}`);
 
-    // Add peer to running interface
+    // Step 1: Add peer to running interface
     execSync(`wg set ${WG_INTERFACE} peer ${publicKey} allowed-ips ${ipAddress}/32`, {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 5000
     });
 
-    // Save current config (including new peer) to config file using bash
-    execSync(`bash -c "wg showconf ${WG_INTERFACE} > /etc/wireguard/${WG_INTERFACE}.conf"`, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 5000
-    });
+    // Step 2: Manually append peer to config file
+    // Read existing config
+    let configContent = '';
+    try {
+      configContent = fs.readFileSync(CONFIG_PATH, 'utf8');
+    } catch (readError) {
+      // Config file doesn't exist, create basic structure
+      configContent = `[Interface]\n`;
+      configContent += `PrivateKey = ${process.env.WG_SERVER_PRIVATE_KEY || ''}\n`;
+      configContent += `Address = ${process.env.WG_SERVER_IP || '10.0.0.1'}/24\n`;
+      configContent += `ListenPort = ${process.env.WG_PORT || '51820'}\n\n`;
+    }
 
-    console.log('WireGuard peer added successfully');
-    return true;
+    // Check if peer already exists in config
+    if (!configContent.includes(`PublicKey = ${publicKey}`)) {
+      // Append new peer
+      configContent += `\n[Peer]\n`;
+      configContent += `PublicKey = ${publicKey}\n`;
+      configContent += `AllowedIPs = ${ipAddress}/32\n`;
+
+      // Write updated config
+      fs.writeFileSync(CONFIG_PATH, configContent);
+      console.log(`Peer appended to config file: ${CONFIG_PATH}`);
+    } else {
+      console.log(`Peer already exists in config: ${publicKey}`);
+    }
+
+    // Step 3: Verify peer was added
+    const currentConfig = fs.readFileSync(CONFIG_PATH, 'utf8');
+    if (currentConfig.includes(`PublicKey = ${publicKey}`)) {
+      console.log('✅ WireGuard peer added successfully');
+      return true;
+    } else {
+      throw new Error('Peer not found in config after adding');
+    }
+
   } catch (error) {
     const errorMsg = `Failed to add WireGuard peer: ${error.message}`;
     console.error(errorMsg);
