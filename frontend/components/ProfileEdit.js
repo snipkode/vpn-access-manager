@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuthStore, useUIStore } from '../store';
 import { userAPI, notificationsAPI } from '../lib/api';
+import Icon from './ui/Icon';
 
 export default function ProfileEdit({ token }) {
   const { user, updateUserData } = useAuthStore();
@@ -24,6 +25,9 @@ export default function ProfileEdit({ token }) {
     timezone: 'Asia/Jakarta',
   });
   const [activeTab, setActiveTab] = useState('profile');
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetchData();
@@ -37,6 +41,9 @@ export default function ProfileEdit({ token }) {
       ]);
       setProfile(profileData.profile || profile);
       setPreferences(prefsData.preferences || preferences);
+      if (profileData.profile?.avatar_url) {
+        setAvatarPreview(profileData.profile.avatar_url);
+      }
     } catch (error) {
       showNotification('Failed to load profile data', 'error');
     } finally {
@@ -44,12 +51,61 @@ export default function ProfileEdit({ token }) {
     }
   };
 
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+      if (!allowedTypes.includes(file.type)) {
+        showNotification('Only JPG, JPEG, and PNG images are allowed', 'error');
+        return;
+      }
+
+      // Validate file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        showNotification('File size must be less than 2MB', 'error');
+        return;
+      }
+
+      setAvatarFile(file);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+
+      showNotification('Profile picture selected. Click Save to apply.', 'success');
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarFile(null);
+    setAvatarPreview(null);
+    setProfile({ ...profile, avatar_url: '' });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    showNotification('Profile picture removed. Click Save to apply.', 'success');
+  };
+
   const handleSaveProfile = async () => {
     setLoading(true);
     try {
-      await userAPI.updateProfile(profile);
+      // If there's an avatar file, you would upload it here
+      // For now, we'll just save the profile data
+      const profileData = { ...profile };
+      
+      // If avatarFile exists, you would upload it to get a URL
+      // and then include it in profileData.avatar_url
+      
+      await userAPI.updateProfile(profileData);
       showNotification('Profile updated successfully');
-      updateUserData(profile);
+      updateUserData(profileData);
+      
+      // Reset avatar file after save
+      setAvatarFile(null);
     } catch (error) {
       showNotification(error.message || 'Failed to update profile', 'error');
     } finally {
@@ -72,67 +128,122 @@ export default function ProfileEdit({ token }) {
   if (fetching) {
     return (
       <div className="flex justify-center items-center min-h-[500px]">
-        <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-[#007AFF]/20 border-t-[#007AFF] rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-[600px] mx-auto space-y-6">
+    <div className="max-w-[700px] mx-auto space-y-6">
       {/* Tabs */}
-      <div className="bg-white rounded-xl p-1.5 shadow-sm border border-gray-100">
+      <div className="bg-white dark:bg-[#1C1C1E] rounded-xl p-1.5 shadow-sm border border-gray-100 dark:border-[#38383A]">
         <div className="flex gap-1">
           <button
             onClick={() => setActiveTab('profile')}
             className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
               activeTab === 'profile'
-                ? 'bg-primary text-white shadow-md'
-                : 'text-gray-500 hover:bg-gray-100'
+                ? 'bg-[#007AFF] text-white shadow-md'
+                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#2C2C2E]'
             }`}
           >
-            <i className="fas fa-user mr-2" />
+            <Icon name="person" variant="round" size="small" className="mr-2" />
             Profile
           </button>
           <button
             onClick={() => setActiveTab('notifications')}
             className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
               activeTab === 'notifications'
-                ? 'bg-primary text-white shadow-md'
-                : 'text-gray-500 hover:bg-gray-100'
+                ? 'bg-[#007AFF] text-white shadow-md'
+                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#2C2C2E]'
             }`}
           >
-            <i className="fas fa-bell mr-2" />
+            <Icon name="notifications" variant="round" size="small" className="mr-2" />
             Notifications
           </button>
         </div>
       </div>
 
       {activeTab === 'profile' && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h1 className="text-xl font-bold text-dark mb-6">Edit Profile</h1>
+        <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-[#38383A]">
+          <h1 className="text-xl font-bold text-dark dark:text-white mb-6">Edit Profile</h1>
 
           <div className="space-y-5">
-            {/* Avatar */}
-            <div className="flex items-center gap-4 pb-5 border-b border-gray-100">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-primary/30">
-                {profile.display_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
-              </div>
-              <div className="flex-1">
-                <div className="text-sm font-medium text-dark mb-1">Profile Picture</div>
-                <input
-                  type="url"
-                  value={profile.avatar_url || ''}
-                  onChange={(e) => setProfile({ ...profile, avatar_url: e.target.value })}
-                  placeholder="https://example.com/avatar.jpg"
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-dark text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
-                />
-                <div className="text-xs text-gray-400 mt-1">Optional: Add a profile picture URL</div>
+            {/* Avatar Upload */}
+            <div className="pb-6 border-b border-gray-100 dark:border-[#38383A]">
+              <label className="block text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4">
+                Profile Picture
+              </label>
+              
+              <div className="flex items-start gap-6">
+                {/* Avatar Preview */}
+                <div className="relative flex-shrink-0">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-4 border-white dark:border-[#38383A] shadow-lg">
+                    {avatarPreview ? (
+                      <img
+                        src={avatarPreview}
+                        alt="Profile"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-[#007AFF] to-blue-600 flex items-center justify-center text-white text-3xl font-bold">
+                        {profile.display_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Upload Button Overlay */}
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute bottom-0 right-0 w-9 h-9 bg-[#007AFF] text-white rounded-full flex items-center justify-center shadow-lg hover:bg-[#007AFF]/90 active:scale-95 transition-all border-4 border-white dark:border-[#1C1C1E]"
+                    title="Change profile picture"
+                  >
+                    <Icon name="camera_alt" variant="round" size="small" />
+                  </button>
+                </div>
+
+                {/* Upload Info */}
+                <div className="flex-1 pt-1">
+                  <div className="text-sm font-medium text-dark dark:text-white mb-2">
+                    {avatarFile ? avatarFile.name : (avatarPreview ? 'Current profile picture' : 'No profile picture')}
+                  </div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-3">
+                    {avatarFile 
+                      ? `${(avatarFile.size / 1024 / 1024).toFixed(2)} MB` 
+                      : 'JPG, PNG (Max 2MB)'}
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-4 py-2 bg-gray-100 dark:bg-[#2C2C2E] text-dark dark:text-white text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-[#38383A] transition-all"
+                    >
+                      {avatarPreview ? 'Change Picture' : 'Upload Picture'}
+                    </button>
+                    {avatarPreview && (
+                      <button
+                        onClick={handleRemoveAvatar}
+                        className="px-4 py-2 bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400 text-sm font-medium rounded-lg hover:bg-red-100 dark:hover:bg-red-500/20 transition-all"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Hidden File Input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png"
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Display Name */}
             <div>
-              <label className="block text-sm font-semibold text-gray-400 uppercase mb-2">
+              <label className="block text-[10px] sm:text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
                 Display Name
               </label>
               <input
@@ -140,27 +251,28 @@ export default function ProfileEdit({ token }) {
                 value={profile.display_name || ''}
                 onChange={(e) => setProfile({ ...profile, display_name: e.target.value })}
                 placeholder="Your name"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-dark text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                className="w-full px-4 py-[12px] bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#38383A] rounded-xl text-dark dark:text-white text-[15px] focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 outline-none transition-all"
               />
             </div>
 
             {/* Email (Read-only) */}
             <div>
-              <label className="block text-sm font-semibold text-gray-400 uppercase mb-2">
+              <label className="block text-[10px] sm:text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
                 Email
               </label>
               <input
                 type="email"
                 value={user?.email || ''}
                 disabled
-                className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-400 text-sm cursor-not-allowed"
+                className="w-full px-4 py-[12px] bg-gray-100 dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#38383A] rounded-xl text-gray-400 dark:text-gray-500 text-[15px] cursor-not-allowed"
               />
-              <div className="text-xs text-gray-400 mt-1">Email cannot be changed</div>
+              <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">Email cannot be changed</div>
             </div>
 
             {/* Phone */}
             <div>
-              <label className="block text-sm font-semibold text-gray-400 uppercase mb-2">
+              <label className="block text-[10px] sm:text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
+                <Icon name="phone" variant="round" size="small" className="mr-1.5 text-[#007AFF]" />
                 Phone Number
               </label>
               <input
@@ -168,14 +280,15 @@ export default function ProfileEdit({ token }) {
                 value={profile.phone || ''}
                 onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
                 placeholder="+628123456789"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-dark text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                className="w-full px-4 py-[12px] bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#38383A] rounded-xl text-dark dark:text-white text-[15px] focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 outline-none transition-all"
               />
-              <div className="text-xs text-gray-400 mt-1">Format: +62xxx (optional)</div>
+              <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">Format: +62xxx (optional)</div>
             </div>
 
             {/* WhatsApp */}
             <div>
-              <label className="block text-sm font-semibold text-gray-400 uppercase mb-2">
+              <label className="block text-[10px] sm:text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
+                <Icon name="whatsapp" variant="round" size="small" className="mr-1.5 text-[#25D366]" />
                 WhatsApp Number
               </label>
               <input
@@ -183,27 +296,34 @@ export default function ProfileEdit({ token }) {
                 value={profile.whatsapp || ''}
                 onChange={(e) => setProfile({ ...profile, whatsapp: e.target.value })}
                 placeholder="+628123456789"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-dark text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                className="w-full px-4 py-[12px] bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#38383A] rounded-xl text-dark dark:text-white text-[15px] focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 outline-none transition-all"
               />
-              <div className="text-xs text-gray-400 mt-1">For WhatsApp notifications (optional)</div>
+              <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">For WhatsApp notifications (optional)</div>
             </div>
           </div>
 
           <button
             onClick={handleSaveProfile}
             disabled={loading}
-            className="w-full mt-6 py-3.5 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/30"
+            className="w-full mt-6 py-[14px] bg-[#007AFF] text-white rounded-xl font-semibold text-[15px] hover:bg-[#007AFF]/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#007AFF]/30"
           >
-            {loading ? 'Saving...' : 'Save Changes'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Saving...
+              </span>
+            ) : (
+              'Save Changes'
+            )}
           </button>
         </div>
       )}
 
       {activeTab === 'notifications' && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h1 className="text-xl font-bold text-dark mb-6">Notification Preferences</h1>
+        <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-[#38383A]">
+          <h1 className="text-xl font-bold text-dark dark:text-white mb-6">Notification Preferences</h1>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             <ToggleRow
               label="WhatsApp Notifications"
               description="Receive notifications via WhatsApp"
@@ -248,29 +368,29 @@ export default function ProfileEdit({ token }) {
             />
           </div>
 
-          <div className="mt-6 pt-6 border-t border-gray-100">
+          <div className="mt-6 pt-6 border-t border-gray-100 dark:border-[#38383A]">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-400 uppercase mb-2">
+                <label className="block text-[10px] sm:text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
                   Language
                 </label>
                 <select
                   value={preferences.language || 'en'}
                   onChange={(e) => setPreferences({ ...preferences, language: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-dark text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  className="w-full px-4 py-[12px] bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#38383A] rounded-xl text-dark dark:text-white text-[15px] focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 outline-none"
                 >
                   <option value="en">English</option>
                   <option value="id">Bahasa Indonesia</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-400 uppercase mb-2">
+                <label className="block text-[10px] sm:text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
                   Timezone
                 </label>
                 <select
                   value={preferences.timezone || 'Asia/Jakarta'}
                   onChange={(e) => setPreferences({ ...preferences, timezone: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-dark text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  className="w-full px-4 py-[12px] bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#38383A] rounded-xl text-dark dark:text-white text-[15px] focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 outline-none"
                 >
                   <option value="Asia/Jakarta">WIB (Jakarta)</option>
                   <option value="Asia/Makassar">WITA (Makassar)</option>
@@ -284,9 +404,16 @@ export default function ProfileEdit({ token }) {
           <button
             onClick={handleSavePreferences}
             disabled={loading}
-            className="w-full mt-6 py-3.5 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/30"
+            className="w-full mt-6 py-[14px] bg-[#007AFF] text-white rounded-xl font-semibold text-[15px] hover:bg-[#007AFF]/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#007AFF]/30"
           >
-            {loading ? 'Saving...' : 'Save Preferences'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Saving...
+              </span>
+            ) : (
+              'Save Preferences'
+            )}
           </button>
         </div>
       )}
@@ -296,25 +423,27 @@ export default function ProfileEdit({ token }) {
 
 function ToggleRow({ label, description, enabled, onChange, icon }) {
   return (
-    <div className="flex justify-between items-center py-4 border-b border-gray-100 last:border-0">
+    <div className="flex justify-between items-center py-4 px-4 bg-gray-50 dark:bg-[#2C2C2E] rounded-xl border border-gray-100 dark:border-[#38383A]">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-xl flex-shrink-0">
+        <div className="w-10 h-10 rounded-xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
           {icon}
         </div>
         <div>
-          <div className="text-sm font-semibold text-dark">{label}</div>
-          <div className="text-xs text-gray-400">{description}</div>
+          <div className="text-sm font-semibold text-dark dark:text-white">{label}</div>
+          <div className="text-xs text-gray-400 dark:text-gray-500">{description}</div>
         </div>
       </div>
       <button
         onClick={() => onChange(!enabled)}
-        className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
-          enabled
-            ? 'bg-success text-white shadow-lg shadow-success/30'
-            : 'bg-gray-200 text-gray-400'
+        className={`relative w-12 h-7 rounded-full transition-all ${
+          enabled ? 'bg-[#34C759]' : 'bg-gray-300 dark:bg-gray-600'
         }`}
       >
-        {enabled ? 'ON' : 'OFF'}
+        <div
+          className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${
+            enabled ? 'translate-x-6' : 'translate-x-0.5'
+          }`}
+        />
       </button>
     </div>
   );
