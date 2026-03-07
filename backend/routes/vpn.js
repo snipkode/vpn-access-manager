@@ -3,6 +3,15 @@ import QRCode from 'qrcode';
 import { auth, db } from '../config/firebase.js';
 import { generateKeypair, addPeer, generateConfig, getNextAvailableIP, isWireGuardHealthy, disablePeer, reactivatePeer } from '../services/wireguard.js';
 import { rateLimiters } from '../middleware/rateLimit.js';
+import {
+  successResponse,
+  errorResponse,
+  unauthorizedResponse,
+  forbiddenResponse,
+  notFoundResponse,
+  validationErrorResponse,
+  serverErrorResponse,
+} from '../utils/apiResponse.js';
 
 const router = express.Router();
 const MAX_DEVICES = 3;
@@ -20,7 +29,7 @@ const verifyAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return unauthorizedResponse(res, 'Unauthorized - No token provided');
     }
 
     const token = authHeader.split('Bearer ')[1];
@@ -28,7 +37,8 @@ const verifyAuth = async (req, res, next) => {
     req.user = decodedToken;
     next();
   } catch (error) {
-    res.status(401).json({ error: 'Invalid token', details: error.message });
+    console.error('Auth error:', error.message);
+    return unauthorizedResponse(res, 'Invalid token');
   }
 };
 

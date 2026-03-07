@@ -1,5 +1,6 @@
 import rateLimit from 'express-rate-limit';
 import { auth, db } from '../config/firebase.js';
+import { rateLimitResponse } from '../utils/apiResponse.js';
 
 // Store for rate limiting (in production, use Redis)
 const store = new Map();
@@ -47,17 +48,8 @@ function createRateLimiter({ windowMs, max, message, keyGenerator }) {
     handler: (req, res, next, options) => {
       const retryAfter = Math.ceil(options.windowMs / 1000);
       
-      // Set standard Retry-After header
-      res.set('Retry-After', retryAfter.toString());
-      
-      // Send 429 with proper response
-      res.status(429).json({
-        error: 'Too many requests',
-        message: options.message.message || 'Please try again later',
-        code: 'RATE_LIMIT',
-        status: 429,
-        retryAfter: retryAfter,
-      });
+      // Use standard rate limit response
+      return rateLimitResponse(res, retryAfter, options.message.message);
     },
   });
 }
