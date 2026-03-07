@@ -60,8 +60,6 @@ export default function App() {
   const { activePage, setActivePage, showNotification } = useUIStore();
   const [initialized, setInitialized] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [subscription, setSubscription] = useState(null);
-  const [subLoading, setSubLoading] = useState(true);
 
   // Initialize Firebase auth + Firestore user data
   useEffect(() => {
@@ -120,41 +118,10 @@ export default function App() {
         // Set user with complete profile data
         setUser(firebaseUser, idToken, userData);
 
-        // Check subscription status for onboarding flow with timeout
-        const fetchSubscriptionWithTimeout = async () => {
-          const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Subscription fetch timeout')), 5000);
-          });
-
-          const fetchPromise = billingAPI.getSubscription();
-
-          try {
-            console.log('📊 Fetching subscription data...');
-            const subData = await Promise.race([fetchPromise, timeoutPromise]);
-            console.log('📊 Subscription data:', subData);
-            setSubscription(subData.subscription || null);
-
-            // Show onboarding for new users without active subscription
-            const isActive = subData.subscription?.status === 'active';
-            const isNewUser = !userData.lastPaymentAt && !userData.subscription_end_at;
-
-            console.log('🎯 Onboarding check:', { isActive, isNewUser, hasSubscription: !!subData.subscription });
-
-            if (!isActive && isNewUser) {
-              setShowOnboarding(true);
-            }
-          } catch (error) {
-            console.error('❌ Failed to fetch subscription:', error.message);
-            // Still show onboarding if we can't fetch subscription
-            setShowOnboarding(true);
-          } finally {
-            // Always set subLoading to false after fetch completes (success or error)
-            console.log('✅ Subscription fetch completed, setting subLoading to false');
-            setSubLoading(false);
-          }
-        };
-
-        fetchSubscriptionWithTimeout();
+        // Skip subscription fetch here - let Dashboard/Onboarding handle it
+        // This prevents blocking the initial load
+        setSubLoading(false);
+        console.log('✅ User initialized, skipping subscription fetch in index.js');
 
         // Auto redirect to dashboard based on role from Firestore
         const targetPage = userData.role === 'admin' ? 'admin-dashboard' : 'dashboard';
@@ -263,7 +230,7 @@ export default function App() {
   };
 
   // Show loading screen
-  if (loading || !initialized || subLoading) {
+  if (loading || !initialized) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
         <div className="w-10 h-10 border-4 border-white/10 border-t-primary rounded-full animate-spin" />
@@ -281,6 +248,14 @@ export default function App() {
         <p className="text-gray-400 text-sm">Redirecting...</p>
       </div>
     );
+  }
+
+  // Show onboarding for new users (check from userData without API fetch)
+  // Onboarding will be shown if user has no subscription_end_at (never subscribed)
+  const shouldShowOnboarding = !userData?.subscription_end_at && userData?.role === 'user';
+  
+  if (shouldShowOnboarding && !showOnboarding) {
+    setShowOnboarding(true);
   }
 
   // Show onboarding for users without active subscription
