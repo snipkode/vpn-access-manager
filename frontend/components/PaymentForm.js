@@ -24,8 +24,11 @@ export default function PaymentForm({
   const [amount, setAmount] = useState(defaultAmount || (mode === 'topup' ? 50000 : plans[0]?.price || 50000));
   const [selectedPlan, setSelectedPlan] = useState(mode === 'plan' && plans[0]?.id ? plans[0].id : null);
   const [bankFrom, setBankFrom] = useState('');
-  const [transferDate, setTransferDate] = useState('');
+  const [transferDate, setTransferDate] = useState(new Date().toISOString().split('T')[0]); // Auto-set today
   const [notes, setNotes] = useState('');
+
+  // Get today's date for min attribute
+  const today = new Date().toISOString().split('T')[0];
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -115,7 +118,7 @@ export default function PaymentForm({
       setProofFile(null);
       setProofPreview(null);
       setBankFrom('');
-      setTransferDate('');
+      setTransferDate(new Date().toISOString().split('T')[0]); // Reset to today
       setNotes('');
       setAmount(defaultAmount || (mode === 'topup' ? 50000 : plans[0]?.price || 50000));
       if (mode === 'plan' && plans[0]) {
@@ -188,20 +191,36 @@ export default function PaymentForm({
         </p>
       </div>
 
-      {/* Bank From */}
+      {/* Bank From - Dropdown */}
       <div>
         <label className="block text-[10px] sm:text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5 sm:mb-2">
           <Icon name="account_balance" variant="round" size="small" className="text-[#007AFF] mr-1 sm:mr-1.5" />
           Bank / E-Wallet Pengirim
         </label>
-        <input
-          type="text"
+        <select
           value={bankFrom}
           onChange={(e) => setBankFrom(e.target.value)}
-          placeholder="BCA, Mandiri, GoPay, OVO, dll"
-          className="w-full px-3 sm:px-4 py-[10px] sm:py-[12px] bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#38383A] rounded-lg sm:rounded-xl text-dark dark:text-white text-[14px] sm:text-[15px] focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 outline-none transition-all placeholder:text-gray-300 dark:placeholder:text-gray-500"
+          className="w-full px-3 sm:px-4 py-[10px] sm:py-[12px] bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#38383A] rounded-lg sm:rounded-xl text-dark dark:text-white text-[14px] sm:text-[15px] focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 outline-none transition-all appearance-none cursor-pointer"
           required
-        />
+        >
+          <option value="">Pilih Bank / E-Wallet</option>
+          {bankAccounts.length > 0 ? (
+            bankAccounts.map((bank) => (
+              <option key={bank.id} value={bank.bank}>
+                {bank.bank} - {bank.account_name}
+              </option>
+            ))
+          ) : (
+            <option value="BCA">BCA</option>
+            <option value="Mandiri">Mandiri</option>
+            <option value="BNI">BNI</option>
+            <option value="BRI">BRI</option>
+            <option value="GoPay">GoPay</option>
+            <option value="OVO">OVO</option>
+            <option value="DANA">DANA</option>
+            <option value="ShopeePay">ShopeePay</option>
+          )}
+        </select>
       </div>
 
       {/* Transfer Date */}
@@ -214,6 +233,7 @@ export default function PaymentForm({
           type="date"
           value={transferDate}
           onChange={(e) => setTransferDate(e.target.value)}
+          min={today}
           className="w-full px-3 sm:px-4 py-[10px] sm:py-[12px] bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#38383A] rounded-lg sm:rounded-xl text-dark dark:text-white text-[14px] sm:text-[15px] focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 outline-none transition-all"
           required
         />
