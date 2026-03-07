@@ -730,6 +730,9 @@ export const adminBillingAPI = {
       method: 'DELETE',
     });
   },
+
+  /**
+   * Update plan
    * PATCH /api/admin/billing/plans/:id
    */
   updatePlan: async (planId, data) => {
@@ -737,14 +740,6 @@ export const adminBillingAPI = {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
-  },
-
-  /**
-   * Delete plan
-   * DELETE /api/admin/billing/plans/:id
-   */
-  deletePlan: async (planId) => {
-    return apiFetch(`/admin/billing/plans/${planId}`, { method: 'DELETE' });
   },
 
   /**
