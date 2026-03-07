@@ -325,14 +325,14 @@ export default function Dashboard({ token, userData }) {
           </div>
 
           {devices.length === 0 ? (
-          <div className="bg-gray-50 dark:bg-[#2C2C2E] rounded-xl p-6 sm:p-10 text-center">
-            <span className="text-4xl sm:text-5xl mb-3 sm:mb-4 block opacity-50">📱</span>
-            <div className="text-sm sm:text-base font-semibold text-dark dark:text-white mb-1">No devices yet</div>
-            <div className="text-xs sm:text-sm text-gray-400 dark:text-gray-500">Add your first device above</div>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {devices.map((device, index) => {
+            <div className="bg-gray-50 dark:bg-[#2C2C2E] rounded-xl p-6 sm:p-10 text-center">
+              <span className="text-4xl sm:text-5xl mb-3 sm:mb-4 block opacity-50">📱</span>
+              <div className="text-sm sm:text-base font-semibold text-dark dark:text-white mb-1">No devices yet</div>
+              <div className="text-xs sm:text-sm text-gray-400 dark:text-gray-500">Add your first device above</div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {devices.map((device, index) => {
               // Fallback key: use device_id, public_key, or index
               const deviceKey = device.id || device.device_id || device.public_key || `device-${index}`;
 
