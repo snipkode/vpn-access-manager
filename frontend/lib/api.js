@@ -124,9 +124,12 @@ export const vpnAPI = {
    * POST /api/vpn/generate
    */
   generateConfig: async (deviceName) => {
+    console.log('🔵 vpnAPI.generateConfig called with:', deviceName);
+    const requestBody = { device_name: deviceName };
+    console.log('🔵 Request body:', JSON.stringify(requestBody));
     return apiFetch('/vpn/generate', {
       method: 'POST',
-      body: JSON.stringify({ device_name: deviceName }),
+      body: JSON.stringify(requestBody),
     }, 'generate_vpn');
   },
 

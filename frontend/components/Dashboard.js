@@ -147,20 +147,25 @@ export default function Dashboard({ token, userData }) {
       return;
     }
 
+    console.log('🟢 Generating config with device name:', deviceName);
+    
     // generatingVpn is already managed by the API request lock
     // The overlay will block UI automatically
     try {
       const data = await vpnAPI.generateConfig(deviceName);
+      console.log('🟢 API response:', data);
       showNotification('Device added successfully!');
       setDeviceName('');
       // Ensure ID is set correctly (API returns device_id)
-      setSelectedDevice({ 
-        ...data, 
+      setSelectedDevice({
+        ...data,
         isNew: true,
-        id: data.device_id || data.id // Ensure ID is set
+        id: data.device_id || data.id, // Ensure ID is set
+        device_name: data.device_name || deviceName // Ensure name is preserved
       });
       fetchData();
     } catch (error) {
+      console.error('🔴 Generate config error:', error);
       showNotification(error.message, 'error');
     }
   };
