@@ -73,24 +73,23 @@ export default function Wallet({ token }) {
       }
       setError(null);
 
-      // Fetch bank accounts, balance, transactions, topups, and plans in parallel
-      const [settingsData, balanceData, transactionsData, topupsData, plansData] = await Promise.all([
-        billingAPI.getSettings(),
+      // Fetch billing config, balance, transactions, and topups in parallel
+      const [configData, balanceData, transactionsData, topupsData] = await Promise.all([
+        billingAPI.getConfig(),
         creditAPI.getBalance(),
         creditAPI.getTransactions({ limit: 20 }),
         billingAPI.getPayments({ limit: 10 }),
-        adminBillingAPI.getPlans().catch(() => ({ plans: [] })),
       ]);
 
-      // Update bank accounts from settings
-      const bankAccs = settingsData.bank_accounts || [];
+      // Update bank accounts from config
+      const bankAccs = configData.bank_accounts || [];
       setBankAccountsLocal(bankAccs);
 
-      // Also update global billing store with plans
+      // Also update global billing store with config
       setBillingData({
-        billing_enabled: settingsData.billing_enabled || false,
-        currency: settingsData.currency || 'IDR',
-        plans: plansData.plans || [],
+        billing_enabled: configData.billing_enabled || false,
+        currency: configData.currency || 'IDR',
+        plans: configData.plans || [],
         bank_accounts: bankAccs,
       });
 
