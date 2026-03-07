@@ -54,7 +54,8 @@ export default function Onboarding({ userData, onGoToPayment, onSkip }) {
   };
 
   const handleSkip = () => {
-    showNotification('You can subscribe anytime from the Payment page', 'info');
+    console.log('🔘 Skip button clicked - onboarding skipped');
+    showNotification('You can subscribe anytime from the Wallet page', 'info');
     onSkip();
   };
 
