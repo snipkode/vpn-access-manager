@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useUIStore } from '../store';
 import RequestBlockingOverlay from './RequestBlockingOverlay';
 import Toast from './Toast';
+import DarkModeToggle from './DarkModeToggle';
 
 export default function Layout({
   children,
@@ -40,7 +41,7 @@ export default function Layout({
   }, [activePage, isDesktop, setSidebarOpen]);
 
   const currentPage = menuItems.find(m => m.id === activePage);
-  
+
   // Theme colors based on role
   const theme = isAdmin ? {
     primary: 'bg-purple-500',
@@ -59,22 +60,22 @@ export default function Layout({
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 text-dark font-sans">
+    <div className="min-h-screen bg-gray-100 dark:bg-black text-dark dark:text-white font-sans transition-colors duration-200">
       {/* Mobile Overlay */}
       {sidebarOpen && !isDesktop && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed left-0 top-0 bottom-0 w-72 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out z-50 ${
+      <aside className={`fixed left-0 top-0 bottom-0 w-72 bg-white dark:bg-[#1C1C1E] border-r border-gray-200 dark:border-[#38383A] transform transition-transform duration-300 ease-in-out z-50 ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-5 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+          <div className="p-5 border-b border-gray-100 dark:border-[#38383A] flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 bg-gradient-to-br ${theme.gradient} rounded-xl flex items-center justify-center`}>
                 <span className="text-white text-xl">{theme.icon}</span>
@@ -171,9 +172,9 @@ export default function Layout({
       {/* Main Content */}
       <div className={`transition-all duration-300 ease-in-out ${isDesktop ? 'ml-72' : ''}`}>
         {/* Top Bar */}
-        <header className={`sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b ${isAdmin ? 'border-purple-200' : 'border-gray-200'} px-5 py-4 flex items-center gap-4`}>
+        <header className={`sticky top-0 z-30 bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border-b ${isAdmin ? 'border-purple-200 dark:border-purple-900' : 'border-gray-200 dark:border-[#38383A]'} px-5 py-4 flex items-center gap-4`}>
           <button
-            className="lg:hidden flex items-center justify-center text-gray-500 hover:text-dark p-2 rounded-lg hover:bg-gray-100 transition-all"
+            className="lg:hidden flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-dark dark:hover:text-white p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#2C2C2E] transition-all"
             onClick={() => setSidebarOpen(true)}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -181,16 +182,19 @@ export default function Layout({
             </svg>
           </button>
 
-          <h1 className="text-xl font-bold text-dark flex-1">
+          <h1 className="text-xl font-bold text-dark dark:text-white flex-1">
             {currentPage?.label || 'Dashboard'}
           </h1>
 
           {isCurrentPageAdmin && (
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 ${theme.primaryLight} ${theme.primaryText} rounded-full text-xs font-semibold border ${isAdmin ? 'border-purple-200' : 'border-purple-200'}`}>
+            <span className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 ${theme.primaryLight} dark:bg-purple-500/20 ${theme.primaryText} dark:text-purple-400 rounded-full text-xs font-semibold border ${isAdmin ? 'border-purple-200 dark:border-purple-800' : 'border-purple-200 dark:border-purple-800'}`}>
               <i className="fas fa-shield-alt text-xs" />
               Admin
             </span>
           )}
+
+          {/* Dark Mode Toggle */}
+          <DarkModeToggle />
         </header>
 
         {/* Page Content */}

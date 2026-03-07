@@ -3,9 +3,47 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* Light Mode Colors (iOS-style) */
+    --bg-primary: #ffffff;
+    --bg-secondary: #F2F2F7;
+    --bg-tertiary: #ffffff;
+    --text-primary: #000000;
+    --text-secondary: #6e6e73;
+    --text-tertiary: #8e8e93;
+    --border-color: #c6c6c8;
+    --card-bg: #ffffff;
+    --input-bg: #F2F2F7;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+    
+    /* iOS System Colors */
+    --ios-blue: #007AFF;
+    --ios-green: #34C759;
+    --ios-red: #FF3B30;
+    --ios-orange: #FF9500;
+    --ios-purple: #5856D6;
+    --ios-yellow: #FFCC00;
+    --ios-gray: #8E8E93;
+  }
+
+  /* Dark Mode Colors */
+  .dark {
+    --bg-primary: #000000;
+    --bg-secondary: #1C1C1E;
+    --bg-tertiary: #2C2C2E;
+    --text-primary: #ffffff;
+    --text-secondary: #98989d;
+    --text-tertiary: #636366;
+    --border-color: #38383a;
+    --card-bg: #1C1C1E;
+    --input-bg: #2C2C2E;
+    --shadow-color: rgba(0, 0, 0, 0.3);
+  }
+
   body {
-    @apply bg-gray-100 text-dark font-sans antialiased;
-    /* iOS-style base font size */
+    @apply font-sans antialiased transition-colors duration-200;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
     font-size: 17px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -107,6 +145,23 @@
       gap: 12px;
     }
   }
+
+  /* Dark mode utilities */
+  .dark-card {
+    @apply bg-white dark:bg-[#1C1C1E] border-gray-100 dark:border-[#38383A] shadow-sm dark:shadow-lg;
+  }
+
+  .dark-input {
+    @apply bg-gray-50 dark:bg-[#2C2C2E] border-gray-200 dark:border-[#38383A] text-dark dark:text-white placeholder-gray-300 dark:placeholder-gray-500;
+  }
+
+  .dark-hover:hover {
+    @apply bg-gray-100 dark:bg-[#2C2C2E];
+  }
+
+  .dark-border {
+    @apply border-gray-100 dark:border-[#38383A];
+  }
 }
 
 /* Custom scrollbar */
@@ -116,13 +171,14 @@
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-gray-100;
+  @apply bg-gray-100 dark:bg-[#1C1C1E];
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 rounded-full;
+  @apply bg-gray-300 dark:bg-[#38383A] rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-400;
+  @apply bg-gray-400 dark:bg-[#48484A];
 }
+
