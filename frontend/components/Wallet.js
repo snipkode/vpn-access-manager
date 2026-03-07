@@ -5,6 +5,91 @@ import PaymentForm, { PaymentHistory } from './PaymentForm';
 import Tabs from './ui/Tabs';
 import Icon from './ui/Icon';
 
+// Bank Account Card Component - iOS Style with Copy to Clipboard
+function BankAccountCard({ bank }) {
+  const { showNotification } = useUIStore();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(bank.account_number);
+      setCopied(true);
+      showNotification('Account number copied!', 'success');
+      
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+    } catch (error) {
+      showNotification('Failed to copy', 'error');
+    }
+  };
+
+  return (
+    <div className="bg-gradient-to-br from-gray-50 to-gray-100/80 dark:from-[#2C2C2E] dark:to-[#252527] rounded-xl p-4 border border-gray-200/50 dark:border-[#38383A]/50">
+      {/* Bank Header */}
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center text-2xl shadow-sm">
+          🏦
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-base font-bold text-dark dark:text-white tracking-tight truncate">{bank.bank}</div>
+          <div className="text-[13px] text-gray-500 dark:text-gray-400 font-medium truncate">{bank.account_name}</div>
+        </div>
+      </div>
+
+      {/* Account Number with Copy Button */}
+      <div className="bg-white dark:bg-[#1C1C1E] rounded-xl p-3.5 mb-3 border border-gray-200/50 dark:border-[#38383A]/50">
+        <div className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Account Number</div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xl sm:text-2xl font-mono font-bold text-dark dark:text-white tracking-tight">
+            {bank.account_number}
+          </div>
+          <button
+            onClick={handleCopy}
+            disabled={copied}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
+              copied
+                ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                : 'bg-primary/10 text-primary dark:text-primary-400 hover:bg-primary/20'
+            }`}
+          >
+            {copied ? (
+              <>
+                <Icon name="check_circle" variant="round" size="small" />
+                <span>Copied!</span>
+              </>
+            ) : (
+              <>
+                <Icon name="content_copy" variant="round" size="small" />
+                <span>Copy</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* QR Code (if available) */}
+      {bank.qr_code_url && (
+        <div className="flex items-center gap-3 pt-3 border-t border-gray-200/50 dark:border-[#38383A]/50">
+          <div className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Scan QR</div>
+          <img
+            src={bank.qr_code_url}
+            alt="QR Code"
+            className="w-16 h-16 rounded-lg object-contain border border-gray-200 dark:border-[#38383A] bg-white dark:bg-[#1C1C1E] p-1"
+          />
+        </div>
+      )}
+
+      {/* Description (if available) */}
+      {bank.description && (
+        <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed mt-3 pt-3 border-t border-gray-200/50 dark:border-[#38383A]/50">
+          {bank.description}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function Wallet({ token }) {
   const { showNotification } = useUIStore();
   const { plans, setBillingData } = useBillingStore();
@@ -138,13 +223,24 @@ export default function Wallet({ token }) {
 
       {/* Top Up Form - iOS Style */}
       {activeTab === 'topup' && (
-        <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.2)] border border-gray-100/50 dark:border-[#38383A]/50">
-          <div className="flex items-center gap-2.5 mb-6">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 dark:from-primary-600/20 dark:to-primary-600/5 flex items-center justify-center">
-              <span className="text-lg">💰</span>
+        <div className="space-y-4 sm:space-y-5">
+          {/* Bank Accounts Info - iOS Style */}
+          {bankAccountsLocal.length > 0 && (
+            <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.2)] border border-gray-100/50 dark:border-[#38383A]/50">
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 dark:from-blue-500/20 dark:to-blue-500/5 flex items-center justify-center">
+                  <span className="text-lg">🏦</span>
+                </div>
+                <h2 className="text-base font-semibold text-dark dark:text-white tracking-tight">Transfer To</h2>
+              </div>
+
+              <div className="space-y-3">
+                {bankAccountsLocal.map((bank) => (
+                  <BankAccountCard key={bank.id} bank={bank} />
+                ))}
+              </div>
             </div>
-            <h2 className="text-base font-semibold text-dark dark:text-white tracking-tight">Submit Top Up Request</h2>
-          </div>
+          )}
 
           {/* Reusable Payment Form in topup mode */}
           <PaymentForm
