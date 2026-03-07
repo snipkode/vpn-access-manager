@@ -17,7 +17,6 @@ import AdminDashboard from '../components/AdminDashboard';
 import AdminBilling from '../components/AdminBilling';
 import AdminCredit from '../components/AdminCredit';
 import AdminReferral from '../components/AdminReferral';
-import PaymentSettings from '../components/PaymentSettings';
 import AdminSettings from '../components/AdminSettings';
 import AdminGuard from '../components/AdminGuard';
 import Unauthorized from '../components/Unauthorized';
@@ -35,7 +34,6 @@ const ADMIN_ITEMS = [
   { id: 'admin-billing', label: 'Billing', icon: 'receipt_long' },
   { id: 'admin-credit', label: 'Credit', icon: 'monetization_on' },
   { id: 'admin-referral', label: 'Referrals', icon: 'group' },
-  { id: 'payment-settings', label: 'Payment Settings', icon: 'settings' },
   { id: 'admin-settings', label: 'Settings', icon: 'tune' },
 ];
 
@@ -51,7 +49,6 @@ const PAGE_COMPONENTS = {
   'admin-billing': AdminGuard(AdminBilling),
   'admin-credit': AdminGuard(AdminCredit),
   'admin-referral': AdminGuard(AdminReferral),
-  'payment-settings': AdminGuard(PaymentSettings),
   'admin-settings': AdminGuard(AdminSettings),
 };
 

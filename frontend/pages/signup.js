@@ -40,7 +40,6 @@ const PAGE_COMPONENTS = {
   'admin-billing': dynamic(() => import('../components/AdminBilling')),
   'admin-credit': dynamic(() => import('../components/AdminCredit')),
   'admin-referral': dynamic(() => import('../components/AdminReferral')),
-  'payment-settings': dynamic(() => import('../components/PaymentSettings')),
   'admin-settings': dynamic(() => import('../components/AdminSettings')),
 };
 

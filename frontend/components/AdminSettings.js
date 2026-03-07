@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useUIStore } from '../store';
-import { adminSettingsAPI } from '../lib/api';
-import { Tabs } from './admin';
+import { adminSettingsAPI, adminBillingAPI, formatCurrency } from '../lib/api';
+import { Tabs, DataTable } from './admin';
 
 const CATEGORIES = [
   { id: 'whatsapp', label: 'WhatsApp', icon: 'fab fa-whatsapp' },
   { id: 'email', label: 'Email', icon: 'fas fa-envelope' },
   { id: 'billing', label: 'Billing', icon: 'fas fa-credit-card' },
+  { id: 'payments', label: 'Payment Methods', icon: 'fas fa-university' },
   { id: 'notifications', label: 'Notifications', icon: 'fas fa-bell' },
   { id: 'general', label: 'General', icon: 'fas fa-cog' },
 ];
@@ -61,8 +62,23 @@ export default function AdminSettings({ token }) {
     maintenance_mode: false,
   });
 
+  // Payment Methods state
+  const [bankAccounts, setBankAccounts] = useState([]);
+  const [showBankModal, setShowBankModal] = useState(false);
+  const [editingBank, setEditingBank] = useState(null);
+  const [bankForm, setBankForm] = useState({
+    bank: '',
+    account_number: '',
+    account_name: '',
+    description: '',
+    qr_code_url: '',
+    order: 0,
+    active: true,
+  });
+
   useEffect(() => {
     fetchSettings();
+    fetchBankAccounts();
   }, []);
 
   const fetchSettings = async () => {
@@ -70,7 +86,7 @@ export default function AdminSettings({ token }) {
       setLoading(true);
       const data = await adminSettingsAPI.getSettings();
       const settings = data.settings || {};
-      
+
       if (settings.whatsapp) setWhatsapp(settings.whatsapp);
       if (settings.email) setEmail(settings.email);
       if (settings.billing) setBilling(settings.billing);
@@ -81,6 +97,73 @@ export default function AdminSettings({ token }) {
       showNotification('Failed to load settings: ' + error.message, 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchBankAccounts = async () => {
+    try {
+      const data = await adminBillingAPI.getSettings();
+      setBankAccounts(data.bank_accounts || []);
+    } catch (error) {
+      console.error('Failed to load bank accounts:', error);
+    }
+  };
+
+  const handleAddBank = () => {
+    setEditingBank(null);
+    setBankForm({
+      bank: '',
+      account_number: '',
+      account_name: '',
+      description: '',
+      qr_code_url: '',
+      order: bankAccounts.length + 1,
+      active: true,
+    });
+    setShowBankModal(true);
+  };
+
+  const handleEditBank = (bank) => {
+    setEditingBank(bank);
+    setBankForm({
+      bank: bank.bank || '',
+      account_number: bank.account_number || '',
+      account_name: bank.account_name || '',
+      description: bank.description || '',
+      qr_code_url: bank.qr_code_url || '',
+      order: bank.order || 0,
+      active: bank.active !== false,
+    });
+    setShowBankModal(true);
+  };
+
+  const handleSaveBank = async () => {
+    setLoading(true);
+    try {
+      if (editingBank) {
+        await adminBillingAPI.updateBank(editingBank.id, bankForm);
+        showNotification('Bank account updated successfully');
+      } else {
+        await adminBillingAPI.addBank(bankForm);
+        showNotification('Bank account added successfully');
+      }
+      setShowBankModal(false);
+      fetchBankAccounts();
+    } catch (error) {
+      showNotification('Failed to save bank account: ' + error.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteBank = async (bankId) => {
+    if (!confirm('Delete this bank account?')) return;
+    try {
+      await adminBillingAPI.deleteBank(bankId);
+      showNotification('Bank account deleted successfully');
+      fetchBankAccounts();
+    } catch (error) {
+      showNotification('Failed to delete bank account: ' + error.message, 'error');
     }
   };
 
@@ -449,6 +532,67 @@ export default function AdminSettings({ token }) {
           </div>
         )}
 
+        {activeTab === 'payments' && (
+          <div className="space-y-5">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <div className="text-base font-semibold text-dark">Payment Methods</div>
+                <div className="text-sm text-gray-400 mt-0.5">Manage bank accounts and QR codes</div>
+              </div>
+              <button
+                onClick={handleAddBank}
+                className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+              >
+                <i className="fas fa-plus mr-2" />
+                Add Bank
+              </button>
+            </div>
+
+            {bankAccounts.length === 0 ? (
+              <div className="text-center py-12">
+                <span className="text-4xl mb-2 block">🏦</span>
+                <div className="text-sm text-gray-400">No bank accounts configured</div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {bankAccounts.map((bank, index) => (
+                  <div
+                    key={bank.id}
+                    className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex justify-between items-center"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-lg font-bold text-dark">{bank.bank}</span>
+                        {bank.active === false && (
+                          <span className="px-2 py-0.5 bg-gray-200 text-gray-600 rounded text-xs font-medium">
+                            Inactive
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-500">{bank.account_number}</div>
+                      <div className="text-xs text-gray-400">{bank.account_name}</div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEditBank(bank)}
+                        className="px-3 py-1.5 bg-blue-50 text-blue-500 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteBank(bank.id)}
+                        className="px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === 'notifications' && (
           <div className="space-y-5">
             <div className="text-sm text-gray-400 mb-4">
@@ -619,6 +763,116 @@ export default function AdminSettings({ token }) {
           </div>
         )}
       </div>
+
+      {/* Bank Account Modal */}
+      {showBankModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowBankModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 border-b border-gray-100">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold text-dark">
+                  {editingBank ? 'Edit Bank Account' : 'Add Bank Account'}
+                </h2>
+                <button
+                  onClick={() => setShowBankModal(false)}
+                  className="text-gray-400 hover:text-dark text-2xl transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 uppercase mb-2">Bank Name</label>
+                <input
+                  type="text"
+                  value={bankForm.bank}
+                  onChange={(e) => setBankForm(s => ({ ...s, bank: e.target.value }))}
+                  placeholder="e.g., BCA, Mandiri, BNI"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-dark text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 uppercase mb-2">Account Number</label>
+                <input
+                  type="text"
+                  value={bankForm.account_number}
+                  onChange={(e) => setBankForm(s => ({ ...s, account_number: e.target.value }))}
+                  placeholder="e.g., 1234567890"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-dark text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 uppercase mb-2">Account Name</label>
+                <input
+                  type="text"
+                  value={bankForm.account_name}
+                  onChange={(e) => setBankForm(s => ({ ...s, account_name: e.target.value }))}
+                  placeholder="e.g., PT VPN Access"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-dark text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 uppercase mb-2">Description</label>
+                <textarea
+                  value={bankForm.description}
+                  onChange={(e) => setBankForm(s => ({ ...s, description: e.target.value }))}
+                  placeholder="Payment instructions or notes"
+                  rows={3}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-dark text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 uppercase mb-2">QR Code URL</label>
+                <input
+                  type="text"
+                  value={bankForm.qr_code_url}
+                  onChange={(e) => setBankForm(s => ({ ...s, qr_code_url: e.target.value }))}
+                  placeholder="https://..."
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-dark text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="bank_active"
+                  checked={bankForm.active}
+                  onChange={(e) => setBankForm(s => ({ ...s, active: e.target.checked }))}
+                  className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                />
+                <label htmlFor="bank_active" className="text-sm text-dark">
+                  Active (show to users)
+                </label>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-100">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowBankModal(false)}
+                  disabled={loading}
+                  className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveBank}
+                  disabled={loading}
+                  className="flex-1 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {loading ? 'Saving...' : (editingBank ? 'Update' : 'Add')} Bank
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
