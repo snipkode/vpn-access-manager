@@ -25,43 +25,42 @@ function BankAccountCard({ bank }) {
   };
 
   return (
-    <div className="bg-gradient-to-br from-gray-50 to-gray-100/80 dark:from-[#2C2C2E] dark:to-[#252527] rounded-xl p-4 border border-gray-200/50 dark:border-[#38383A]/50">
+    <div className="group bg-gradient-to-br from-gray-50 to-gray-100/80 dark:from-[#2C2C2E] dark:to-[#252527] rounded-[16px] p-3.5 border border-gray-200/50 dark:border-[#38383A]/50 hover:border-primary/30 dark:hover:border-primary/40 hover:shadow-md hover:shadow-primary/5 transition-all duration-300">
       {/* Bank Header */}
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-10 h-10 rounded-xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center text-2xl shadow-sm">
+      <div className="flex items-center gap-2.5 mb-2.5">
+        <div className="w-8 h-8 rounded-lg bg-white dark:bg-[#1C1C1E] flex items-center justify-center text-lg shadow-sm flex-shrink-0">
           🏦
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-base font-bold text-dark dark:text-white tracking-tight truncate">{bank.bank}</div>
-          <div className="text-[13px] text-gray-500 dark:text-gray-400 font-medium truncate">{bank.account_name}</div>
+          <div className="text-[13px] font-bold text-dark dark:text-white tracking-tight truncate">{bank.bank}</div>
+          <div className="text-[11px] text-gray-500 dark:text-gray-400 font-medium truncate">{bank.account_name}</div>
         </div>
       </div>
 
       {/* Account Number with Copy Button */}
-      <div className="bg-white dark:bg-[#1C1C1E] rounded-xl p-3.5 mb-3 border border-gray-200/50 dark:border-[#38383A]/50">
-        <div className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Account Number</div>
+      <div className="bg-white dark:bg-[#1C1C1E] rounded-lg p-2.5 mb-2.5 border border-gray-200/50 dark:border-[#38383A]/50">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-xl sm:text-2xl font-mono font-bold text-dark dark:text-white tracking-tight">
+          <div className="text-base sm:text-lg font-mono font-bold text-dark dark:text-white tracking-tight truncate">
             {bank.account_number}
           </div>
           <button
             onClick={handleCopy}
             disabled={copied}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
+            className={`flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-all duration-200 flex-shrink-0 ${
               copied
                 ? 'bg-green-500/10 text-green-600 dark:text-green-400'
-                : 'bg-primary/10 text-primary dark:text-primary-400 hover:bg-primary/20'
+                : 'bg-primary/10 text-primary dark:text-primary-400 hover:bg-primary/20 active:scale-95'
             }`}
           >
             {copied ? (
               <>
-                <Icon name="check_circle" variant="round" size="small" />
-                <span>Copied!</span>
+                <Icon name="check_circle" variant="round" size="small" className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Copied!</span>
               </>
             ) : (
               <>
-                <Icon name="content_copy" variant="round" size="small" />
-                <span>Copy</span>
+                <Icon name="content_copy" variant="round" size="small" className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Copy</span>
               </>
             )}
           </button>
@@ -70,19 +69,19 @@ function BankAccountCard({ bank }) {
 
       {/* QR Code (if available) */}
       {bank.qr_code_url && (
-        <div className="flex items-center gap-3 pt-3 border-t border-gray-200/50 dark:border-[#38383A]/50">
-          <div className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Scan QR</div>
+        <div className="flex items-center gap-2 pt-2.5 border-t border-gray-200/50 dark:border-[#38383A]/50">
+          <div className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Scan QR</div>
           <img
             src={bank.qr_code_url}
             alt="QR Code"
-            className="w-16 h-16 rounded-lg object-contain border border-gray-200 dark:border-[#38383A] bg-white dark:bg-[#1C1C1E] p-1"
+            className="w-12 h-12 rounded-md object-contain border border-gray-200 dark:border-[#38383A] bg-white dark:bg-[#1C1C1E] p-0.5"
           />
         </div>
       )}
 
       {/* Description (if available) */}
       {bank.description && (
-        <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed mt-3 pt-3 border-t border-gray-200/50 dark:border-[#38383A]/50">
+        <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed mt-2.5 pt-2.5 border-t border-gray-200/50 dark:border-[#38383A]/50">
           {bank.description}
         </p>
       )}
