@@ -117,23 +117,42 @@ export default function Wallet({ token }) {
   const handleRefresh = async () => {
     try {
       // First, sync balance from Firestore
-      await creditAPI.syncBalance();
-      
-      // Then fetch fresh data
-      await fetchData(true);
-      
-      showNotification('Balance updated');
+      const syncResult = await creditAPI.syncBalance();
+      console.log('🔄 Sync result:', syncResult);
+
+      // If balance changed, update state immediately
+      if (syncResult?.synced && syncResult?.new_balance !== undefined) {
+        updateUserData({ credit_balance: syncResult.new_balance });
+        setLastUpdated(new Date());
+        showNotification('Balance synced successfully', 'success');
+      } else {
+        // Fetch fresh data if no sync needed
+        await fetchData(true);
+        showNotification('Balance updated', 'success');
+      }
     } catch (error) {
-      showNotification(error.message, 'error');
+      console.error('❌ Refresh failed:', error);
+      showNotification(error.message || 'Failed to refresh balance', 'error');
     }
   };
 
   const handleTopupSuccess = async () => {
     try {
-      await creditAPI.syncBalance();
-      await fetchData();
+      // Sync balance after successful topup
+      const syncResult = await creditAPI.syncBalance();
+      
+      // Update state immediately if sync succeeded
+      if (syncResult?.synced && syncResult?.new_balance !== undefined) {
+        updateUserData({ credit_balance: syncResult.new_balance });
+        setLastUpdated(new Date());
+      } else {
+        await fetchData();
+      }
+      
       setActiveTab('history');
+      showNotification('Payment submitted successfully', 'success');
     } catch (error) {
+      console.error('❌ Sync after topup failed:', error);
       await fetchData();
       setActiveTab('history');
     }
@@ -221,18 +240,41 @@ export default function Wallet({ token }) {
       {/* Subscription Form - iOS Style */}
       {activeTab === 'subscription' && (
         <div className="space-y-4 sm:space-y-5">
-          {/* Reusable Payment Form in plan mode */}
-          <PaymentForm
-            mode="plan"
-            plans={plans}
-            bankAccounts={bankAccountsLocal}
-            onSuccess={handleTopupSuccess}
-            defaultAmount={plans[0]?.price || 50000}
-            onViewPlanDetails={(plan) => {
-              setSelectedPlanDetails(plan);
-              setShowPlanDetails(true);
-            }}
-          />
+          {plans.length === 0 ? (
+            /* No Plans Available Warning */
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-[#2C2C2E] dark:to-[#1C1C1E] rounded-[20px] p-6 sm:p-8 border border-amber-200 dark:border-[#38383A] shadow-lg">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                  <span className="text-2xl">⚠️</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg sm:text-xl font-bold text-dark dark:text-white mb-2">
+                    No Subscription Plans Available
+                  </h3>
+                  <p className="text-[13px] sm:text-[14px] text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
+                    There are no subscription plans configured at the moment. Please contact admin or check back later.
+                  </p>
+                  <div className="flex items-center gap-2 text-[12px] sm:text-[13px] text-amber-700 dark:text-amber-500 font-medium">
+                    <Icon name="info" variant="round" size="small" />
+                    <span>Subscription payments are currently unavailable</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Payment Form with Plans */
+            <PaymentForm
+              mode="plan"
+              plans={plans}
+              bankAccounts={bankAccountsLocal}
+              onSuccess={handleTopupSuccess}
+              defaultAmount={plans[0]?.price || 50000}
+              onViewPlanDetails={(plan) => {
+                setSelectedPlanDetails(plan);
+                setShowPlanDetails(true);
+              }}
+            />
+          )}
         </div>
       )}
 
