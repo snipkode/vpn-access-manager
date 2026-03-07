@@ -16,9 +16,12 @@ export default function Dashboard({ token, userData }) {
   const generatingVpn = useRequestPending('generate_vpn');
 
   // Debug logging
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    console.log('🔵 Dashboard Render - devices:', devices);
-    console.log('🔵 Dashboard Render - selectedDevice:', selectedDevice);
+    // Only log in development for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔵 Dashboard - devices:', devices.length, 'selectedDevice:', selectedDevice?.device_name);
+    }
   }, [devices, selectedDevice]);
 
   useEffect(() => {
@@ -27,16 +30,10 @@ export default function Dashboard({ token, userData }) {
 
   // Fetch device config when selected device changes
   useEffect(() => {
-    // Get device ID with fallbacks
     const deviceId = selectedDevice?.id || selectedDevice?.device_id || selectedDevice?.public_key;
-    
-    console.log('🔵 useEffect - selectedDevice:', selectedDevice);
-    console.log('🔵 useEffect - deviceId:', deviceId);
-    console.log('🔵 useEffect - has config?', !!selectedDevice?.config);
     
     // Only fetch if we have a valid device ID and missing config/qr
     if (deviceId && !selectedDevice?.config && !selectedDevice?.qr) {
-      console.log('🔵 useEffect: Fetching config for device', deviceId);
       fetchDeviceConfig(deviceId);
     }
   }, [selectedDevice?.id]); // Only depend on ID, not entire object
@@ -78,42 +75,32 @@ export default function Dashboard({ token, userData }) {
 
   const fetchData = async () => {
     try {
-      console.log('Fetching fresh data from Firestore...');
       const [devicesData, subData] = await Promise.all([
-        vpnAPI.getDevices(), // Fetch from Firestore via API
+        vpnAPI.getDevices(),
         billingAPI.getSubscription(),
       ]);
-      // Ensure all devices have an ID
       const devicesWithId = (devicesData.devices || []).map(d => ({
         ...d,
-        id: d.id || d.device_id // Ensure ID is set
+        id: d.id || d.device_id
       }));
-      console.log('Fetched', devicesWithId.length, 'devices from Firestore');
       setDevices(devicesWithId);
       setSubscription(subData.subscription || null);
     } catch (error) {
-      console.error('Fetch error:', error);
+      console.error('🔴 Fetch error:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const fetchDeviceConfig = async (deviceId) => {
-    // Guard: must have valid device ID
     if (!deviceId) {
-      console.error('🔴 fetchDeviceConfig: No device ID provided');
+      console.error('🔴 No device ID provided');
       return;
     }
 
-    console.log('🔵 fetchDeviceConfig called with deviceId:', deviceId);
-    
-    // Always fetch from API (no localStorage cache)
     setFetchingConfig(true);
     try {
       const data = await vpnAPI.getDevice(deviceId);
-      console.log('🟢 Fetched device config from API:', deviceId, data);
-      
-      // Create updated device object
       const updatedDevice = {
         id: data.device_id || data.id || deviceId,
         device_name: data.device_name,
@@ -125,14 +112,8 @@ export default function Dashboard({ token, userData }) {
         created_at: data.created_at,
       };
       
-      console.log('🟢 Updated device object:', updatedDevice);
-      
-      // Update store with config/qr (in-memory cache only)
       updateDeviceConfig(deviceId, data.config, data.qr);
-      
-      // Update selected device directly (not with callback)
       setSelectedDevice(updatedDevice);
-      console.log('🟢 Set selectedDevice to:', updatedDevice);
     } catch (error) {
       console.error('🔴 Failed to fetch device config:', error);
       showNotification('Failed to load device configuration', 'error');
@@ -147,30 +128,22 @@ export default function Dashboard({ token, userData }) {
       return;
     }
 
-    console.log('🟢 Generating config with device name:', deviceName);
-    
-    // generatingVpn is already managed by the API request lock
-    // The overlay will block UI automatically
     try {
       const data = await vpnAPI.generateConfig(deviceName);
-      console.log('🟢 API response:', data);
       showNotification('Device added successfully!');
       setDeviceName('');
-      // Ensure ID is set correctly (API returns device_id)
       setSelectedDevice({
         ...data,
         isNew: true,
-        id: data.device_id || data.id, // Ensure ID is set
-        device_name: data.device_name || deviceName // Ensure name is preserved
+        id: data.device_id || data.id,
+        device_name: data.device_name || deviceName
       });
       fetchData();
     } catch (error) {
       console.error('🔴 Generate config error:', error);
-      
-      // Handle rate limit error with specific message
       if (error.code === 'RATE_LIMIT' || error.status === 429) {
         showNotification(
-          `⏱️ Too many attempts. Please wait ${error.retryAfter || 30} seconds before trying again.`,
+          `⏱️ Too many attempts. Please wait ${error.retryAfter || 30} seconds.`,
           'error'
         );
       } else if (error.message.includes('rate limit')) {
@@ -185,19 +158,15 @@ export default function Dashboard({ token, userData }) {
   };
 
   const revokeDevice = async (deviceId) => {
-    // Request lock will be handled automatically by API
     try {
       await vpnAPI.deleteDevice(deviceId);
       showNotification('Device removed');
       setSelectedDevice(null);
       fetchData();
     } catch (error) {
-      console.error('🔴 Revoke device error:', error);
-
-      // Handle rate limit error with specific message
       if (error.code === 'RATE_LIMIT' || error.status === 429) {
         showNotification(
-          `⏱️ Too many attempts. Please wait ${error.retryAfter || 30} seconds before trying again.`,
+          `⏱️ Too many attempts. Please wait ${error.retryAfter || 30} seconds.`,
           'error'
         );
       } else if (error.message.includes('rate limit')) {
@@ -218,7 +187,6 @@ export default function Dashboard({ token, userData }) {
       setSelectedDevice(null);
       fetchData();
     } catch (error) {
-      console.error('🔴 Disable device error:', error);
       if (error.code === 'RATE_LIMIT' || error.status === 429) {
         showNotification(
           `⏱️ Too many attempts. Please wait ${error.retryAfter || 30} seconds.`,
@@ -237,7 +205,6 @@ export default function Dashboard({ token, userData }) {
       setSelectedDevice(null);
       fetchData();
     } catch (error) {
-      console.error('🔴 Reactivate device error:', error);
       if (error.code === 'RATE_LIMIT' || error.status === 429) {
         showNotification(
           `⏱️ Too many attempts. Please wait ${error.retryAfter || 30} seconds.`,
@@ -253,23 +220,17 @@ export default function Dashboard({ token, userData }) {
     const safeName = name?.replace(/\s+/g, '-').toLowerCase() || 'vpn-config';
     const filename = `${safeName}.conf`;
     
-    // Create blob with proper MIME type for WireGuard config
     const blob = new Blob([config], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
-    
-    // Create download link
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
-    a.setAttribute('download', filename); // Force attribute
+    a.setAttribute('download', filename);
     
-    // Append to body, click, and cleanup
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
-    console.log('🟢 Downloaded config as:', filename);
   };
 
   if (loading) {
@@ -416,13 +377,11 @@ export default function Dashboard({ token, userData }) {
                 <div
                   key={deviceKey}
                   onClick={() => {
-                    // Ensure device has ALL required fields before selecting
                     const deviceWithId = {
                       ...device,
-                      id: device.id || device.device_id || device.public_key || deviceKey,
+                      id: device.id || device.device_id || device.public_key,
                       device_name: displayName,
                     };
-                    console.log('🟢 Device clicked - deviceWithId:', deviceWithId);
                     setSelectedDevice(deviceWithId);
                   }}
                   className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all active:scale-[0.98]"
@@ -502,18 +461,11 @@ function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) 
 
   // Get device ID and name with fallbacks
   const deviceId = device.id || device.device_id || device.public_key;
-  const displayName = device.device_name?.trim() 
-    ? device.device_name 
+  const displayName = device.device_name?.trim()
+    ? device.device_name
     : `${device.ip_address || 'Device'}`;
-  
-  console.log('🔵 DeviceModal rendered - device:', device);
-  console.log('🔵 DeviceModal - deviceId:', deviceId);
-  console.log('🔵 DeviceModal - displayName:', displayName);
-  console.log('🔵 DeviceModal - status:', device.status);
 
-  // Guard: device must have an ID
   if (!deviceId) {
-    console.error('🔴 DeviceModal: No device ID', device);
     return (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
         <div className="bg-white rounded-3xl w-full max-w-lg p-8 text-center" onClick={(e) => e.stopPropagation()}>
