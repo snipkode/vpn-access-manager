@@ -4,7 +4,7 @@ import { vpnAPI, billingAPI } from '../lib/api';
 import { useRequestPending } from '../components/RequestBlockingOverlay';
 
 export default function Dashboard({ token, userData }) {
-  const { devices, setDevices, selectedDevice, setSelectedDevice, generating, setGenerating, updateDeviceConfig, getCachedConfig } = useVpnStore();
+  const { devices, setDevices, selectedDevice, setSelectedDevice, updateDeviceConfig } = useVpnStore();
   const { subscription, setSubscription, loading: subLoading } = useSubscriptionStore();
   const { showNotification } = useUIStore();
   const [deviceName, setDeviceName] = useState('');
@@ -15,6 +15,12 @@ export default function Dashboard({ token, userData }) {
   // Use request pending hook for generate VPN
   const generatingVpn = useRequestPending('generate_vpn');
 
+  // Debug logging
+  useEffect(() => {
+    console.log('🔵 Dashboard Render - devices:', devices);
+    console.log('🔵 Dashboard Render - selectedDevice:', selectedDevice);
+  }, [devices, selectedDevice]);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -24,12 +30,16 @@ export default function Dashboard({ token, userData }) {
     // Get device ID with fallbacks
     const deviceId = selectedDevice?.id || selectedDevice?.device_id || selectedDevice?.public_key;
     
+    console.log('🔵 useEffect - selectedDevice:', selectedDevice);
+    console.log('🔵 useEffect - deviceId:', deviceId);
+    console.log('🔵 useEffect - has config?', !!selectedDevice?.config);
+    
     // Only fetch if we have a valid device ID and missing config/qr
     if (deviceId && !selectedDevice?.config && !selectedDevice?.qr) {
-      console.log('useEffect: Fetching config for device', deviceId);
+      console.log('🔵 useEffect: Fetching config for device', deviceId);
       fetchDeviceConfig(deviceId);
     }
-  }, [selectedDevice?.id, selectedDevice?.device_id, selectedDevice?.public_key]);
+  }, [selectedDevice?.id]); // Only depend on ID, not entire object
 
   const deviceSuggestions = [
     { type: 'iphone', label: 'iPhone', icon: '📱', prefix: 'iPhone' },
@@ -91,25 +101,40 @@ export default function Dashboard({ token, userData }) {
   const fetchDeviceConfig = async (deviceId) => {
     // Guard: must have valid device ID
     if (!deviceId) {
-      console.error('fetchDeviceConfig: No device ID provided');
+      console.error('🔴 fetchDeviceConfig: No device ID provided');
       return;
     }
 
+    console.log('🔵 fetchDeviceConfig called with deviceId:', deviceId);
+    
     // Always fetch from API (no localStorage cache)
     setFetchingConfig(true);
     try {
       const data = await vpnAPI.getDevice(deviceId);
-      console.log('Fetched device config from API:', deviceId, data);
+      console.log('🟢 Fetched device config from API:', deviceId, data);
+      
+      // Create updated device object
+      const updatedDevice = {
+        id: data.device_id || data.id || deviceId,
+        device_name: data.device_name,
+        ip_address: data.ip_address,
+        public_key: data.public_key,
+        config: data.config,
+        qr: data.qr,
+        status: data.status,
+        created_at: data.created_at,
+      };
+      
+      console.log('🟢 Updated device object:', updatedDevice);
+      
       // Update store with config/qr (in-memory cache only)
       updateDeviceConfig(deviceId, data.config, data.qr);
-      // Update selected device - ensure we have the ID
-      setSelectedDevice(prev => ({ 
-        ...prev, 
-        ...data,
-        id: data.device_id || data.id || deviceId // Fallback to ensure ID is set
-      }));
+      
+      // Update selected device directly (not with callback)
+      setSelectedDevice(updatedDevice);
+      console.log('🟢 Set selectedDevice to:', updatedDevice);
     } catch (error) {
-      console.error('Failed to fetch device config:', error);
+      console.error('🔴 Failed to fetch device config:', error);
       showNotification('Failed to load device configuration', 'error');
     } finally {
       setFetchingConfig(false);
@@ -153,11 +178,12 @@ export default function Dashboard({ token, userData }) {
   };
 
   const downloadConfig = (config, name) => {
+    const safeName = name?.replace(/\s+/g, '-').toLowerCase() || 'vpn-config';
     const blob = new Blob([config], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `vpn-${name.replace(/\s+/g, '-').toLowerCase()}.conf`;
+    a.download = `${safeName}.conf`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -297,33 +323,34 @@ export default function Dashboard({ token, userData }) {
               // Fallback key: use device_id, public_key, or index
               const deviceKey = device.id || device.device_id || device.public_key || `device-${index}`;
               
-              // Debug logging for missing ID
-              if (!device.id && !device.device_id) {
-                console.warn('Device missing ID:', device);
-              }
+              // Get device name with proper fallback
+              const displayName = device.device_name 
+                ? device.device_name.trim() 
+                : `${device.ip_address || 'Device'} ${index + 1}`;
               
               return (
                 <div
                   key={deviceKey}
                   onClick={() => {
-                    // Ensure device has ID before selecting
+                    // Ensure device has ALL required fields before selecting
                     const deviceWithId = {
                       ...device,
-                      id: device.id || device.device_id || device.public_key
+                      id: device.id || device.device_id || device.public_key || deviceKey,
+                      device_name: displayName,
                     };
-                    console.log('Selecting device:', deviceWithId);
+                    console.log('🟢 Device clicked - deviceWithId:', deviceWithId);
                     setSelectedDevice(deviceWithId);
                   }}
                   className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all active:scale-[0.98]"
                   data-device-id={deviceKey}
                 >
                   <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-2xl flex-shrink-0 shadow-sm">
-                    {getDeviceIcon(device.device_name)}
+                    {getDeviceIcon(displayName)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-base font-medium text-dark truncate">{device.device_name || 'Unnamed Device'}</div>
+                    <div className="text-base font-medium text-dark truncate">{displayName}</div>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <div className="text-xs text-gray-400 font-mono">{device.ip_address}</div>
+                      <div className="text-xs text-gray-400 font-mono">{device.ip_address || 'No IP'}</div>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded ${
                         device.status === 'active' ? 'bg-green-100 text-green-600' : 
                         device.status === 'disabled' ? 'bg-amber-100 text-amber-600' :
@@ -354,7 +381,11 @@ export default function Dashboard({ token, userData }) {
               showNotification('Device ID not found', 'error');
             }
           }}
-          onDownload={() => downloadConfig(selectedDevice.config, selectedDevice.device_name)}
+          onDownload={() => {
+            if (selectedDevice.config) {
+              downloadConfig(selectedDevice.config, selectedDevice.device_name || selectedDevice.ip_address || 'vpn-config');
+            }
+          }}
           fetchingConfig={fetchingConfig}
         />
       )}
@@ -367,12 +398,19 @@ function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) 
   const [activeTab, setActiveTab] = useState('qrcode');
   const deletingDevice = useRequestPending('delete_vpn_device');
 
-  // Get device ID with fallbacks
+  // Get device ID and name with fallbacks
   const deviceId = device.id || device.device_id || device.public_key;
+  const displayName = device.device_name?.trim() 
+    ? device.device_name 
+    : `${device.ip_address || 'Device'}`;
+  
+  console.log('🔵 DeviceModal rendered - device:', device);
+  console.log('🔵 DeviceModal - deviceId:', deviceId);
+  console.log('🔵 DeviceModal - displayName:', displayName);
 
   // Guard: device must have an ID
   if (!deviceId) {
-    console.error('DeviceModal: No device ID', device);
+    console.error('🔴 DeviceModal: No device ID', device);
     return (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
         <div className="bg-white rounded-3xl w-full max-w-lg p-8 text-center" onClick={(e) => e.stopPropagation()}>
@@ -396,8 +434,8 @@ function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) 
         {/* Header */}
         <div className="flex justify-between items-center p-5 border-b border-gray-100 sticky top-0 bg-white rounded-t-3xl">
           <div>
-            <div className="text-lg font-semibold text-dark">{device.device_name}</div>
-            <div className="text-xs text-gray-400 font-mono mt-0.5">{device.ip_address}</div>
+            <div className="text-lg font-semibold text-dark">{displayName}</div>
+            <div className="text-xs text-gray-400 font-mono mt-0.5">{device.ip_address || 'No IP'}</div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-dark text-xl p-1 transition-colors">✕</button>
         </div>
@@ -456,15 +494,34 @@ function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) 
                 <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 text-center border border-gray-200">
                   <div className="text-sm font-semibold text-gray-500 mb-4 uppercase tracking-wide">Scan to Connect</div>
                   <div className="flex justify-center">
-                    <div
-                      className="qr-code-container bg-white p-4 rounded-2xl shadow-md"
+                    {/* QR Code Container - Force square with aspect-ratio */}
+                    <div 
+                      className="bg-white p-2 sm:p-3 rounded-2xl shadow-md"
                       style={{
-                        display: 'inline-block',
-                        maxWidth: '100%',
-                        width: 'fit-content'
+                        maxWidth: '220px',
+                        width: '100%',
+                        aspectRatio: '1/1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden'
                       }}
-                      dangerouslySetInnerHTML={{ __html: device.qr }}
-                    />
+                    >
+                      <div
+                        style={{
+                          width: '95%',
+                          height: '95%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          overflow: 'hidden'
+                        }}
+                        dangerouslySetInnerHTML={{ 
+                          __html: device.qr
+                            .replace(/<svg/, '<svg style="max-width: 100%; max-height: 100%; width: auto; height: auto;" preserveAspectRatio="xMidYMid meet"')
+                        }}
+                      />
+                    </div>
                   </div>
                   <div className="text-xs text-gray-400 mt-4">
                     Use WireGuard app to scan this QR code

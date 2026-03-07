@@ -21,11 +21,37 @@
 }
 
 /* QR Code Responsive Styles */
-.qr-code-container svg {
+/* Container already has aspect-ratio inline, just ensure no overflow */
+.qr-code-wrapper {
+  @apply overflow-hidden;
+}
+
+/* QR Code SVG - Scale to fit container without overflow */
+.qr-code-content svg {
   @apply max-w-full h-auto;
-  width: 100%;
-  max-width: 200px;
-  height: auto;
+  width: auto !important;
+  height: auto !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  aspect-ratio: 1/1;
+  display: block;
+  margin: 0 auto;
+  object-fit: contain;
+  overflow: hidden !important;
+}
+
+/* Ensure QR code black dots don't overflow */
+.qr-code-content svg rect,
+.qr-code-content svg path {
+  vector-effect: non-scaling-stroke;
+}
+
+/* Ensure QR code stays square and doesn't overflow */
+@media (max-width: 640px) {
+  .qr-code-content svg {
+    max-width: 180px !important;
+    max-height: 180px !important;
+  }
 }
 
 /* Custom scrollbar */
