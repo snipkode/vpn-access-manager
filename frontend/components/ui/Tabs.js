@@ -98,13 +98,14 @@ export default function Tabs({
     <div
       ref={scrollContainerRef}
       className={`
-        ${variants.container} 
-        ${sizes.gap} 
-        ${className} 
-        flex items-center 
-        ${scrollable ? 'overflow-x-auto overflow-y-hidden scrollbar-hide -mx-1 px-1' : 'overflow-hidden'}
+        ${variants.container}
+        ${sizes.gap}
+        ${className}
+        flex items-center
+        ${scrollable ? 'overflow-x-auto overflow-y-hidden scrollbar-hide' : 'overflow-hidden'}
         ${sizes.min_width}
         scroll-smooth
+        flex-nowrap
       `}
       style={{
         WebkitOverflowScrolling: 'touch',
@@ -122,6 +123,7 @@ export default function Tabs({
             flex items-center gap-1.5 sm:gap-2
             font-semibold
             whitespace-nowrap
+            flex-shrink-0
             transition-all duration-200 ease-out
             ${sizes.tab}
             ${variant !== 'underline' ? sizes.radius : ''}
@@ -135,7 +137,7 @@ export default function Tabs({
               {item.icon}
             </span>
           )}
-          <span className="truncate max-w-[140px] sm:max-w-none">{item.label}</span>
+          <span className="truncate">{item.label}</span>
         </button>
       ))}
     </div>
