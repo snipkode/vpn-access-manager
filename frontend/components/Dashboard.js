@@ -333,51 +333,52 @@ export default function Dashboard({ token, userData }) {
           ) : (
             <div className="space-y-2">
               {devices.map((device, index) => {
-              // Fallback key: use device_id, public_key, or index
-              const deviceKey = device.id || device.device_id || device.public_key || `device-${index}`;
+                // Fallback key: use device_id, public_key, or index
+                const deviceKey = device.id || device.device_id || device.public_key || `device-${index}`;
 
-              // Get device name with proper fallback
-              const displayName = device.device_name
-                ? device.device_name.trim()
-                : `${device.ip_address || 'Device'} ${index + 1}`;
+                // Get device name with proper fallback
+                const displayName = device.device_name
+                  ? device.device_name.trim()
+                  : `${device.ip_address || 'Device'} ${index + 1}`;
 
-              return (
-                <div
-                  key={deviceKey}
-                  onClick={() => {
-                    const deviceWithId = {
-                      ...device,
-                      id: device.id || device.device_id || device.public_key,
-                      device_name: displayName,
-                    };
-                    setSelectedDevice(deviceWithId);
-                  }}
-                  className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 dark:bg-[#2C2C2E] rounded-xl border border-gray-100 dark:border-[#38383A] cursor-pointer hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/10 transition-all active:scale-[0.98]"
-                  data-device-id={deviceKey}
-                >
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center text-xl sm:text-2xl flex-shrink-0 shadow-sm">
-                    {getDeviceIcon(displayName)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm sm:text-base font-medium text-dark dark:text-white truncate">{displayName}</div>
-                    <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5">
-                      <div className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500 font-mono">{device.ip_address || 'No IP'}</div>
-                      <span className={`text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded ${
-                        device.status === 'active' ? 'bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400' :
-                        device.status === 'disabled' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400' :
-                        'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-                      }`}>
-                        {device.status || 'unknown'}
-                      </span>
+                return (
+                  <div
+                    key={deviceKey}
+                    onClick={() => {
+                      const deviceWithId = {
+                        ...device,
+                        id: device.id || device.device_id || device.public_key,
+                        device_name: displayName,
+                      };
+                      setSelectedDevice(deviceWithId);
+                    }}
+                    className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 dark:bg-[#2C2C2E] rounded-xl border border-gray-100 dark:border-[#38383A] cursor-pointer hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/10 transition-all active:scale-[0.98]"
+                    data-device-id={deviceKey}
+                  >
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center text-xl sm:text-2xl flex-shrink-0 shadow-sm">
+                      {getDeviceIcon(displayName)}
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm sm:text-base font-medium text-dark dark:text-white truncate">{displayName}</div>
+                      <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5">
+                        <div className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500 font-mono">{device.ip_address || 'No IP'}</div>
+                        <span className={`text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded ${
+                          device.status === 'active' ? 'bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400' :
+                          device.status === 'disabled' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400' :
+                          'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                        }`}>
+                          {device.status || 'unknown'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${device.status === 'active' ? 'bg-success' : 'bg-gray-300 dark:bg-gray-600'}`} />
                   </div>
-                  <div className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${device.status === 'active' ? 'bg-success' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Device Modal */}
       {selectedDevice && (
