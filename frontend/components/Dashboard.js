@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useVpnStore, useSubscriptionStore, useUIStore } from '../store';
 import { vpnAPI, billingAPI } from '../lib/api';
+import { useRequestPending } from '../components/RequestBlockingOverlay';
 
 export default function Dashboard({ token, userData }) {
   const { devices, setDevices, selectedDevice, setSelectedDevice, generating, setGenerating, updateDeviceConfig, getCachedConfig } = useVpnStore();
@@ -10,6 +11,9 @@ export default function Dashboard({ token, userData }) {
   const [loading, setLoading] = useState(true);
   const [deviceType, setDeviceType] = useState('');
   const [fetchingConfig, setFetchingConfig] = useState(false);
+  
+  // Use request pending hook for generate VPN
+  const generatingVpn = useRequestPending('generate_vpn');
 
   useEffect(() => {
     fetchData();
@@ -17,10 +21,15 @@ export default function Dashboard({ token, userData }) {
 
   // Fetch device config when selected device changes
   useEffect(() => {
-    if (selectedDevice && !selectedDevice.config && !selectedDevice.qr) {
-      fetchDeviceConfig(selectedDevice.id);
+    // Get device ID with fallbacks
+    const deviceId = selectedDevice?.id || selectedDevice?.device_id || selectedDevice?.public_key;
+    
+    // Only fetch if we have a valid device ID and missing config/qr
+    if (deviceId && !selectedDevice?.config && !selectedDevice?.qr) {
+      console.log('useEffect: Fetching config for device', deviceId);
+      fetchDeviceConfig(deviceId);
     }
-  }, [selectedDevice?.id]);
+  }, [selectedDevice?.id, selectedDevice?.device_id, selectedDevice?.public_key]);
 
   const deviceSuggestions = [
     { type: 'iphone', label: 'iPhone', icon: '📱', prefix: 'iPhone' },
@@ -34,9 +43,11 @@ export default function Dashboard({ token, userData }) {
     setDeviceType(type);
     const suggestion = deviceSuggestions.find(s => s.type === type);
     if (suggestion) {
+      // Count existing devices with similar prefix
       const count = devices.filter(d =>
-        d.device_name.toLowerCase().includes(suggestion.prefix.toLowerCase())
+        d.device_name?.toLowerCase().includes(suggestion.prefix.toLowerCase())
       ).length;
+      // Generate dynamic name with timestamp
       const timestamp = new Date().toLocaleTimeString('id-ID', {
         hour: '2-digit',
         minute: '2-digit',
@@ -46,13 +57,29 @@ export default function Dashboard({ token, userData }) {
     }
   };
 
+  // Generate dynamic placeholder based on existing devices
+  const getDynamicPlaceholder = () => {
+    const lastDevice = devices[devices.length - 1];
+    if (lastDevice?.device_name) {
+      return `e.g., ${lastDevice.device_name.replace(/\d+$/, n => parseInt(n) + 1)}`;
+    }
+    return 'Device name (e.g., iPhone 1, MacBook Pro)';
+  };
+
   const fetchData = async () => {
     try {
+      console.log('Fetching fresh data from Firestore...');
       const [devicesData, subData] = await Promise.all([
-        vpnAPI.getDevices(),
+        vpnAPI.getDevices(), // Fetch from Firestore via API
         billingAPI.getSubscription(),
       ]);
-      setDevices(devicesData.devices || []);
+      // Ensure all devices have an ID
+      const devicesWithId = (devicesData.devices || []).map(d => ({
+        ...d,
+        id: d.id || d.device_id // Ensure ID is set
+      }));
+      console.log('Fetched', devicesWithId.length, 'devices from Firestore');
+      setDevices(devicesWithId);
       setSubscription(subData.subscription || null);
     } catch (error) {
       console.error('Fetch error:', error);
@@ -62,23 +89,25 @@ export default function Dashboard({ token, userData }) {
   };
 
   const fetchDeviceConfig = async (deviceId) => {
-    // Check cache first
-    const cached = getCachedConfig(deviceId);
-    if (cached?.config && cached?.qr) {
-      console.log('Using cached config for device:', deviceId);
-      setSelectedDevice(prev => ({ ...prev, ...cached }));
+    // Guard: must have valid device ID
+    if (!deviceId) {
+      console.error('fetchDeviceConfig: No device ID provided');
       return;
     }
 
-    // Fetch from API
+    // Always fetch from API (no localStorage cache)
     setFetchingConfig(true);
     try {
       const data = await vpnAPI.getDevice(deviceId);
-      console.log('Fetched device config from API:', deviceId);
-      // Update store with config/qr
+      console.log('Fetched device config from API:', deviceId, data);
+      // Update store with config/qr (in-memory cache only)
       updateDeviceConfig(deviceId, data.config, data.qr);
-      // Update selected device
-      setSelectedDevice(prev => ({ ...prev, ...data }));
+      // Update selected device - ensure we have the ID
+      setSelectedDevice(prev => ({ 
+        ...prev, 
+        ...data,
+        id: data.device_id || data.id || deviceId // Fallback to ensure ID is set
+      }));
     } catch (error) {
       console.error('Failed to fetch device config:', error);
       showNotification('Failed to load device configuration', 'error');
@@ -93,21 +122,26 @@ export default function Dashboard({ token, userData }) {
       return;
     }
 
-    setGenerating(true);
+    // generatingVpn is already managed by the API request lock
+    // The overlay will block UI automatically
     try {
       const data = await vpnAPI.generateConfig(deviceName);
       showNotification('Device added successfully!');
       setDeviceName('');
-      setSelectedDevice({ ...data, isNew: true });
+      // Ensure ID is set correctly (API returns device_id)
+      setSelectedDevice({ 
+        ...data, 
+        isNew: true,
+        id: data.device_id || data.id // Ensure ID is set
+      });
       fetchData();
     } catch (error) {
       showNotification(error.message, 'error');
-    } finally {
-      setGenerating(false);
     }
   };
 
   const revokeDevice = async (deviceId) => {
+    // Request lock will be handled automatically by API
     try {
       await vpnAPI.deleteDevice(deviceId);
       showNotification('Device removed');
@@ -194,12 +228,12 @@ export default function Dashboard({ token, userData }) {
                 <button
                   key={suggestion.type}
                   onClick={() => selectDeviceType(suggestion.type)}
-                  disabled={devices.length >= 3 || generating}
+                  disabled={devices.length >= 3 || generatingVpn}
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     deviceType === suggestion.type
                       ? 'bg-primary text-white shadow-md shadow-primary/30'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  } ${devices.length >= 3 || generating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  } ${devices.length >= 3 || generatingVpn ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <span>{suggestion.icon}</span>
                   <span>{suggestion.label}</span>
@@ -216,20 +250,20 @@ export default function Dashboard({ token, userData }) {
                   setDeviceName(e.target.value);
                   setDeviceType('');
                 }}
-                placeholder="Device name (e.g., iPhone 1, MacBook Pro)"
-                disabled={devices.length >= 3 || generating}
+                placeholder={getDynamicPlaceholder()}
+                disabled={devices.length >= 3 || generatingVpn}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-dark text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-gray-100 transition-all"
               />
               <button
                 onClick={generateConfig}
-                disabled={generating || devices.length >= 3 || !deviceName.trim()}
+                disabled={generatingVpn || devices.length >= 3 || !deviceName.trim()}
                 className={`w-full sm:w-auto px-6 py-3 bg-primary text-white rounded-xl text-base font-semibold whitespace-nowrap transition-all ${
-                  generating || devices.length >= 3
+                  generatingVpn || devices.length >= 3
                     ? 'opacity-50 cursor-not-allowed'
                     : 'hover:bg-primary/90 active:scale-95'
                 }`}
               >
-                {generating ? (
+                {generatingVpn ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Adding...
@@ -259,22 +293,50 @@ export default function Dashboard({ token, userData }) {
           </div>
         ) : (
           <div className="space-y-2">
-            {devices.map((device) => (
-              <div
-                key={device.id}
-                onClick={() => setSelectedDevice(device)}
-                className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all active:scale-[0.98]"
-              >
-                <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-2xl flex-shrink-0 shadow-sm">
-                  {getDeviceIcon(device.device_name)}
+            {devices.map((device, index) => {
+              // Fallback key: use device_id, public_key, or index
+              const deviceKey = device.id || device.device_id || device.public_key || `device-${index}`;
+              
+              // Debug logging for missing ID
+              if (!device.id && !device.device_id) {
+                console.warn('Device missing ID:', device);
+              }
+              
+              return (
+                <div
+                  key={deviceKey}
+                  onClick={() => {
+                    // Ensure device has ID before selecting
+                    const deviceWithId = {
+                      ...device,
+                      id: device.id || device.device_id || device.public_key
+                    };
+                    console.log('Selecting device:', deviceWithId);
+                    setSelectedDevice(deviceWithId);
+                  }}
+                  className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all active:scale-[0.98]"
+                  data-device-id={deviceKey}
+                >
+                  <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-2xl flex-shrink-0 shadow-sm">
+                    {getDeviceIcon(device.device_name)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-base font-medium text-dark truncate">{device.device_name || 'Unnamed Device'}</div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <div className="text-xs text-gray-400 font-mono">{device.ip_address}</div>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                        device.status === 'active' ? 'bg-green-100 text-green-600' : 
+                        device.status === 'disabled' ? 'bg-amber-100 text-amber-600' :
+                        'bg-gray-100 text-gray-500'
+                      }`}>
+                        {device.status || 'unknown'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className={`w-2.5 h-2.5 rounded-full ${device.status === 'active' ? 'bg-success' : 'bg-gray-300'}`} />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-base font-medium text-dark truncate">{device.device_name}</div>
-                  <div className="text-xs text-gray-400 font-mono mt-0.5">{device.ip_address}</div>
-                </div>
-                <div className={`w-2.5 h-2.5 rounded-full ${device.status === 'active' ? 'bg-success' : 'bg-gray-300'}`} />
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -284,7 +346,14 @@ export default function Dashboard({ token, userData }) {
         <DeviceModal
           device={selectedDevice}
           onClose={() => setSelectedDevice(null)}
-          onRevoke={() => revokeDevice(selectedDevice.id)}
+          onRevoke={() => {
+            const deviceId = selectedDevice.id || selectedDevice.device_id || selectedDevice.public_key;
+            if (deviceId) {
+              revokeDevice(deviceId);
+            } else {
+              showNotification('Device ID not found', 'error');
+            }
+          }}
           onDownload={() => downloadConfig(selectedDevice.config, selectedDevice.device_name)}
           fetchingConfig={fetchingConfig}
         />
@@ -296,6 +365,27 @@ export default function Dashboard({ token, userData }) {
 // Device Modal Component
 function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) {
   const [activeTab, setActiveTab] = useState('qrcode');
+  const deletingDevice = useRequestPending('delete_vpn_device');
+
+  // Get device ID with fallbacks
+  const deviceId = device.id || device.device_id || device.public_key;
+
+  // Guard: device must have an ID
+  if (!deviceId) {
+    console.error('DeviceModal: No device ID', device);
+    return (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+        <div className="bg-white rounded-3xl w-full max-w-lg p-8 text-center" onClick={(e) => e.stopPropagation()}>
+          <div className="text-5xl mb-4">⚠️</div>
+          <div className="text-lg font-semibold text-dark mb-2">Device ID Missing</div>
+          <div className="text-sm text-gray-500">Unable to load device details. Please try again.</div>
+          <button onClick={onClose} className="mt-6 px-6 py-2.5 bg-primary text-white rounded-xl font-medium">
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -475,11 +565,15 @@ function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) 
           )}
           <button
             onClick={onRevoke}
-            disabled={fetchingConfig}
+            disabled={deletingDevice || fetchingConfig}
             className="flex-1 flex items-center justify-center gap-2 py-3 bg-red-50 text-red-500 rounded-xl font-semibold hover:bg-red-100 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <i className="fas fa-trash" />
-            Remove
+            {deletingDevice ? (
+              <span className="w-4 h-4 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin" />
+            ) : (
+              <i className="fas fa-trash" />
+            )}
+            {deletingDevice ? 'Removing...' : 'Remove'}
           </button>
         </div>
       </div>

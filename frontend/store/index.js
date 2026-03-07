@@ -32,120 +32,77 @@ export const useAuthStore = create((set) => ({
 }));
 
 // VPN Store
-const VPN_STORAGE_KEY = 'vpn_devices_cache';
-
-// Helper functions for localStorage
-const getStoredDevices = () => {
-  if (typeof window === 'undefined') return [];
-  try {
-    const stored = localStorage.getItem(VPN_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch (error) {
-    console.error('Failed to get stored devices:', error);
-    return [];
-  }
-};
-
-const storeDevices = (devices) => {
-  if (typeof window === 'undefined') return;
-  try {
-    // Only store basic device info, not config/qr (they can be regenerated)
-    const devicesToStore = devices.map(({ config, qr, ...rest }) => rest);
-    localStorage.setItem(VPN_STORAGE_KEY, JSON.stringify(devicesToStore));
-  } catch (error) {
-    console.error('Failed to store devices:', error);
-  }
-};
-
-const getStoredDeviceConfig = (deviceId) => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const stored = localStorage.getItem(`${VPN_STORAGE_KEY}_config_${deviceId}`);
-    return stored ? JSON.parse(stored) : null;
-  } catch (error) {
-    console.error('Failed to get stored device config:', error);
-    return null;
-  }
-};
-
-const storeDeviceConfig = (deviceId, config, qr) => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(`${VPN_STORAGE_KEY}_config_${deviceId}`, JSON.stringify({ config, qr }));
-  } catch (error) {
-    console.error('Failed to store device config:', error);
-  }
-};
-
-const clearDeviceConfig = (deviceId) => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.removeItem(`${VPN_STORAGE_KEY}_config_${deviceId}`);
-  } catch (error) {
-    console.error('Failed to clear device config:', error);
-  }
-};
+// No localStorage caching - always fetch from Firestore
 
 export const useVpnStore = create((set, get) => ({
   devices: [],
   generating: false,
   selectedDevice: null,
+  deviceConfigs: {}, // In-memory cache for configs/QR (not persisted)
 
   setDevices: (devices) => {
-    storeDevices(devices);
+    console.log('setDevices: Setting', devices.length, 'devices');
     set({ devices });
   },
-  
+
   addDevice: (device) => {
     const newDevices = [...get().devices, device];
-    storeDevices(newDevices);
-    // Store config/qr separately
-    if (device.config && device.qr) {
-      storeDeviceConfig(device.device_id || device.id, device.config, device.qr);
-    }
     set({ devices: newDevices });
+    // Store config in memory only
+    if (device.config && device.qr) {
+      const deviceId = device.device_id || device.id;
+      set((state) => ({
+        deviceConfigs: {
+          ...state.deviceConfigs,
+          [deviceId]: { config: device.config, qr: device.qr }
+        }
+      }));
+    }
   },
-  
+
   removeDevice: (deviceId) => {
     const state = get();
-    clearDeviceConfig(deviceId);
-    const newDevices = state.devices.filter(d => d.id !== deviceId);
-    storeDevices(newDevices);
-    set({
-      devices: newDevices,
-      selectedDevice: state.selectedDevice?.id === deviceId ? null : state.selectedDevice,
-    });
+    const newDevices = state.devices.filter(d => d.id !== deviceId && d.device_id !== deviceId);
+    // Remove from in-memory cache
+    const newConfigs = { ...state.deviceConfigs };
+    delete newConfigs[deviceId];
+    set({ devices: newDevices, deviceConfigs: newConfigs });
   },
-  
+
   setSelectedDevice: (device) => set({ selectedDevice: device }),
-  
+
   setGenerating: (generating) => set({ generating }),
-  
-  // Update device with config/qr from API
+
+  // Update device with config/qr from API (in-memory only)
   updateDeviceConfig: (deviceId, config, qr) => {
     const state = get();
-    storeDeviceConfig(deviceId, config, qr);
+    // Update in-memory cache
+    set((state) => ({
+      deviceConfigs: {
+        ...state.deviceConfigs,
+        [deviceId]: { config, qr }
+      }
+    }));
     // Update in devices list
-    const updatedDevices = state.devices.map(d => 
-      d.id === deviceId ? { ...d, config, qr } : d
+    const updatedDevices = state.devices.map(d =>
+      d.id === deviceId || d.device_id === deviceId ? { ...d, config, qr } : d
     );
-    storeDevices(updatedDevices);
-    set({ 
+    set({
       devices: updatedDevices,
-      selectedDevice: state.selectedDevice?.id === deviceId 
-        ? { ...state.selectedDevice, config, qr } 
-        : state.selectedDevice 
+      selectedDevice: state.selectedDevice?.id === deviceId || state.selectedDevice?.device_id === deviceId
+        ? { ...state.selectedDevice, config, qr }
+        : state.selectedDevice
     });
   },
-  
-  // Get cached config for a device
-  getCachedConfig: (deviceId) => getStoredDeviceConfig(deviceId),
-  
+
+  // Get cached config from memory (not localStorage)
+  getCachedConfig: (deviceId) => {
+    const state = get();
+    return state.deviceConfigs[deviceId] || null;
+  },
+
   reset: () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(VPN_STORAGE_KEY);
-    }
-    set({ devices: [], selectedDevice: null, generating: false });
+    set({ devices: [], selectedDevice: null, generating: false, deviceConfigs: {} });
   },
 }));
 
@@ -164,7 +121,10 @@ export const useUIStore = create((set) => ({
   activePage: 'dashboard',
   sidebarOpen: false,
   notification: null,
-
+  
+  // Request blocking/loading state
+  pendingRequests: [], // Array of pending request keys e.g. ['generate_vpn', 'disable_peer']
+  
   setActivePage: (page) => set({ activePage: page }),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
@@ -172,6 +132,25 @@ export const useUIStore = create((set) => ({
     set({ notification: { message, type } });
     setTimeout(() => set({ notification: null }), 3000);
   },
+  
+  // Add pending request
+  addPendingRequest: (requestKey) => set((state) => ({
+    pendingRequests: [...state.pendingRequests, requestKey]
+  })),
+  
+  // Remove pending request
+  removePendingRequest: (requestKey) => set((state) => ({
+    pendingRequests: state.pendingRequests.filter(key => key !== requestKey)
+  })),
+  
+  // Check if request is pending
+  isRequestPending: (requestKey) => {
+    const state = useUIStore.getState();
+    return state.pendingRequests.includes(requestKey);
+  },
+  
+  // Clear all pending requests
+  clearPendingRequests: () => set({ pendingRequests: [] }),
 }));
 
 // Billing/Payment Store

@@ -3,14 +3,14 @@
  * Integrated with Swagger API documentation at http://localhost:3000/api-docs/
  */
 
-import { useAuthStore } from '../store';
+import { useAuthStore, useUIStore } from '../store';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 /**
- * Base API fetch with authentication
+ * Base API fetch with authentication and request locking
  */
-export const apiFetch = async (endpoint, options = {}) => {
+export const apiFetch = async (endpoint, options = {}, requestKey = null) => {
   const token = useAuthStore.getState().token;
 
   const headers = {
@@ -26,17 +26,29 @@ export const apiFetch = async (endpoint, options = {}) => {
     headers['Content-Type'] = 'application/json';
   }
 
-  const res = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || error.message || 'Request failed');
+  // Add request to pending list if requestKey provided
+  if (requestKey) {
+    useUIStore.getState().addPendingRequest(requestKey);
   }
 
-  return res.json();
+  try {
+    const res = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ error: 'Request failed' }));
+      throw new Error(error.error || error.message || 'Request failed');
+    }
+
+    return res.json();
+  } finally {
+    // Remove request from pending list
+    if (requestKey) {
+      useUIStore.getState().removePendingRequest(requestKey);
+    }
+  }
 };
 
 /**
@@ -104,7 +116,7 @@ export const vpnAPI = {
    * GET /api/vpn/devices
    */
   getDevices: async () => {
-    return apiFetch('/vpn/devices');
+    return apiFetch('/vpn/devices', {}, 'get_vpn_devices');
   },
 
   /**
@@ -115,7 +127,7 @@ export const vpnAPI = {
     return apiFetch('/vpn/generate', {
       method: 'POST',
       body: JSON.stringify({ device_name: deviceName }),
-    });
+    }, 'generate_vpn');
   },
 
   /**
@@ -123,7 +135,7 @@ export const vpnAPI = {
    * DELETE /api/vpn/device/:id
    */
   deleteDevice: async (deviceId) => {
-    return apiFetch(`/vpn/device/${deviceId}`, { method: 'DELETE' });
+    return apiFetch(`/vpn/device/${deviceId}`, { method: 'DELETE' }, 'delete_vpn_device');
   },
 
   /**
@@ -131,7 +143,23 @@ export const vpnAPI = {
    * GET /api/vpn/device/:id
    */
   getDevice: async (deviceId) => {
-    return apiFetch(`/vpn/device/${deviceId}`);
+    return apiFetch(`/vpn/device/${deviceId}`, {}, 'get_vpn_device');
+  },
+
+  /**
+   * Disable a device (admin)
+   * POST /api/vpn/device/:id/disable
+   */
+  disableDevice: async (deviceId) => {
+    return apiFetch(`/vpn/device/${deviceId}/disable`, { method: 'POST' }, 'disable_vpn_device');
+  },
+
+  /**
+   * Reactivate a device (admin)
+   * POST /api/vpn/device/:id/reactivate
+   */
+  reactivateDevice: async (deviceId) => {
+    return apiFetch(`/vpn/device/${deviceId}/reactivate`, { method: 'POST' }, 'reactivate_vpn_device');
   },
 };
 
@@ -809,7 +837,7 @@ export const adminDevicesAPI = {
   getDevices: async (params = {}) => {
     const queryString = new URLSearchParams(params).toString();
     const url = queryString ? `/admin/devices?${queryString}` : '/admin/devices';
-    return apiFetch(url);
+    return apiFetch(url, {}, 'get_admin_devices');
   },
 
   /**
@@ -817,7 +845,7 @@ export const adminDevicesAPI = {
    * GET /api/admin/devices/:id
    */
   getDevice: async (deviceId) => {
-    return apiFetch(`/admin/devices/${deviceId}`);
+    return apiFetch(`/admin/devices/${deviceId}`, {}, 'get_admin_device');
   },
 
   /**
@@ -825,7 +853,7 @@ export const adminDevicesAPI = {
    * DELETE /api/admin/devices/:id
    */
   deleteDevice: async (deviceId) => {
-    return apiFetch(`/admin/devices/${deviceId}`, { method: 'DELETE' });
+    return apiFetch(`/admin/devices/${deviceId}`, { method: 'DELETE' }, 'delete_admin_device');
   },
 
   /**
@@ -833,7 +861,23 @@ export const adminDevicesAPI = {
    * POST /api/admin/devices/:id/reset-ip
    */
   resetDeviceIP: async (deviceId) => {
-    return apiFetch(`/admin/devices/${deviceId}/reset-ip`, { method: 'POST' });
+    return apiFetch(`/admin/devices/${deviceId}/reset-ip`, { method: 'POST' }, 'reset_device_ip');
+  },
+
+  /**
+   * Disable device
+   * POST /api/admin/devices/:id/disable
+   */
+  disableDevice: async (deviceId) => {
+    return apiFetch(`/admin/devices/${deviceId}/disable`, { method: 'POST' }, 'disable_admin_device');
+  },
+
+  /**
+   * Reactivate device
+   * POST /api/admin/devices/:id/reactivate
+   */
+  reactivateDevice: async (deviceId) => {
+    return apiFetch(`/admin/devices/${deviceId}/reactivate`, { method: 'POST' }, 'reactivate_admin_device');
   },
 };
 
