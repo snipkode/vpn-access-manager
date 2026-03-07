@@ -383,8 +383,8 @@ export default function AdminSettings({ token }) {
                 <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">SMTP Port</label>
                 <input
                   type="number"
-                  value={email.smtp_port}
-                  onChange={(e) => setEmail(s => ({ ...s, smtp_port: parseInt(e.target.value) }))}
+                  value={email.smtp_port || 0}
+                  onChange={(e) => setEmail(s => ({ ...s, smtp_port: parseInt(e.target.value) || 0 }))}
                   placeholder="587"
                   className="w-full px-4 py-[11px] bg-gray-50 border border-gray-200 rounded-xl text-dark text-[15px] focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
                 />
@@ -496,8 +496,8 @@ export default function AdminSettings({ token }) {
                 <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Min Top-up</label>
                 <input
                   type="number"
-                  value={billing.min_topup}
-                  onChange={(e) => setBilling(s => ({ ...s, min_topup: parseInt(e.target.value) }))}
+                  value={billing.min_topup || 0}
+                  onChange={(e) => setBilling(s => ({ ...s, min_topup: parseInt(e.target.value) || 0 }))}
                   className="w-full px-4 py-[11px] bg-gray-50 border border-gray-200 rounded-xl text-dark text-[15px] focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
                 />
               </div>
@@ -505,8 +505,8 @@ export default function AdminSettings({ token }) {
                 <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Max Top-up</label>
                 <input
                   type="number"
-                  value={billing.max_topup}
-                  onChange={(e) => setBilling(s => ({ ...s, max_topup: parseInt(e.target.value) }))}
+                  value={billing.max_topup || 0}
+                  onChange={(e) => setBilling(s => ({ ...s, max_topup: parseInt(e.target.value) || 0 }))}
                   className="w-full px-4 py-[11px] bg-gray-50 border border-gray-200 rounded-xl text-dark text-[15px] focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
                 />
               </div>
@@ -527,8 +527,8 @@ export default function AdminSettings({ token }) {
               <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Low Balance Alert (Days)</label>
               <input
                 type="number"
-                value={billing.low_balance_days}
-                onChange={(e) => setBilling(s => ({ ...s, low_balance_days: parseInt(e.target.value) }))}
+                value={billing.low_balance_days || 0}
+                onChange={(e) => setBilling(s => ({ ...s, low_balance_days: parseInt(e.target.value) || 0 }))}
                 className="w-full px-4 py-[11px] bg-gray-50 border border-gray-200 rounded-xl text-dark text-[15px] focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
               />
               <p className="text-[12px] text-gray-400 mt-1.5">Alert user when balance is low X days before expiry</p>
