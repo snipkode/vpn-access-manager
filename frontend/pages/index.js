@@ -171,9 +171,6 @@ export default function App() {
 
         setupTokenRefresh();
       } else {
-          }
-        }
-      } else {
         clearUser();
       }
       setInitialized(true);
