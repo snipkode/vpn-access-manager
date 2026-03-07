@@ -3,16 +3,24 @@ import { useVpnStore, useSubscriptionStore, useUIStore } from '../store';
 import { vpnAPI, billingAPI } from '../lib/api';
 
 export default function Dashboard({ token, userData }) {
-  const { devices, setDevices, selectedDevice, setSelectedDevice, generating, setGenerating } = useVpnStore();
+  const { devices, setDevices, selectedDevice, setSelectedDevice, generating, setGenerating, updateDeviceConfig, getCachedConfig } = useVpnStore();
   const { subscription, setSubscription, loading: subLoading } = useSubscriptionStore();
   const { showNotification } = useUIStore();
   const [deviceName, setDeviceName] = useState('');
   const [loading, setLoading] = useState(true);
   const [deviceType, setDeviceType] = useState('');
+  const [fetchingConfig, setFetchingConfig] = useState(false);
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Fetch device config when selected device changes
+  useEffect(() => {
+    if (selectedDevice && !selectedDevice.config && !selectedDevice.qr) {
+      fetchDeviceConfig(selectedDevice.id);
+    }
+  }, [selectedDevice?.id]);
 
   const deviceSuggestions = [
     { type: 'iphone', label: 'iPhone', icon: '📱', prefix: 'iPhone' },
@@ -26,13 +34,13 @@ export default function Dashboard({ token, userData }) {
     setDeviceType(type);
     const suggestion = deviceSuggestions.find(s => s.type === type);
     if (suggestion) {
-      const count = devices.filter(d => 
+      const count = devices.filter(d =>
         d.device_name.toLowerCase().includes(suggestion.prefix.toLowerCase())
       ).length;
-      const timestamp = new Date().toLocaleTimeString('id-ID', { 
-        hour: '2-digit', 
+      const timestamp = new Date().toLocaleTimeString('id-ID', {
+        hour: '2-digit',
         minute: '2-digit',
-        hour12: false 
+        hour12: false
       }).replace(/:/g, '');
       setDeviceName(`${suggestion.prefix} ${count + 1} - ${timestamp}`);
     }
@@ -50,6 +58,32 @@ export default function Dashboard({ token, userData }) {
       console.error('Fetch error:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDeviceConfig = async (deviceId) => {
+    // Check cache first
+    const cached = getCachedConfig(deviceId);
+    if (cached?.config && cached?.qr) {
+      console.log('Using cached config for device:', deviceId);
+      setSelectedDevice(prev => ({ ...prev, ...cached }));
+      return;
+    }
+
+    // Fetch from API
+    setFetchingConfig(true);
+    try {
+      const data = await vpnAPI.getDevice(deviceId);
+      console.log('Fetched device config from API:', deviceId);
+      // Update store with config/qr
+      updateDeviceConfig(deviceId, data.config, data.qr);
+      // Update selected device
+      setSelectedDevice(prev => ({ ...prev, ...data }));
+    } catch (error) {
+      console.error('Failed to fetch device config:', error);
+      showNotification('Failed to load device configuration', 'error');
+    } finally {
+      setFetchingConfig(false);
     }
   };
 
@@ -132,10 +166,10 @@ export default function Dashboard({ token, userData }) {
           </div>
           {subscription.subscription_end && (
             <div className="text-xs text-gray-400 pt-3 border-t border-gray-100">
-              Expires {new Date(subscription.subscription_end).toLocaleDateString('id-ID', { 
-                day: 'numeric', 
-                month: 'short', 
-                year: 'numeric' 
+              Expires {new Date(subscription.subscription_end).toLocaleDateString('id-ID', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
               })}
             </div>
           )}
@@ -252,6 +286,7 @@ export default function Dashboard({ token, userData }) {
           onClose={() => setSelectedDevice(null)}
           onRevoke={() => revokeDevice(selectedDevice.id)}
           onDownload={() => downloadConfig(selectedDevice.config, selectedDevice.device_name)}
+          fetchingConfig={fetchingConfig}
         />
       )}
     </div>
@@ -259,7 +294,7 @@ export default function Dashboard({ token, userData }) {
 }
 
 // Device Modal Component
-function DeviceModal({ device, onClose, onRevoke, onDownload }) {
+function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) {
   const [activeTab, setActiveTab] = useState('qrcode');
 
   return (
@@ -322,7 +357,12 @@ function DeviceModal({ device, onClose, onRevoke, onDownload }) {
           {/* QR Code Tab */}
           {activeTab === 'qrcode' && (
             <div className="space-y-4">
-              {device.qr ? (
+              {fetchingConfig ? (
+                <div className="bg-gray-50 rounded-xl p-8 text-center">
+                  <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-3" />
+                  <div className="text-sm text-gray-500">Loading configuration...</div>
+                </div>
+              ) : device.qr ? (
                 <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 text-center border border-gray-200">
                   <div className="text-sm font-semibold text-gray-500 mb-4 uppercase tracking-wide">Scan to Connect</div>
                   <div className="flex justify-center">
@@ -352,7 +392,12 @@ function DeviceModal({ device, onClose, onRevoke, onDownload }) {
           {/* Config Tab */}
           {activeTab === 'config' && (
             <div className="space-y-3">
-              {device.config ? (
+              {fetchingConfig ? (
+                <div className="bg-gray-50 rounded-xl p-8 text-center">
+                  <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-3" />
+                  <div className="text-sm text-gray-500">Loading configuration...</div>
+                </div>
+              ) : device.config ? (
                 <>
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Configuration File</div>
@@ -384,7 +429,7 @@ function DeviceModal({ device, onClose, onRevoke, onDownload }) {
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                 <div className="text-sm font-semibold text-blue-800 mb-2">📥 Step 1: Download WireGuard App</div>
                 <p className="text-xs text-blue-700 leading-relaxed">
-                  Download dan install aplikasi WireGuard dari App Store (iOS), Google Play Store (Android), 
+                  Download dan install aplikasi WireGuard dari App Store (iOS), Google Play Store (Android),
                   atau website resmi WireGuard untuk desktop.
                 </p>
               </div>
@@ -400,7 +445,7 @@ function DeviceModal({ device, onClose, onRevoke, onDownload }) {
               <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
                 <div className="text-sm font-semibold text-purple-800 mb-2">🔌 Step 3: Connect to VPN</div>
                 <p className="text-xs text-purple-700 leading-relaxed">
-                  Setelah konfigurasi berhasil diimport, tap tombol power/connect di aplikasi WireGuard 
+                  Setelah konfigurasi berhasil diimport, tap tombol power/connect di aplikasi WireGuard
                   untuk mulai menggunakan VPN.
                 </p>
               </div>
@@ -419,7 +464,7 @@ function DeviceModal({ device, onClose, onRevoke, onDownload }) {
 
         {/* Actions */}
         <div className="flex gap-3 p-5 border-t border-gray-100 sticky bottom-0 bg-white rounded-b-3xl">
-          {device.config && (
+          {device.config && !fetchingConfig && (
             <button
               onClick={onDownload}
               className="flex-1 flex items-center justify-center gap-2 py-3 bg-gray-100 text-primary rounded-xl font-semibold hover:bg-gray-200 transition-all active:scale-[0.98]"
@@ -430,7 +475,8 @@ function DeviceModal({ device, onClose, onRevoke, onDownload }) {
           )}
           <button
             onClick={onRevoke}
-            className="flex-1 flex items-center justify-center gap-2 py-3 bg-red-50 text-red-500 rounded-xl font-semibold hover:bg-red-100 transition-all active:scale-[0.98]"
+            disabled={fetchingConfig}
+            className="flex-1 flex items-center justify-center gap-2 py-3 bg-red-50 text-red-500 rounded-xl font-semibold hover:bg-red-100 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <i className="fas fa-trash" />
             Remove

@@ -241,6 +241,101 @@ router.get('/devices', verifyAuth, async (req, res) => {
 /**
  * @swagger
  * /api/vpn/device/{id}:
+ *   get:
+ *     summary: Get VPN device configuration with QR code
+ *     tags: [VPN]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Device ID
+ *     responses:
+ *       200:
+ *         description: VPN device configuration
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 device_id: { type: string }
+ *                 device_name: { type: string }
+ *                 ip_address: { type: string }
+ *                 public_key: { type: string }
+ *                 config: { type: string }
+ *                 qr: { type: string }
+ *                 status: { type: string }
+ *                 created_at: { type: string, format: date-time }
+ *       403:
+ *         description: Unauthorized - Device belongs to another user
+ *       404:
+ *         description: Device not found
+ *       500:
+ *         description: Failed to get device config
+ */
+router.get('/device/:id',
+  verifyAuth,
+  async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { id } = req.params;
+
+    // Validate device ID format
+    if (!isValidDocId(id)) {
+      return res.status(400).json({
+        error: 'Invalid device ID',
+        message: 'Device ID must be alphanumeric (max 50 chars)'
+      });
+    }
+
+    const deviceRef = db.collection('devices').doc(id);
+    const deviceDoc = await deviceRef.get();
+
+    if (!deviceDoc.exists) {
+      return res.status(404).json({ error: 'Device not found' });
+    }
+
+    const deviceData = deviceDoc.data();
+
+    // Check ownership
+    if (deviceData.user_id !== uid) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    // Check if device is revoked
+    if (deviceData.status === 'revoked') {
+      return res.status(400).json({
+        error: 'Device revoked',
+        message: 'This device has been revoked'
+      });
+    }
+
+    // Generate config and QR code on-demand
+    const config = generateConfig(deviceData.private_key, deviceData.ip_address, deviceData.device_name);
+    const qrCodeData = await QRCode.toString(config, { type: 'string' });
+
+    res.json({
+      device_id: id,
+      device_name: deviceData.device_name,
+      ip_address: deviceData.ip_address,
+      public_key: deviceData.public_key,
+      config,
+      qr: qrCodeData,
+      status: deviceData.status,
+      created_at: deviceData.created_at,
+    });
+  } catch (error) {
+    console.error('Get device config error:', error.message);
+    res.status(500).json({ error: 'Failed to get device config', details: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/vpn/device/{id}:
  *   delete:
  *     summary: Revoke user's VPN device
  *     tags: [VPN]

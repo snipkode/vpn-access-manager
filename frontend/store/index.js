@@ -32,20 +32,121 @@ export const useAuthStore = create((set) => ({
 }));
 
 // VPN Store
-export const useVpnStore = create((set) => ({
+const VPN_STORAGE_KEY = 'vpn_devices_cache';
+
+// Helper functions for localStorage
+const getStoredDevices = () => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const stored = localStorage.getItem(VPN_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error('Failed to get stored devices:', error);
+    return [];
+  }
+};
+
+const storeDevices = (devices) => {
+  if (typeof window === 'undefined') return;
+  try {
+    // Only store basic device info, not config/qr (they can be regenerated)
+    const devicesToStore = devices.map(({ config, qr, ...rest }) => rest);
+    localStorage.setItem(VPN_STORAGE_KEY, JSON.stringify(devicesToStore));
+  } catch (error) {
+    console.error('Failed to store devices:', error);
+  }
+};
+
+const getStoredDeviceConfig = (deviceId) => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const stored = localStorage.getItem(`${VPN_STORAGE_KEY}_config_${deviceId}`);
+    return stored ? JSON.parse(stored) : null;
+  } catch (error) {
+    console.error('Failed to get stored device config:', error);
+    return null;
+  }
+};
+
+const storeDeviceConfig = (deviceId, config, qr) => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(`${VPN_STORAGE_KEY}_config_${deviceId}`, JSON.stringify({ config, qr }));
+  } catch (error) {
+    console.error('Failed to store device config:', error);
+  }
+};
+
+const clearDeviceConfig = (deviceId) => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(`${VPN_STORAGE_KEY}_config_${deviceId}`);
+  } catch (error) {
+    console.error('Failed to clear device config:', error);
+  }
+};
+
+export const useVpnStore = create((set, get) => ({
   devices: [],
   generating: false,
   selectedDevice: null,
 
-  setDevices: (devices) => set({ devices }),
-  addDevice: (device) => set((state) => ({ devices: [...state.devices, device] })),
-  removeDevice: (deviceId) => set((state) => ({
-    devices: state.devices.filter(d => d.id !== deviceId),
-    selectedDevice: state.selectedDevice?.id === deviceId ? null : state.selectedDevice,
-  })),
+  setDevices: (devices) => {
+    storeDevices(devices);
+    set({ devices });
+  },
+  
+  addDevice: (device) => {
+    const newDevices = [...get().devices, device];
+    storeDevices(newDevices);
+    // Store config/qr separately
+    if (device.config && device.qr) {
+      storeDeviceConfig(device.device_id || device.id, device.config, device.qr);
+    }
+    set({ devices: newDevices });
+  },
+  
+  removeDevice: (deviceId) => {
+    const state = get();
+    clearDeviceConfig(deviceId);
+    const newDevices = state.devices.filter(d => d.id !== deviceId);
+    storeDevices(newDevices);
+    set({
+      devices: newDevices,
+      selectedDevice: state.selectedDevice?.id === deviceId ? null : state.selectedDevice,
+    });
+  },
+  
   setSelectedDevice: (device) => set({ selectedDevice: device }),
+  
   setGenerating: (generating) => set({ generating }),
-  reset: () => set({ devices: [], selectedDevice: null, generating: false }),
+  
+  // Update device with config/qr from API
+  updateDeviceConfig: (deviceId, config, qr) => {
+    const state = get();
+    storeDeviceConfig(deviceId, config, qr);
+    // Update in devices list
+    const updatedDevices = state.devices.map(d => 
+      d.id === deviceId ? { ...d, config, qr } : d
+    );
+    storeDevices(updatedDevices);
+    set({ 
+      devices: updatedDevices,
+      selectedDevice: state.selectedDevice?.id === deviceId 
+        ? { ...state.selectedDevice, config, qr } 
+        : state.selectedDevice 
+    });
+  },
+  
+  // Get cached config for a device
+  getCachedConfig: (deviceId) => getStoredDeviceConfig(deviceId),
+  
+  reset: () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(VPN_STORAGE_KEY);
+    }
+    set({ devices: [], selectedDevice: null, generating: false });
+  },
 }));
 
 // Subscription Store
