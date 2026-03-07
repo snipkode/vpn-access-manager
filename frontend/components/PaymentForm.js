@@ -294,12 +294,19 @@ export default function PaymentForm({
               </p>
             )}
             {bankAccounts.find(b => b.id === selectedBank)?.qr_code_url && (
-              <div className="mt-2 sm:mt-3 text-center">
-                <img
-                  src={bankAccounts.find(b => b.id === selectedBank)?.qr_code_url}
-                  alt="QR Code"
-                  className="max-h-28 sm:max-h-36 mx-auto rounded-md sm:rounded-lg shadow-sm border border-gray-100 dark:border-[#38383A]"
-                />
+              <div className="mt-3 sm:mt-4 text-center">
+                <div className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider mb-2">Scan QR Code</div>
+                <div className="inline-block bg-white dark:bg-white p-3 sm:p-4 rounded-xl shadow-lg border-2 border-gray-200 dark:border-gray-300">
+                  <img
+                    src={bankAccounts.find(b => b.id === selectedBank)?.qr_code_url}
+                    alt="QR Code"
+                    className="w-[200px] h-[200px] sm:w-[240px] sm:h-[240px] object-contain mx-auto"
+                    loading="lazy"
+                  />
+                </div>
+                <p className="text-[9px] sm:text-[10px] text-gray-400 dark:text-gray-500 mt-2">
+                  Scan untuk transfer otomatis
+                </p>
               </div>
             )}
           </div>
