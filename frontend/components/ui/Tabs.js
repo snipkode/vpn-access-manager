@@ -95,52 +95,54 @@ export default function Tabs({
   const variants = variantConfig[variant];
 
   return (
-    <div
-      ref={scrollContainerRef}
-      className={`
-        ${variants.container}
-        ${sizes.gap}
-        ${className}
-        flex items-center
-        w-full
-        box-border
-        ${scrollable ? 'overflow-x-auto overflow-y-hidden scrollbar-hide' : 'overflow-hidden'}
-        ${sizes.min_width}
-        scroll-smooth
-        flex-nowrap
-      `}
-      style={{
-        WebkitOverflowScrolling: 'touch',
-        msOverflowStyle: 'none',
-        scrollbarWidth: 'none',
-      }}
-      {...props}
-    >
-      {items.map((item) => (
-        <button
-          key={item.id}
-          ref={activeTab === item.id ? activeTabRef : null}
-          onClick={() => onChange(item.id)}
-          className={`
-            flex items-center gap-1.5 sm:gap-2
-            font-semibold
-            whitespace-nowrap
-            flex-shrink-0
-            transition-all duration-200 ease-out
-            ${sizes.tab}
-            ${variant !== 'underline' ? sizes.radius : ''}
-            ${activeTab === item.id ? variants.active : variants.inactive}
-            active:scale-[0.98]
-          `}
-        >
-          {item.icon && (
-            <span className="flex-shrink-0">
-              {item.icon}
-            </span>
-          )}
-          <span className="truncate">{item.label}</span>
-        </button>
-      ))}
+    <div className="w-full overflow-hidden">
+      <div
+        ref={scrollContainerRef}
+        className={`
+          ${variants.container}
+          ${sizes.gap}
+          ${className}
+          flex items-center
+          w-full
+          overflow-x-auto
+          overflow-y-hidden
+          scrollbar-hide
+          scroll-smooth
+          flex-nowrap
+        `}
+        style={{
+          WebkitOverflowScrolling: 'touch',
+          msOverflowStyle: 'none',
+          scrollbarWidth: 'none',
+        }}
+        {...props}
+      >
+        {items.map((item) => (
+          <button
+            key={item.id}
+            ref={activeTab === item.id ? activeTabRef : null}
+            onClick={() => onChange(item.id)}
+            className={`
+              flex items-center gap-1.5 sm:gap-2
+              font-semibold
+              whitespace-nowrap
+              flex-shrink-0
+              transition-all duration-200 ease-out
+              ${sizes.tab}
+              ${variant !== 'underline' ? sizes.radius : ''}
+              ${activeTab === item.id ? variants.active : variants.inactive}
+              active:scale-[0.98]
+            `}
+          >
+            {item.icon && (
+              <span className="flex-shrink-0">
+                {item.icon}
+              </span>
+            )}
+            <span className="truncate">{item.label}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
