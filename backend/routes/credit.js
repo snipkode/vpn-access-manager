@@ -332,85 +332,91 @@ router.post('/sync', verifyAuth, rateLimiters.general, async (req, res) => {
 
     const targetUserRef = db.collection('users').doc(targetUid);
 
-    // Security: Use Firestore transaction to prevent race conditions
-    let syncResult;
+    // Calculate expected balance from payments and transactions
+    // Note: Not using transaction to avoid timeout issues with large datasets
     
-    await db.runTransaction(async (transaction) => {
-      const targetUserDoc = transaction.get(targetUserRef);
-      
-      if (!targetUserDoc.exists) {
-        throw new Error(`User ${targetUid} not found`);
-      }
+    // Get all approved topup payments
+    const paymentsSnapshot = await db.collection('payments')
+      .where('user_id', '==', targetUid)
+      .where('status', '==', 'approved')
+      .get();
 
-      // Get all approved topup payments
-      const paymentsSnapshot = await db.collection('payments')
-        .where('user_id', '==', targetUid)
-        .where('status', '==', 'approved')
-        .get();
-
-      let totalTopup = 0;
-      paymentsSnapshot.forEach(doc => {
-        const payment = doc.data();
-        const isTopup = payment.plan === 'topup' || !payment.duration_days || payment.duration_days === 0;
-        if (isTopup) {
-          totalTopup += payment.amount;
-        }
-      });
-
-      // Get all credit transactions
-      const transactionsSnapshot = await db.collection('credit_transactions')
-        .where('user_id', '==', targetUid)
-        .get();
-
-      let transactionTotal = 0;
-      transactionsSnapshot.forEach(doc => {
-        const tx = doc.data();
-        if (tx.type === 'topup' || tx.type === 'credit') {
-          transactionTotal += tx.amount;
-        } else if (tx.type === 'deduction' || tx.type === 'transfer') {
-          transactionTotal -= tx.amount;
-        }
-      });
-
-      const currentBalance = targetUserDoc.data().credit_balance || 0;
-      const expectedBalance = transactionTotal;
-
-      // Security: Prevent negative balance
-      if (expectedBalance < 0) {
-        console.warn(`⚠️ Negative balance calculation for user ${targetUid}: ${expectedBalance}`);
-        throw new Error('Calculated balance is negative');
-      }
-
-      // Security: Max balance limit (prevent overflow/exploit)
-      const MAX_BALANCE = 1_000_000_000; // 1 billion IDR
-      if (expectedBalance > MAX_BALANCE) {
-        console.warn(`⚠️ Balance exceeds limit for user ${targetUid}: ${expectedBalance}`);
-        throw new Error('Balance exceeds maximum limit');
-      }
-
-      // Only update if different
-      if (currentBalance !== expectedBalance) {
-        transaction.update(targetUserRef, {
-          credit_balance: expectedBalance,
-          last_balance_sync: new Date().toISOString(),
-          last_sync_by: requesterUid,
-        });
-        
-        syncResult = {
-          old_balance: currentBalance,
-          new_balance: expectedBalance,
-          synced: true,
-        };
-        
-        console.log(`🔄 Balance synced: ${targetUid} ${currentBalance}→${expectedBalance} by ${requesterUid}`);
-      } else {
-        syncResult = {
-          old_balance: currentBalance,
-          new_balance: expectedBalance,
-          synced: false,
-        };
+    let totalTopup = 0;
+    paymentsSnapshot.forEach(doc => {
+      const payment = doc.data();
+      const isTopup = payment.plan === 'topup' || !payment.duration_days || payment.duration_days === 0;
+      if (isTopup) {
+        totalTopup += payment.amount;
       }
     });
+
+    // Get all credit transactions
+    const transactionsSnapshot = await db.collection('credit_transactions')
+      .where('user_id', '==', targetUid)
+      .get();
+
+    let transactionTotal = 0;
+    transactionsSnapshot.forEach(doc => {
+      const tx = doc.data();
+      if (tx.type === 'topup' || tx.type === 'credit') {
+        transactionTotal += tx.amount;
+      } else if (tx.type === 'deduction' || tx.type === 'transfer') {
+        transactionTotal -= tx.amount;
+      }
+    });
+
+    const targetUserDoc = await targetUserRef.get();
+    
+    if (!targetUserDoc.exists) {
+      throw new Error(`User ${targetUid} not found`);
+    }
+
+    const currentBalance = targetUserDoc.data().credit_balance || 0;
+    const expectedBalance = transactionTotal;
+
+    // Security: Prevent negative balance
+    if (expectedBalance < 0) {
+      console.warn(`⚠️ Negative balance calculation for user ${targetUid}: ${expectedBalance}`);
+      return res.status(400).json({
+        error: 'Invalid balance calculation',
+        message: 'Calculated balance is negative. Please check transaction history.'
+      });
+    }
+
+    // Security: Max balance limit (prevent overflow/exploit)
+    const MAX_BALANCE = 1_000_000_000; // 1 billion IDR
+    if (expectedBalance > MAX_BALANCE) {
+      console.warn(`⚠️ Balance exceeds limit for user ${targetUid}: ${expectedBalance}`);
+      return res.status(400).json({
+        error: 'Balance exceeds maximum limit',
+        message: `Maximum balance allowed is ${MAX_BALANCE.toLocaleString('id-ID')}`
+      });
+    }
+
+    let syncResult;
+
+    // Only update if different
+    if (currentBalance !== expectedBalance) {
+      await targetUserRef.update({
+        credit_balance: expectedBalance,
+        last_balance_sync: new Date().toISOString(),
+        last_sync_by: requesterUid,
+      });
+      
+      syncResult = {
+        old_balance: currentBalance,
+        new_balance: expectedBalance,
+        synced: true,
+      };
+      
+      console.log(`🔄 Balance synced: ${targetUid} ${currentBalance}→${expectedBalance} by ${requesterUid}`);
+    } else {
+      syncResult = {
+        old_balance: currentBalance,
+        new_balance: expectedBalance,
+        synced: false,
+      };
+    }
 
     // Audit log for sync operation
     await db.collection('audit_logs').add({
