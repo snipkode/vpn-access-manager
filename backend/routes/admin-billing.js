@@ -415,8 +415,19 @@ router.get('/stats', verifyAdmin, rateLimiters.adminBillingView, async (req, res
 // Get subscription plans
 router.get('/plans', verifyAdmin, rateLimiters.adminBillingView, async (req, res) => {
   try {
-    const plansSnapshot = await db.collection('subscription_plans').orderBy('order', 'asc').get();
+    let plansSnapshot;
     
+    try {
+      // Try with orderBy first (requires index)
+      plansSnapshot = await db.collection('subscription_plans')
+        .orderBy('order', 'asc')
+        .get();
+    } catch (indexError) {
+      // Fallback: Get all plans without ordering if index missing
+      console.warn('⚠️ subscription_plans index missing, fetching without order');
+      plansSnapshot = await db.collection('subscription_plans').get();
+    }
+
     const plans = [];
     plansSnapshot.forEach(doc => {
       plans.push({
@@ -424,6 +435,11 @@ router.get('/plans', verifyAdmin, rateLimiters.adminBillingView, async (req, res
         ...doc.data(),
       });
     });
+
+    // Sort client-side if needed (fallback)
+    if (plans.length > 1) {
+      plans.sort((a, b) => (a.order || 0) - (b.order || 0));
+    }
 
     res.json({ plans });
   } catch (error) {
