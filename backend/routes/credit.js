@@ -298,12 +298,12 @@ router.post('/sync', verifyAuth, rateLimiters.general, async (req, res) => {
   const startTime = Date.now();
   const { uid: requesterUid } = req.user;
   const userIP = req.ip;
+  let targetUid = requesterUid; // Declare at function scope for error handling
   
   try {
     // Security: Validate target user ID
-    let targetUid = requesterUid;
     const queryUid = req.query.uid;
-    
+
     if (queryUid) {
       // Validate UID format (Firebase UID pattern)
       if (typeof queryUid !== 'string' || !/^[a-zA-Z0-9_-]{10,50}$/.test(queryUid)) {
@@ -312,11 +312,11 @@ router.post('/sync', verifyAuth, rateLimiters.general, async (req, res) => {
           error: 'Invalid user ID format',
         });
       }
-      
+
       // Security: Check admin role from Firebase Custom Claims (more secure than Firestore)
       const adminCheck = await db.collection('users').doc(requesterUid).get();
       const adminData = adminCheck.data();
-      
+
       // Only admin can sync other users
       if (!adminData || adminData.role !== 'admin') {
         console.warn(`⚠️ Non-admin user ${requesterUid} attempted to sync user ${queryUid} from IP ${userIP}`);
@@ -325,7 +325,7 @@ router.post('/sync', verifyAuth, rateLimiters.general, async (req, res) => {
           message: 'Only admins can sync balance for other users'
         });
       }
-      
+
       targetUid = queryUid;
       console.log(`🔐 Admin ${requesterUid} syncing balance for user ${targetUid} from IP ${userIP}`);
     }
