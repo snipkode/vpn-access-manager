@@ -111,7 +111,7 @@ export default function Layout({
                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#2C2C2E]'
                   }`}
                 >
-                  <Icon name={item.icon || 'circle'} variant="round" size="medium" className="w-5 text-center" />
+                  <Icon name={item.icon || 'circle'} variant="round" size="small" className="w-5 flex-shrink-0" />
                   <span className="flex-1 text-left">{item.label}</span>
                 </button>
               ))}
@@ -178,7 +178,7 @@ export default function Layout({
             className="lg:hidden flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-dark dark:hover:text-white p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#2C2C2E] transition-all"
             onClick={() => setSidebarOpen(true)}
           >
-            <Icon name="menu" variant="round" size="large" />
+            <Icon name="menu" variant="round" size="medium" />
           </button>
 
           <h1 className="text-xl font-bold text-dark dark:text-white flex-1">

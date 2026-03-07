@@ -24,13 +24,13 @@ export default function Icon({
   onClick,
   ...props 
 }) {
-  // Size configurations
+  // Size configurations with balanced responsive scaling
   const sizeConfig = {
-    small: 'text-[16px]',
-    medium: 'text-[20px]',
-    large: 'text-[24px]',
-    xl: 'text-[32px]',
-    xxl: 'text-[48px]',
+    small: 'text-[14px] sm:text-[16px]',
+    medium: 'text-[18px] sm:text-[20px]',
+    large: 'text-[20px] sm:text-[24px]',
+    xl: 'text-[24px] sm:text-[32px]',
+    xxl: 'text-[32px] sm:text-[48px]',
   };
 
   // Variant to font family mapping
@@ -51,9 +51,13 @@ export default function Icon({
   return (
     <span
       className={`
-        ${variantMap[variant]} 
-        ${sizeClass} 
+        ${variantMap[variant]}
+        ${sizeClass}
         ${className}
+        leading-none
+        inline-flex
+        items-center
+        justify-center
       `}
       style={inlineStyle}
       onClick={onClick}
