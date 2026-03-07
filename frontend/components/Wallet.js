@@ -7,7 +7,7 @@ import Icon from './ui/Icon';
 
 export default function Wallet({ token }) {
   const { showNotification } = useUIStore();
-  const { bankAccounts, plans } = useBillingStore();
+  const { bankAccounts, plans, setBillingData } = useBillingStore();
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState([]);
   const [topups, setTopups] = useState([]);
@@ -15,6 +15,7 @@ export default function Wallet({ token }) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('transactions');
+  const [bankAccountsLocal, setBankAccountsLocal] = useState([]);
 
   const fetchData = async (isRefresh = false) => {
     try {
@@ -25,11 +26,25 @@ export default function Wallet({ token }) {
       }
       setError(null);
 
-      const [balanceData, transactionsData, topupsData] = await Promise.all([
+      // Fetch bank accounts, balance, transactions, and topups in parallel
+      const [settingsData, balanceData, transactionsData, topupsData] = await Promise.all([
+        billingAPI.getSettings(),
         creditAPI.getBalance(),
         creditAPI.getTransactions({ limit: 20 }),
         billingAPI.getPayments({ limit: 10 }),
       ]);
+
+      // Update bank accounts from settings
+      const bankAccs = settingsData.bank_accounts || [];
+      setBankAccountsLocal(bankAccs);
+
+      // Also update global billing store
+      setBillingData({
+        billing_enabled: settingsData.billing_enabled || false,
+        currency: settingsData.currency || 'IDR',
+        plans: settingsData.plans || [],
+        bank_accounts: bankAccs,
+      });
 
       setBalance(balanceData.balance || 0);
       setTransactions(transactionsData.transactions || []);
@@ -137,7 +152,7 @@ export default function Wallet({ token }) {
           {/* Reusable Payment Form in topup mode */}
           <PaymentForm
             mode="topup"
-            bankAccounts={bankAccounts}
+            bankAccounts={bankAccountsLocal}
             onSuccess={handleTopupSuccess}
             defaultAmount={50000}
           />

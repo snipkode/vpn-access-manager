@@ -211,14 +211,16 @@ export default function PaymentForm({
               </option>
             ))
           ) : (
-            <option value="BCA">BCA</option>
-            <option value="Mandiri">Mandiri</option>
-            <option value="BNI">BNI</option>
-            <option value="BRI">BRI</option>
-            <option value="GoPay">GoPay</option>
-            <option value="OVO">OVO</option>
-            <option value="DANA">DANA</option>
-            <option value="ShopeePay">ShopeePay</option>
+            <>
+              <option value="BCA">BCA</option>
+              <option value="Mandiri">Mandiri</option>
+              <option value="BNI">BNI</option>
+              <option value="BRI">BRI</option>
+              <option value="GoPay">GoPay</option>
+              <option value="OVO">OVO</option>
+              <option value="DANA">DANA</option>
+              <option value="ShopeePay">ShopeePay</option>
+            </>
           )}
         </select>
       </div>
