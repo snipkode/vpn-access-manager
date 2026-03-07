@@ -58,6 +58,7 @@ export default function App() {
   const { activePage, setActivePage, showNotification } = useUIStore();
   const [initialized, setInitialized] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingCompleted, setOnboardingCompleted] = useState(false);
 
   // Initialize Firebase auth + Firestore user data with timeout
   useEffect(() => {
@@ -232,6 +233,7 @@ export default function App() {
 
   // Handle onboarding complete - go to wallet
   const handleOnboardingComplete = () => {
+    setOnboardingCompleted(true);
     setActivePage('wallet');
     setShowOnboarding(false);
   };
@@ -265,8 +267,8 @@ export default function App() {
 
   // Show onboarding for new users (check from userData without API fetch)
   // Onboarding will be shown if user has no subscription_end_at (never subscribed)
-  const shouldShowOnboarding = !userData?.subscription_end_at && userData?.role === 'user';
-  
+  const shouldShowOnboarding = !userData?.subscription_end_at && userData?.role === 'user' && !onboardingCompleted;
+
   if (shouldShowOnboarding && !showOnboarding) {
     setShowOnboarding(true);
   }

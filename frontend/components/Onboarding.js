@@ -38,7 +38,7 @@ export default function Onboarding({ userData, onGoToPayment, onSkip }) {
       color: 'from-green-500 to-emerald-500'
     },
     {
-      icon: '🌍',
+      icon: '⚡',
       title: 'Ready to Connect?',
       description: 'Complete your payment now and start enjoying secure, fast, and unlimited VPN access.',
       color: 'from-orange-500 to-red-500'
@@ -157,7 +157,7 @@ export default function Onboarding({ userData, onGoToPayment, onSkip }) {
               onClick={handleNext}
               className="w-full py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-2xl font-semibold text-white transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-blue-500/25"
             >
-              {step === steps.length - 1 ? 'Go to Payment →' : 'Continue'}
+              {step === steps.length - 1 ? 'Go to Wallet →' : 'Continue'}
             </button>
 
             {step < steps.length - 1 && (
