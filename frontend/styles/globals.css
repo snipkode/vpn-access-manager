@@ -5,12 +5,43 @@
 @layer base {
   body {
     @apply bg-gray-100 text-dark font-sans antialiased;
+    /* iOS-style base font size */
+    font-size: 17px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+  }
+
+  /* Responsive typography for mobile */
+  @media (max-width: 640px) {
+    body {
+      font-size: 15px;
+    }
+    
+    h1 {
+      font-size: 20px !important;
+    }
+    
+    h2 {
+      font-size: 17px !important;
+    }
+    
+    h3 {
+      font-size: 15px !important;
+    }
+    
+    p, span, div {
+      font-size: 13px !important;
+    }
+    
+    small, .text-xs {
+      font-size: 11px !important;
+    }
   }
 }
 
@@ -19,53 +50,62 @@
     animation: spin 1s linear infinite;
   }
   
-  .animate-slide-in-right {
-    animation: slideInRight 0.3s ease-out;
+  /* iOS-style font sizes */
+  .text-ios-caption {
+    font-size: 11px;
+    @media (max-width: 640px) {
+      font-size: 10px;
+    }
   }
-}
-
-@keyframes slideInRight {
-  from {
-    transform: translateX(400px);
-    opacity: 0;
+  
+  .text-ios-body {
+    font-size: 13px;
+    @media (max-width: 640px) {
+      font-size: 12px;
+    }
   }
-  to {
-    transform: translateX(0);
-    opacity: 1;
+  
+  .text-ios-callout {
+    font-size: 15px;
+    @media (max-width: 640px) {
+      font-size: 14px;
+    }
   }
-}
-
-/* QR Code Responsive Styles */
-/* Container already has aspect-ratio inline, just ensure no overflow */
-.qr-code-wrapper {
-  @apply overflow-hidden;
-}
-
-/* QR Code SVG - Scale to fit container without overflow */
-.qr-code-content svg {
-  @apply max-w-full h-auto;
-  width: auto !important;
-  height: auto !important;
-  max-width: 100% !important;
-  max-height: 100% !important;
-  aspect-ratio: 1/1;
-  display: block;
-  margin: 0 auto;
-  object-fit: contain;
-  overflow: hidden !important;
-}
-
-/* Ensure QR code black dots don't overflow */
-.qr-code-content svg rect,
-.qr-code-content svg path {
-  vector-effect: non-scaling-stroke;
-}
-
-/* Ensure QR code stays square and doesn't overflow */
-@media (max-width: 640px) {
-  .qr-code-content svg {
-    max-width: 180px !important;
-    max-height: 180px !important;
+  
+  .text-ios-headline {
+    font-size: 17px;
+    @media (max-width: 640px) {
+      font-size: 16px;
+    }
+  }
+  
+  .text-ios-title {
+    font-size: 20px;
+    @media (max-width: 640px) {
+      font-size: 18px;
+    }
+  }
+  
+  .text-ios-large-title {
+    font-size: 28px;
+    @media (max-width: 640px) {
+      font-size: 24px;
+    }
+  }
+  
+  /* Spacing utilities for mobile */
+  .p-ios-card {
+    padding: 16px;
+    @media (max-width: 640px) {
+      padding: 12px;
+    }
+  }
+  
+  .gap-ios-card {
+    gap: 16px;
+    @media (max-width: 640px) {
+      gap: 12px;
+    }
   }
 }
 
