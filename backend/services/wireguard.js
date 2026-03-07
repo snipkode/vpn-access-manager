@@ -48,19 +48,45 @@ export function generateKeypair() {
 export function addPeer(publicKey, ipAddress) {
   try {
     const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
-    
+
     console.log(`Adding WireGuard peer: ${publicKey} with IP: ${ipAddress}`);
-    
-    execSync(`wg set ${WG_INTERFACE} peer ${publicKey} allowed-ips ${ipAddress}/32`, {
+
+    // Method 1: Try wg set (runtime, no config file change)
+    try {
+      execSync(`wg set ${WG_INTERFACE} peer ${publicKey} allowed-ips ${ipAddress}/32`, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        timeout: 5000
+      });
+      console.log('WireGuard peer added via wg set');
+    } catch (wgSetError) {
+      // Method 2: If wg set fails, try wg syncconf (updates from config file)
+      console.log('wg set failed, trying wg syncconf:', wgSetError.message);
+      
+      execSync(`wg syncconf ${WG_INTERFACE} <(wg-quick strip ${WG_INTERFACE})`, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        timeout: 5000
+      });
+      
+      // Retry wg set after syncconf
+      execSync(`wg set ${WG_INTERFACE} peer ${publicKey} allowed-ips ${ipAddress}/32`, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        timeout: 5000
+      });
+      console.log('WireGuard peer added via wg syncconf + wg set');
+    }
+
+    // Verify peer was added
+    const peersOutput = execSync(`wg show ${WG_INTERFACE} allowed-ips`, {
       stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 5000
-    });
-    
-    execSync(`wg syncconf ${WG_INTERFACE} <(wg-quick strip ${WG_INTERFACE})`, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 5000
-    });
-    
+      timeout: 2000
+    }).toString();
+
+    if (!peersOutput.includes(publicKey) && !peersOutput.includes(ipAddress)) {
+      console.warn('Peer may not have been added successfully');
+    } else {
+      console.log('Peer verification: OK');
+    }
+
     console.log('WireGuard peer added successfully');
     return true;
   } catch (error) {
@@ -125,15 +151,54 @@ export function getPeers() {
 export function isWireGuardHealthy() {
   try {
     const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
-    
-    execSync(`wg show ${WG_INTERFACE}`, {
+
+    // Check if interface exists and is running
+    const output = execSync(`wg show ${WG_INTERFACE}`, {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 2000
-    });
-    
+    }).toString();
+
+    // Verify interface has valid configuration
+    if (!output || output.includes('does not exist')) {
+      console.error('WireGuard interface does not exist:', WG_INTERFACE);
+      return false;
+    }
+
     return true;
   } catch (error) {
     console.error('WireGuard health check failed:', error.message);
     return false;
+  }
+}
+
+// Get WireGuard interface status
+export function getInterfaceStatus() {
+  try {
+    const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
+
+    const output = execSync(`wg show ${WG_INTERFACE}`, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 2000
+    }).toString();
+
+    const peersOutput = execSync(`wg show ${WG_INTERFACE} allowed-ips`, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 2000
+    }).toString();
+
+    return {
+      status: 'active',
+      interface: WG_INTERFACE,
+      peers: peersOutput.split('\n').filter(line => line.trim()).length,
+      raw: output,
+      allowed_ips: peersOutput
+    };
+  } catch (error) {
+    return {
+      status: 'inactive',
+      interface: process.env.WG_INTERFACE || 'wg0',
+      peers: 0,
+      error: error.message
+    };
   }
 }

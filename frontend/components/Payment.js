@@ -2,22 +2,15 @@ import { useEffect, useState } from 'react';
 import { useUIStore, useBillingStore } from '../store';
 import { billingAPI, formatCurrency } from '../lib/api';
 
-const PLANS = {
-  monthly: { price: 50000, duration: 30, label: 'Monthly' },
-  quarterly: { price: 135000, duration: 90, label: 'Quarterly (10% off)' },
-  yearly: { price: 480000, duration: 365, label: 'Yearly (20% off)' },
-};
-
 export default function Payment({ token }) {
   const { showNotification } = useUIStore();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState('submit');
+  const [activeTab, setActiveTab] = useState('plans');
   const [isBillingEnabled, setIsBillingEnabled] = useState(false);
 
   // Form state
-  const [selectedPlan, setSelectedPlan] = useState('monthly');
-  const [amount, setAmount] = useState(50000);
+  const [selectedPlan, setSelectedPlan] = useState(null);
   const [bankFrom, setBankFrom] = useState('');
   const [transferDate, setTransferDate] = useState('');
   const [notes, setNotes] = useState('');
@@ -105,12 +98,11 @@ export default function Payment({ token }) {
     }
   };
 
-  const handlePlanChange = (planId) => {
-    setSelectedPlan(planId);
-    const plan = plans.find(p => p.id === planId);
-    if (plan) {
-      setAmount(plan.price);
-    }
+  const handlePlanSelect = (plan) => {
+    setSelectedPlan(plan);
+    // Auto-fill transfer date with today
+    const today = new Date().toISOString().split('T')[0];
+    setTransferDate(today);
   };
 
   const handleFileChange = (e) => {
@@ -149,10 +141,9 @@ export default function Payment({ token }) {
     setSubmitting(true);
 
     try {
-      // Validate amount
-      const plan = PLANS[selectedPlan];
-      if (amount < plan.price * 0.9) {
-        throw new Error(`Amount must be at least ${formatCurrency(plan.price)}`);
+      // Validate plan selection
+      if (!selectedPlan) {
+        throw new Error('Please select a subscription plan');
       }
 
       // Validate transfer date
@@ -165,10 +156,12 @@ export default function Payment({ token }) {
         throw new Error('Proof of transfer is required');
       }
 
-      // Create form data
+      // Create form data with FIXED price from plan
       const formData = new FormData();
-      formData.append('amount', amount.toString());
-      formData.append('plan', selectedPlan);
+      formData.append('amount', selectedPlan.price.toString());  // Fixed price from plan
+      formData.append('plan', selectedPlan.id);
+      formData.append('plan_label', selectedPlan.label);
+      formData.append('duration_days', selectedPlan.duration.toString());
       formData.append('bank_from', bankFrom);
       formData.append('transfer_date', transferDate);
       formData.append('notes', notes);
@@ -177,14 +170,15 @@ export default function Payment({ token }) {
       await billingAPI.submitPayment(formData);
 
       showNotification('Payment submitted successfully! Please wait for admin approval.');
-      
+
       // Reset form
       setProofFile(null);
       setProofPreview(null);
       setBankFrom('');
       setTransferDate('');
       setNotes('');
-      
+      setSelectedPlan(null);
+
       // Refresh history
       fetchData();
       setActiveTab('history');
@@ -223,15 +217,15 @@ export default function Payment({ token }) {
       <div className="bg-white rounded-xl p-1.5 shadow-sm border border-gray-100">
         <div className="flex gap-1">
           <button
-            onClick={() => setActiveTab('submit')}
+            onClick={() => setActiveTab('plans')}
             className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'submit'
+              activeTab === 'plans'
                 ? 'bg-primary text-white shadow-md'
                 : 'text-gray-500 hover:bg-gray-100'
             }`}
           >
-            <i className="fas fa-upload mr-2" />
-            Submit Payment
+            <i className="fas fa-layer-group mr-2" />
+            Billing Plans
           </button>
           <button
             onClick={() => setActiveTab('history')}
@@ -242,17 +236,20 @@ export default function Payment({ token }) {
             }`}
           >
             <i className="fas fa-history mr-2" />
-            History
+            Payment History
           </button>
         </div>
       </div>
 
-      {activeTab === 'submit' && (
+      {activeTab === 'plans' && (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h1 className="text-xl font-bold text-dark mb-6">
-            <i className="fas fa-credit-card text-primary mr-2" />
-            Submit Payment
+          <h1 className="text-xl font-bold text-dark mb-2">
+            <i className="fas fa-tags text-primary mr-2" />
+            Choose Your Subscription Plan
           </h1>
+          <p className="text-sm text-gray-400 mb-6">
+            Select a plan below and submit payment proof for activation
+          </p>
 
           {/* Bank Accounts Info */}
           {bankAccounts.length > 0 && (
@@ -295,56 +292,89 @@ export default function Payment({ token }) {
             </div>
           )}
 
-          {/* Payment Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Plan Selection */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-400 uppercase mb-3">
-                Select Plan
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {Object.entries(PLANS).map(([planId, plan]) => (
+          {/* Plan Selection */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-400 uppercase mb-4">
+              <i className="fas fa-layer-group mr-2" />
+              Available Plans (Fixed Price)
+            </label>
+            
+            {plans.length === 0 ? (
+              <div className="bg-gray-50 rounded-xl p-8 text-center">
+                <div className="text-4xl mb-3">📋</div>
+                <div className="text-sm text-gray-400">Loading plans...</div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                {plans.map((plan) => (
                   <div
-                    key={planId}
-                    onClick={() => handlePlanChange(planId)}
-                    className={`cursor-pointer rounded-xl p-4 border-2 transition-all ${
-                      selectedPlan === planId
-                        ? 'border-primary bg-primary/5'
+                    key={plan.id}
+                    onClick={() => handlePlanSelect(plan)}
+                    className={`cursor-pointer rounded-xl p-5 border-2 transition-all hover:scale-105 ${
+                      selectedPlan?.id === plan.id
+                        ? 'border-primary bg-primary/5 shadow-lg shadow-primary/20'
                         : 'border-gray-200 bg-gray-50 hover:border-primary/50'
                     }`}
                   >
-                    <div className="text-sm font-semibold text-dark mb-1">{plan.label}</div>
-                    <div className="text-lg font-bold text-primary mb-1">
+                    <div className="text-sm font-semibold text-dark mb-2">{plan.label}</div>
+                    <div className="text-2xl font-bold text-primary mb-2">
                       {formatCurrency(plan.price)}
                     </div>
-                    <div className="text-xs text-gray-400">{plan.duration} days</div>
-                    {selectedPlan === planId && (
-                      <div className="mt-2 text-xs text-primary font-semibold">
-                        <i className="fas fa-check-circle mr-1" /> Selected
+                    <div className="text-xs text-gray-400 mb-3">
+                      <i className="fas fa-calendar mr-1" />
+                      {plan.duration} days
+                    </div>
+                    {selectedPlan?.id === plan.id && (
+                      <div className="flex items-center gap-2 text-xs text-primary font-semibold">
+                        <i className="fas fa-check-circle" />
+                        Selected
                       </div>
                     )}
                   </div>
                 ))}
               </div>
-            </div>
+            )}
 
-            {/* Amount */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-400 uppercase mb-2">
-                Amount (IDR)
-              </label>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(parseInt(e.target.value))}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-dark text-base font-semibold focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                min="10000"
-                required
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Minimum: {formatCurrency(PLANS[selectedPlan].price)}
-              </p>
+            {/* Selected Plan Summary */}
+            {selectedPlan && (
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <i className="fas fa-info-circle text-primary text-xl" />
+                  <div className="text-sm font-semibold text-blue-900">Selected Plan</div>
+                </div>
+                <div className="text-sm text-blue-700">
+                  <strong>{selectedPlan.label}</strong> - {formatCurrency(selectedPlan.price)} ({selectedPlan.duration} days)
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Payment Form */}
+          {!selectedPlan ? (
+            <div className="bg-amber-50 border border-amber-100 rounded-xl p-6 text-center">
+              <div className="text-4xl mb-3">👆</div>
+              <div className="text-sm font-semibold text-amber-900 mb-1">Select a Plan First</div>
+              <div className="text-sm text-amber-700">
+                Please choose a subscription plan from the options above to continue
+              </div>
             </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Fixed Price Display (Read-only) */}
+            {selectedPlan && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-400 uppercase mb-2">
+                  <i className="fas fa-tag mr-2" />
+                  Plan Price (Fixed)
+                </label>
+                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-dark text-base font-semibold">
+                  {formatCurrency(selectedPlan.price)}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Price is fixed according to selected plan - cannot be changed
+                </p>
+              </div>
+            )}
 
             {/* Bank From */}
             <div>
@@ -448,6 +478,7 @@ export default function Payment({ token }) {
               )}
             </button>
           </form>
+          )}
         </div>
       )}
 

@@ -168,8 +168,29 @@ router.post('/generate', verifyAuth, async (req, res) => {
     const newIP = getNextAvailableIP(usedIPs);
     const { privateKey, publicKey } = generateKeypair();
 
+    // Log WireGuard status before adding peer
+    console.log('WireGuard status before adding peer:');
+    try {
+      const { getInterfaceStatus } = await import('../services/wireguard.js');
+      const status = getInterfaceStatus();
+      console.log('Interface status:', JSON.stringify(status, null, 2));
+    } catch (e) {
+      console.log('Could not get interface status:', e.message);
+    }
+
     // Add peer to WireGuard
+    console.log(`Adding peer with public_key: ${publicKey.substring(0, 20)}... and IP: ${newIP}`);
     addPeer(publicKey, newIP);
+    
+    // Verify peer was added
+    try {
+      const { getInterfaceStatus } = await import('../services/wireguard.js');
+      const status = getInterfaceStatus();
+      console.log('WireGuard status after adding peer:', JSON.stringify(status, null, 2));
+    } catch (e) {
+      console.log('Could not verify peer addition:', e.message);
+    }
+
     const config = generateConfig(privateKey, newIP, deviceName);
     const qrCodeData = await QRCode.toString(config, { type: 'string' });
 
@@ -183,6 +204,8 @@ router.post('/generate', verifyAuth, async (req, res) => {
       status: 'active',
       created_at: new Date().toISOString(),
     });
+
+    console.log(`Device saved to Firestore with ID: ${deviceRef.id}`);
 
     res.json({
       device_id: deviceRef.id,

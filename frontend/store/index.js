@@ -99,7 +99,7 @@ export const useBillingStore = create((set) => ({
 }));
 
 // API helper
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://solusikonsep.co.id:4443/api';
 
 export const apiFetch = async (endpoint, options = {}) => {
   const token = useAuthStore.getState().token;

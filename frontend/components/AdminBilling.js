@@ -412,7 +412,7 @@ function PaymentDetailModal({ payment, onClose, onApprove, onReject }) {
               <div className="text-sm text-gray-400 mb-2">Proof of Payment</div>
               <div className="bg-gray-50 rounded-xl p-4 text-center">
                 <img
-                  src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}${payment.proof_image_url}`}
+                  src={`${process.env.NEXT_PUBLIC_API_URL || 'https://solusikonsep.co.id:4443/api'}${payment.proof_image_url}`}
                   alt="Payment proof"
                   className="max-w-full max-h-64 rounded-lg shadow-sm"
                 />

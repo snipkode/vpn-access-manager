@@ -2,23 +2,23 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: false,
-  
+
   // Disable experimental features that cause issues on Android
   experimental: {
     forceSwcTransforms: false,
   },
-  
+
   // Disable webpack caching to avoid issues on Android
   webpack: (config, { dev, isServer }) => {
     config.cache = false;
     return config;
   },
-  
+
   async rewrites() {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:3000/api/:path*',
+        destination: 'https://solusikonsep.co.id:4443/api/:path*',
       },
     ];
   },

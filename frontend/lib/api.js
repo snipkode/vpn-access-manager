@@ -1,11 +1,11 @@
 /**
  * VPN Access API Client
- * Integrated with Swagger API documentation at http://localhost:3000/api-docs/
+ * Integrated with Swagger API documentation at https://solusikonsep.co.id:4443/api-docs/
  */
 
 import { useAuthStore } from '../store';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://solusikonsep.co.id:4443/api';
 
 /**
  * Base API fetch with authentication
