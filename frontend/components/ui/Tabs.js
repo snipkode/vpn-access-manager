@@ -102,6 +102,8 @@ export default function Tabs({
         ${sizes.gap}
         ${className}
         flex items-center
+        w-full
+        max-w-full
         ${scrollable ? 'overflow-x-auto overflow-y-hidden scrollbar-hide' : 'overflow-hidden'}
         ${sizes.min_width}
         scroll-smooth
@@ -128,7 +130,7 @@ export default function Tabs({
             ${sizes.tab}
             ${variant !== 'underline' ? sizes.radius : ''}
             ${activeTab === item.id ? variants.active : variants.inactive}
-            ${scrollable ? 'first:ml-1 last:mr-1' : ''}
+            ${scrollable ? 'first:ml-0.5 last:mr-0.5' : ''}
             active:scale-[0.98]
           `}
         >
