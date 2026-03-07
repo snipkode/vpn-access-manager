@@ -78,21 +78,19 @@ export default function Layout({
           {/* Logo */}
           <div className="p-5 border-b border-gray-100 dark:border-[#38383A] flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 bg-gradient-to-br ${theme.gradient} rounded-xl flex items-center justify-center`}>
+              <div className={`w-10 h-10 bg-gradient-to-br ${theme.gradient} rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg`}>
                 <Icon name={theme.icon} variant="round" size="large" color="white" />
               </div>
-              <span className="text-xl font-bold text-dark">
+              <span className="text-lg sm:text-xl font-bold text-dark dark:text-white truncate">
                 {isAdmin ? 'Admin Panel' : 'VPN Access'}
               </span>
             </div>
             {!isDesktop && (
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="text-gray-400 hover:text-dark p-1 transition-colors"
+                className="text-gray-400 dark:text-gray-500 hover:text-dark dark:hover:text-white p-1 transition-colors flex-shrink-0"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <Icon name="close" variant="round" size="medium" />
               </button>
             )}
           </div>
@@ -173,20 +171,20 @@ export default function Layout({
       {/* Main Content */}
       <div className={`transition-all duration-300 ease-in-out ${isDesktop ? 'ml-72' : ''}`}>
         {/* Top Bar */}
-        <header className={`sticky top-0 z-30 bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border-b ${isAdmin ? 'border-purple-200 dark:border-purple-900' : 'border-gray-200 dark:border-[#38383A]'} px-4 sm:px-5 py-3 sm:py-4 flex items-center gap-3 sm:gap-4`}>
+        <header className={`sticky top-0 z-30 bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border-b ${isAdmin ? 'border-purple-200 dark:border-purple-900' : 'border-gray-200 dark:border-[#38383A]'} px-3 sm:px-5 py-2.5 sm:py-4 flex items-center gap-2.5 sm:gap-4`}>
           <button
-            className="lg:hidden flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-dark dark:hover:text-white p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#2C2C2E] transition-all flex-shrink-0"
+            className="lg:hidden flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-dark dark:hover:text-white p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[#2C2C2E] transition-all flex-shrink-0"
             onClick={() => setSidebarOpen(true)}
           >
             <Icon name="menu" variant="round" size="medium" />
           </button>
 
-          <h1 className="text-lg sm:text-xl font-bold text-dark dark:text-white flex-1 min-w-0 truncate">
+          <h1 className="text-base sm:text-lg md:text-xl font-bold text-dark dark:text-white flex-1 min-w-0 truncate">
             {currentPage?.label || 'Dashboard'}
           </h1>
 
           {isCurrentPageAdmin && (
-            <span className={`hidden sm:inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 ${theme.primaryLight} dark:bg-purple-500/20 ${theme.primaryText} dark:text-purple-400 rounded-full text-[10px] sm:text-xs font-semibold border ${isAdmin ? 'border-purple-200 dark:border-purple-800' : 'border-purple-200 dark:border-purple-800'} flex-shrink-0`}>
+            <span className={`hidden sm:inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-0.5 sm:py-1 ${theme.primaryLight} dark:bg-purple-500/20 ${theme.primaryText} dark:text-purple-400 rounded-full text-[9px] sm:text-xs font-semibold border ${isAdmin ? 'border-purple-200 dark:border-purple-800' : 'border-purple-200 dark:border-purple-800'} flex-shrink-0`}>
               <Icon name="security" variant="round" size="small" />
               <span className="hidden xs:inline">Admin</span>
             </span>
@@ -199,7 +197,7 @@ export default function Layout({
         </header>
 
         {/* Page Content */}
-        <main className="p-4 sm:p-5 pb-8 sm:pb-10">
+        <main className="p-3 sm:p-5 pb-6 sm:pb-10">
           {children}
         </main>
       </div>
