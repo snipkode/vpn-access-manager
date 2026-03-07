@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useUIStore } from '../store';
 import { adminCreditAPI, formatCurrency } from '../lib/api';
 import { Tabs, DataTable, StatCard } from './admin';
