@@ -376,7 +376,7 @@ export default function LoginPage() {
               {/* Language Toggle */}
               <button
                 onClick={toggleLang}
-                className="px-3 py-1.5 text-sm font-medium text-gray-400 hover:text-white transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-gray-400 hover:text-white transition-colors whitespace-nowrap"
               >
                 {t.language}
               </button>
@@ -384,7 +384,7 @@ export default function LoginPage() {
               {/* CTA Button */}
               <button
                 onClick={handleLogin}
-                className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-xl text-sm font-semibold transition-all transform hover:scale-105 shadow-lg shadow-blue-500/25"
+                className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-xl text-sm font-semibold transition-all transform hover:scale-105 shadow-lg shadow-blue-500/25 whitespace-nowrap"
               >
                 {t.ctaPrimary}
               </button>
@@ -401,14 +401,14 @@ export default function LoginPage() {
             <div className={`inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full mb-8 transition-all duration-700 ${
               mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
             }`}>
-              <span className="text-sm font-medium text-gray-300">{t.heroBadge}</span>
+              <span className="text-sm font-medium text-gray-300 whitespace-nowrap">{t.heroBadge}</span>
             </div>
 
             {/* Title */}
             <h1 className={`text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6 transition-all duration-700 delay-100 ${
               mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
             }`}>
-              <span className="bg-gradient-to-r from-white via-blue-50 to-white bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-white via-blue-50 to-white bg-clip-text text-transparent whitespace-nowrap">
                 {t.heroTitle}
               </span>
             </h1>
@@ -417,7 +417,7 @@ export default function LoginPage() {
             <p className={`text-xl sm:text-2xl font-medium text-gray-400 mb-6 transition-all duration-700 delay-200 ${
               mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
             }`}>
-              {t.heroSubtitle}
+              <span className="whitespace-nowrap">{t.heroSubtitle}</span>
             </p>
 
             {/* Description */}
