@@ -4,15 +4,70 @@
  */
 
 import { useAuthStore, useUIStore } from '../store';
+import { auth } from './firebase';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+
+/**
+ * Refresh Firebase token
+ */
+const refreshAuthToken = async () => {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      console.warn('⚠️ No Firebase user logged in');
+      return null;
+    }
+
+    // Get fresh ID token (forces refresh if expired)
+    const freshToken = await currentUser.getIdToken(true);
+    console.log('✅ Token refreshed successfully');
+    
+    // Update store with new token
+    useAuthStore.getState().setUser(
+      currentUser,
+      freshToken,
+      useAuthStore.getState().userData
+    );
+    
+    return freshToken;
+  } catch (error) {
+    console.error('❌ Failed to refresh token:', error.message);
+    return null;
+  }
+};
+
+/**
+ * Handle token expiration - logout user
+ */
+const handleTokenExpired = async () => {
+  console.warn('🚫 Token expired - logging out user');
+  
+  try {
+    const { clearUser } = useAuthStore.getState();
+    const { showNotification } = useUIStore.getState();
+    
+    // Clear user data
+    clearUser();
+    
+    // Show notification
+    showNotification('Sesi Anda telah berakhir. Silakan login kembali.', 'error');
+    
+    // Redirect to login (optional - Firebase will handle this)
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 2000);
+  } catch (error) {
+    console.error('❌ Error during logout:', error);
+  }
+};
 
 /**
  * Base API fetch with authentication and request locking
  * Handles standardized API response format
  */
 export const apiFetch = async (endpoint, options = {}, requestKey = null) => {
-  const token = useAuthStore.getState().token;
+  let token = useAuthStore.getState().token;
 
   const headers = {
     ...options.headers,
@@ -38,10 +93,71 @@ export const apiFetch = async (endpoint, options = {}, requestKey = null) => {
       headers,
     });
 
-    // Parse response
-    const responseData = await res.json().catch(() => ({ success: false, error: 'Request failed' }));
+    // Parse response - handle empty responses gracefully
+    let responseData = {};
+    try {
+      responseData = await res.json();
+    } catch (parseError) {
+      console.warn('⚠️ Failed to parse JSON response:', parseError.message);
+      console.warn('Response status:', res.status);
+      console.warn('Response text:', await res.text().catch(() => 'Unable to read'));
+      responseData = {
+        success: false,
+        error: res.ok ? 'Empty response from server' : `HTTP ${res.status}: ${res.statusText}`
+      };
+    }
 
     if (!res.ok) {
+      // Handle token expiration (401)
+      if (res.status === 401) {
+        const errorData = responseData.details || responseData.error || '';
+        const isTokenExpired = errorData.includes('id-token-expired') || 
+                               errorData.includes('token has expired') ||
+                               errorData.includes('invalid token');
+        
+        if (isTokenExpired) {
+          console.warn('⚠️ Token expired detected, attempting refresh...');
+          
+          // Try to refresh token
+          const freshToken = await refreshAuthToken();
+          
+          if (freshToken) {
+            // Retry request with new token
+            console.log('🔄 Retrying request with fresh token...');
+            headers['Authorization'] = `Bearer ${freshToken}`;
+            
+            const retryRes = await fetch(`${API_URL}${endpoint}`, {
+              ...options,
+              headers,
+            });
+            
+            if (retryRes.ok) {
+              return await retryRes.json();
+            }
+            
+            // If retry also fails, continue to error handling
+            responseData = await retryRes.json().catch(() => ({ error: 'Retry failed' }));
+          } else {
+            // Token refresh failed, logout user
+            await handleTokenExpired();
+            throw new Error('Token expired. Please login again.');
+          }
+        }
+        
+        // If we get here, authentication failed
+        if (res.status === 401) {
+          await handleTokenExpired();
+          throw new Error('Authentication failed. Please login again.');
+        }
+      }
+
+      console.error('❌ API Error:', {
+        status: res.status,
+        statusText: res.statusText,
+        data: responseData,
+        endpoint,
+      });
+
       // Handle rate limit errors with user-friendly message
       if (res.status === 429) {
         const retryAfter = res.headers.get('Retry-After') || responseData.retryAfter || 30;
@@ -53,9 +169,9 @@ export const apiFetch = async (endpoint, options = {}, requestKey = null) => {
         rateLimitError.retryAfter = parseInt(retryAfter);
         throw rateLimitError;
       }
-      
+
       // Use standardized error message from response
-      throw new Error(responseData.message || responseData.error || 'Request failed');
+      throw new Error(responseData.message || responseData.error || `HTTP ${res.status}: ${res.statusText}`);
     }
 
     // Return data from standardized response
@@ -63,10 +179,22 @@ export const apiFetch = async (endpoint, options = {}, requestKey = null) => {
     // Otherwise return the whole response for backward compatibility
     return responseData.data || responseData;
   } catch (error) {
+    console.error('❌ API Fetch Error:', {
+      endpoint,
+      message: error.message,
+      stack: error.stack,
+    });
+
     // Re-throw rate limit errors with special handling
     if (error.code === 'RATE_LIMIT' || error.status === 429) {
       throw error;
     }
+    
+    // Don't throw if already handled (token expired)
+    if (error.message.includes('Token expired') || error.message.includes('Authentication failed')) {
+      throw error;
+    }
+    
     throw error;
   } finally {
     // Remove request from pending list

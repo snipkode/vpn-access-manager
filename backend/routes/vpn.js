@@ -437,7 +437,8 @@ router.delete('/device/:id',
         timeout: 5000
       });
 
-      execSync(`wg-quick strip ${WG_INTERFACE} | wg setconf ${WG_INTERFACE} /dev/stdin`, {
+      // Use bash explicitly for pipe command
+      execSync(`bash -c "wg-quick strip ${WG_INTERFACE} | wg setconf ${WG_INTERFACE} /dev/stdin"`, {
         stdio: ['pipe', 'pipe', 'pipe'],
         timeout: 5000
       });

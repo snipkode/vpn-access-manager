@@ -172,7 +172,11 @@ router.delete('/device/:id', verifyAdmin, async (req, res) => {
       const { execSync } = await import('child_process');
       const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
       execSync(`wg set ${WG_INTERFACE} peer ${deviceData.public_key} remove`);
-      execSync(`wg-quick strip ${WG_INTERFACE} | wg setconf ${WG_INTERFACE} /dev/stdin`);
+      // Use bash explicitly for pipe command
+      execSync(`bash -c "wg-quick strip ${WG_INTERFACE} | wg setconf ${WG_INTERFACE} /dev/stdin"`, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        timeout: 5000
+      });
     } catch (wgError) {
       console.error('WireGuard remove error:', wgError.message);
     }

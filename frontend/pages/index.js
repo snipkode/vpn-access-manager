@@ -9,12 +9,10 @@ import { referralAPI } from '../lib/api';
 import Login from '../components/Login';
 import Layout from '../components/Layout';
 import Dashboard from '../components/Dashboard';
-import MyDevices from '../components/MyDevices';
 import Wallet from '../components/Wallet';
 import Payment from '../components/Payment';
 import Referral from '../components/Referral';
 import ProfileEdit from '../components/ProfileEdit';
-import Notifications from '../components/Notifications';
 import AdminDashboard from '../components/AdminDashboard';
 import AdminBilling from '../components/AdminBilling';
 import AdminCredit from '../components/AdminCredit';
@@ -27,12 +25,10 @@ import Unauthorized from '../components/Unauthorized';
 // Menu configuration
 const MENU_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: 'home' },
-  { id: 'devices', label: 'Devices', icon: 'mobile' },
   { id: 'wallet', label: 'Wallet', icon: 'wallet' },
   { id: 'payment', label: 'Payment', icon: 'credit-card' },
   { id: 'referral', label: 'Referral', icon: 'gift' },
   { id: 'profile', label: 'Profile', icon: 'user' },
-  { id: 'notifications', label: 'Notifications', icon: 'bell' },
 ];
 
 const ADMIN_ITEMS = [
@@ -48,12 +44,10 @@ const ADMIN_ITEMS = [
 // Admin pages are wrapped with AdminGuard for protection
 const PAGE_COMPONENTS = {
   dashboard: Dashboard,
-  devices: MyDevices,
   wallet: Wallet,
   payment: Payment,
   referral: Referral,
   profile: ProfileEdit,
-  notifications: Notifications,
   'admin-dashboard': AdminGuard(AdminDashboard),
   'admin-billing': AdminGuard(AdminBilling),
   'admin-credit': AdminGuard(AdminCredit),
@@ -78,7 +72,7 @@ export default function App() {
         let userDoc = await getDoc(userRef);
 
         let userData = {};
-        
+
         if (userDoc.exists()) {
           // User exists in Firestore
           userData = userDoc.data();
@@ -96,7 +90,7 @@ export default function App() {
             createdAt: new Date().toISOString(),
             lastLogin: new Date().toISOString(),
           };
-          
+
           console.log('📝 Creating new user in Firestore:', userData);
           await setDoc(userRef, userData);
         }
@@ -144,6 +138,39 @@ export default function App() {
             localStorage.removeItem('pending_referral_code');
           } catch (error) {
             console.log('Referral tracking:', error.message);
+          }
+        }
+
+        // Setup token refresh listener - refresh token every 55 minutes (before 1 hour expiry)
+        const setupTokenRefresh = async () => {
+          try {
+            // Firebase tokens expire after 1 hour, refresh every 55 minutes
+            const REFRESH_INTERVAL = 55 * 60 * 1000; // 55 minutes in ms
+            
+            setInterval(async () => {
+              const currentUser = auth.currentUser;
+              if (currentUser) {
+                try {
+                  const freshToken = await currentUser.getIdToken(true);
+                  console.log('🔄 Auto-refreshed Firebase token');
+                  
+                  // Update store with fresh token
+                  const { userData: currentUserData } = useAuthStore.getState();
+                  setUser(currentUser, freshToken, currentUserData);
+                } catch (error) {
+                  console.error('❌ Auto-refresh failed:', error.message);
+                }
+              }
+            }, REFRESH_INTERVAL);
+            
+            console.log('⏰ Token auto-refresh scheduled every 55 minutes');
+          } catch (error) {
+            console.error('❌ Failed to setup token refresh:', error);
+          }
+        };
+
+        setupTokenRefresh();
+      } else {
           }
         }
       } else {

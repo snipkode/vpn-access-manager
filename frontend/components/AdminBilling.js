@@ -349,25 +349,25 @@ export default function AdminBilling({ token }) {
 
 function StatCard({ label, value, color, bg, highlight }) {
   return (
-    <div className={`bg-white rounded-xl p-4 shadow-sm border-2 ${highlight ? 'border-primary' : 'border-gray-100'}`}>
-      <div className={`${bg} w-10 h-10 rounded-lg flex items-center justify-center mb-3`}>
+    <div className={`bg-white rounded-2xl p-4 shadow-sm border-2 ${highlight ? 'border-[#007AFF]' : 'border-gray-100'}`}>
+      <div className={`${bg} w-11 h-11 rounded-2xl flex items-center justify-center mb-3`}>
         <div className={`text-lg font-bold ${color}`}>#</div>
       </div>
-      <div className={`text-xl font-bold ${color} mb-1`}>{value}</div>
-      <div className="text-xs text-gray-400 font-medium">{label}</div>
+      <div className={`text-2xl font-bold ${color} mb-1 tracking-tight`}>{value}</div>
+      <div className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">{label}</div>
     </div>
   );
 }
 
 function StatusBadge({ status }) {
   const styles = {
-    pending: 'bg-amber-100 text-amber-700',
-    approved: 'bg-green-100 text-green-700',
-    rejected: 'bg-red-100 text-red-700',
-    blocked: 'bg-purple-100 text-purple-700',
+    pending: 'bg-[#FF9500]/10 text-[#FF9500]',
+    approved: 'bg-[#34C759]/10 text-[#34C759]',
+    rejected: 'bg-[#FF3B30]/10 text-[#FF3B30]',
+    blocked: 'bg-[#AF52DE]/10 text-[#AF52DE]',
   };
   return (
-    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${styles[status] || 'bg-gray-100 text-gray-600'}`}>
+    <span className={`px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${styles[status] || 'bg-gray-100 text-gray-600'}`}>
       {status}
     </span>
   );
@@ -376,11 +376,11 @@ function StatusBadge({ status }) {
 function PaymentDetailModal({ payment, onClose, onApprove, onReject }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="p-6 border-b border-gray-100 sticky top-0 bg-white rounded-t-2xl">
+      <div className="bg-white rounded-3xl w-full max-w-lg max-h-[90vh] overflow-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="p-6 border-b border-gray-100 sticky top-0 bg-white rounded-t-3xl">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold text-dark">Payment Details</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-dark text-xl p-1 transition-colors">✕</button>
+            <h2 className="text-2xl font-bold text-dark tracking-tight">Detail Pembayaran</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-dark text-2xl p-1 transition-colors">✕</button>
           </div>
         </div>
 
@@ -390,40 +390,49 @@ function PaymentDetailModal({ payment, onClose, onApprove, onReject }) {
             <InfoRow label="Status" value={<StatusBadge status={payment.status} />} />
           </div>
 
-          <div className="bg-gray-50 rounded-xl p-4">
-            <div className="text-sm text-gray-400 mb-1">User Information</div>
-            <div className="text-base font-semibold text-dark">{payment.user_email}</div>
-            <div className="text-sm text-gray-500">Bank: {payment.bank_from}</div>
+          <div className="bg-[#F2F2F7] rounded-2xl p-4 border border-gray-100">
+            <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Informasi User</div>
+            <div className="text-[17px] font-semibold text-dark tracking-tight">{payment.user_email}</div>
+            <div className="text-[13px] text-gray-500 font-medium mt-0.5">Bank: {payment.bank_from}</div>
           </div>
 
-          <div className="bg-primary/5 rounded-xl p-4">
-            <div className="text-sm text-gray-400 mb-1">Payment Amount</div>
-            <div className="text-2xl font-bold text-primary">{formatCurrency(payment.amount)}</div>
-            <div className="text-sm text-gray-500 mt-1">Plan: {payment.plan_label} ({payment.duration_days} days)</div>
+          <div className="bg-gradient-to-br from-[#007AFF]/10 to-[#007AFF]/5 rounded-2xl p-5 border border-[#007AFF]/20">
+            <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Nominal Pembayaran</div>
+            <div className="text-3xl font-bold text-[#007AFF] tracking-tight">{formatCurrency(payment.amount)}</div>
+            <div className="text-[13px] text-gray-500 font-medium mt-1">Paket: {payment.plan_label} ({payment.duration_days} hari)</div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <InfoRow label="Transfer Date" value={new Date(payment.transfer_date).toLocaleDateString()} />
-            <InfoRow label="Submitted" value={new Date(payment.created_at).toLocaleDateString()} />
+            <InfoRow label="Tanggal Transfer" value={new Date(payment.transfer_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} />
+            <InfoRow label="Dikirim" value={new Date(payment.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} />
           </div>
 
           {payment.proof_image_url && (
             <div>
-              <div className="text-sm text-gray-400 mb-2">Proof of Payment</div>
-              <div className="bg-gray-50 rounded-xl p-4 text-center">
+              <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                <i className="fas fa-image mr-1.5 text-[#007AFF]" />
+                Bukti Pembayaran
+              </div>
+              <div className="bg-[#F2F2F7] rounded-2xl p-4 text-center border border-gray-100">
                 <img
                   src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}${payment.proof_image_url}`}
                   alt="Payment proof"
-                  className="max-w-full max-h-64 rounded-lg shadow-sm"
+                  className="max-w-full max-h-80 rounded-2xl shadow-md mx-auto"
                 />
+                <div className="mt-3 text-[11px] text-gray-400 font-medium">
+                  <i className="fas fa-file mr-1" /> {payment.proof_filename}
+                </div>
               </div>
             </div>
           )}
 
           {payment.admin_note && (
             <div>
-              <div className="text-sm text-gray-400 mb-2">Admin Note</div>
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+              <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                <i className="fas fa-sticky-note mr-1.5 text-[#FF9500]" />
+                Catatan Admin
+              </div>
+              <div className="bg-[#FFF3CD] border border-[#FFC107] rounded-2xl p-4 text-[13px] text-[#856404] font-medium">
                 {payment.admin_note}
               </div>
             </div>
@@ -431,19 +440,19 @@ function PaymentDetailModal({ payment, onClose, onApprove, onReject }) {
         </div>
 
         {payment.status === 'pending' && (
-          <div className="p-6 border-t border-gray-100 sticky bottom-0 bg-white rounded-b-2xl">
+          <div className="p-6 border-t border-gray-100 sticky bottom-0 bg-white rounded-b-3xl">
             <div className="flex gap-3">
               <button
                 onClick={onReject}
-                className="flex-1 py-3 bg-red-50 text-red-500 rounded-xl font-semibold hover:bg-red-100 transition-colors"
+                className="flex-1 py-[14px] bg-[#FF3B30]/10 text-[#FF3B30] rounded-2xl font-semibold text-[15px] hover:bg-[#FF3B30]/20 transition-all active:scale-[0.98]"
               >
-                Reject
+                <i className="fas fa-times-circle mr-1.5" /> Tolak
               </button>
               <button
                 onClick={onApprove}
-                className="flex-1 py-3 bg-success text-white rounded-xl font-semibold hover:bg-success/90 transition-colors"
+                className="flex-1 py-[14px] bg-[#34C759] text-white rounded-2xl font-semibold text-[15px] hover:bg-[#34C759]/90 transition-all active:scale-[0.98] shadow-lg shadow-[#34C759]/30"
               >
-                Approve
+                <i className="fas fa-check-circle mr-1.5" /> Setujui
               </button>
             </div>
           </div>
@@ -455,9 +464,9 @@ function PaymentDetailModal({ payment, onClose, onApprove, onReject }) {
 
 function InfoRow({ label, value }) {
   return (
-    <div className="bg-gray-50 rounded-xl p-3">
-      <div className="text-xs text-gray-400 mb-1">{label}</div>
-      <div className="text-sm font-medium text-dark">{value}</div>
+    <div className="bg-[#F2F2F7] rounded-xl p-3.5 border border-gray-100">
+      <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</div>
+      <div className="text-[15px] font-medium text-dark">{value}</div>
     </div>
   );
 }

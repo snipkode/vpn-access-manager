@@ -30,12 +30,13 @@ export function generateKeypair() {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 5000
     }).toString().trim();
-    
-    const publicKey = execSync(`echo "${privateKey}" | wg pubkey`, {
+
+    // Use bash for pipe command
+    const publicKey = execSync(`bash -c "echo '${privateKey}' | wg pubkey"`, {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 5000
     }).toString().trim();
-    
+
     return { privateKey, publicKey };
   } catch (error) {
     const errorMsg = `Failed to generate WireGuard keypair: ${error.message}`;

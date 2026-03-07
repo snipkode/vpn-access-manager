@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useVpnStore, useUIStore } from '../store';
-import { vpnAPI } from '../lib/api';
+import { vpnAPI, billingAPI } from '../lib/api';
 import { useRequestPending } from '../components/RequestBlockingOverlay';
 
 export default function Dashboard({ token, userData }) {
@@ -9,7 +9,9 @@ export default function Dashboard({ token, userData }) {
   const [deviceName, setDeviceName] = useState('');
   const [loading, setLoading] = useState(true);
   const [fetchingConfig, setFetchingConfig] = useState(false);
-  
+  const [subscription, setSubscription] = useState(null);
+  const [subLoading, setSubLoading] = useState(true);
+
   // Use request pending hook for generate VPN
   const generatingVpn = useRequestPending('generate_vpn');
 
@@ -23,8 +25,16 @@ export default function Dashboard({ token, userData }) {
   }, [devices, selectedDevice]);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    console.log('🔑 Dashboard token:', token ? '✅ Present' : '❌ Missing');
+    console.log('👤 Dashboard userData:', userData);
+    
+    if (token) {
+      fetchData();
+    } else {
+      console.warn('⚠️ No token available, skipping fetch');
+      setLoading(false);
+    }
+  }, [token]);
 
   // Fetch device config when selected device changes
   useEffect(() => {
@@ -51,14 +61,22 @@ export default function Dashboard({ token, userData }) {
         vpnAPI.getDevices(),
         billingAPI.getSubscription(),
       ]);
+      console.log('✅ Devices data:', devicesData);
+      console.log('✅ Subscription data:', subData);
       const devicesWithId = (devicesData.devices || []).map(d => ({
         ...d,
         id: d.id || d.device_id
       }));
       setDevices(devicesWithId);
       setSubscription(subData.subscription || null);
+      setSubLoading(false);
     } catch (error) {
       console.error('🔴 Fetch error:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      showNotification(`Failed to load data: ${error.message}`, 'error');
+      setSubLoading(false);
+      setLoading(false);
     } finally {
       setLoading(false);
     }
