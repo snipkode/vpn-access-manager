@@ -11,11 +11,14 @@ const PLANS = {
   yearly: { price: 480000, duration: 365, label: 'Yearly (20% off)' },
 };
 
-export default function Payment({ token }) {
+export default function Payment({ token, mode = 'plan' }) {
   const { showNotification } = useUIStore();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('submit');
   const [isBillingEnabled, setIsBillingEnabled] = useState(false);
+
+  // Use mode prop directly (default to 'plan')
+  const displayMode = mode;
 
   // Payment data
   const [paymentHistory, setPaymentHistory] = useState([]);
@@ -134,27 +137,52 @@ export default function Payment({ token }) {
 
       {activeTab === 'submit' && (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h1 className="text-xl font-bold text-dark mb-6">
-            <i className="fas fa-credit-card text-primary mr-2" />
-            Submit Payment
-          </h1>
+          {/* Top Up Mode */}
+          {displayMode === 'topup' && (
+            <>
+              <h1 className="text-xl font-bold text-dark mb-6">
+                <i className="fas fa-wallet text-primary mr-2" />
+                Top Up Saldo
+              </h1>
 
-          {/* Bank Accounts Info */}
-          <BankAccountsDisplay bankAccounts={bankAccounts} />
+              {/* Bank Accounts Info */}
+              <BankAccountsDisplay bankAccounts={bankAccounts} />
 
-          {/* Reusable Payment Form in plan mode */}
-          <PaymentForm
-            mode="plan"
-            plans={plans.length > 0 ? plans : Object.entries(PLANS).map(([id, plan]) => ({
-              id,
-              label: plan.label,
-              price: plan.price,
-              duration_days: plan.duration,
-            }))}
-            bankAccounts={bankAccounts}
-            onSuccess={handlePaymentSuccess}
-            defaultAmount={plans[0]?.price || PLANS.monthly.price}
-          />
+              <PaymentForm
+                mode="topup"
+                plans={[]}
+                bankAccounts={bankAccounts}
+                onSuccess={handlePaymentSuccess}
+                defaultAmount={50000}
+              />
+            </>
+          )}
+
+          {/* Subscription Mode */}
+          {displayMode === 'subscription' && (
+            <>
+              <h1 className="text-xl font-bold text-dark mb-6">
+                <i className="fas fa-crown text-primary mr-2" />
+                Beli Paket Subscription
+              </h1>
+
+              {/* Bank Accounts Info */}
+              <BankAccountsDisplay bankAccounts={bankAccounts} />
+
+              <PaymentForm
+                mode="plan"
+                plans={plans.length > 0 ? plans : Object.entries(PLANS).map(([id, plan]) => ({
+                  id,
+                  label: plan.label,
+                  price: plan.price,
+                  duration_days: plan.duration,
+                }))}
+                bankAccounts={bankAccounts}
+                onSuccess={handlePaymentSuccess}
+                defaultAmount={plans[0]?.price || PLANS.monthly.price}
+              />
+            </>
+          )}
         </div>
       )}
 

@@ -27,7 +27,6 @@ import Onboarding from '../components/Onboarding';
 const MENU_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
   { id: 'wallet', label: 'Wallet', icon: 'account_balance_wallet' },
-  { id: 'payment', label: 'Payment', icon: 'payment' },
   { id: 'referral', label: 'Referral', icon: 'people' },
 ];
 
@@ -44,7 +43,6 @@ const ADMIN_ITEMS = [
 const PAGE_COMPONENTS = {
   dashboard: Dashboard,
   wallet: Wallet,
-  payment: Payment,
   referral: Referral,
   profile: ProfileEdit,
   'admin-dashboard': AdminGuard(AdminDashboard),
@@ -232,9 +230,9 @@ export default function App() {
     setActivePage(pageId);
   };
 
-  // Handle onboarding complete - go to payment
+  // Handle onboarding complete - go to wallet
   const handleOnboardingComplete = () => {
-    setActivePage('payment');
+    setActivePage('wallet');
     setShowOnboarding(false);
   };
 

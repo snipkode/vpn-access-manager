@@ -116,9 +116,18 @@ export const rateLimiters = {
   auth: createRateLimiter({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: process.env.NODE_ENV === 'development' ? 1000 : 10,
-    message: process.env.NODE_ENV === 'development' 
-      ? 'Too many authentication attempts. Maximum 1000 per 15 minutes.' 
+    message: process.env.NODE_ENV === 'development'
+      ? 'Too many authentication attempts. Maximum 1000 per 15 minutes.'
       : 'Too many authentication attempts. Maximum 10 per 15 minutes.',
+  }),
+
+  // Credit transfer - more lenient than billing submit
+  creditTransfer: createRateLimiter({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: process.env.NODE_ENV === 'development' ? 1000 : 20,
+    message: process.env.NODE_ENV === 'development'
+      ? 'Too many credit transfers. Maximum 1000 per hour.'
+      : 'Too many credit transfers. Maximum 20 per hour.',
   }),
 
   // VPN generation

@@ -2,8 +2,15 @@ import { useEffect, useState } from 'react';
 import { useUIStore, useBillingStore } from '../store';
 import { creditAPI, billingAPI, formatCurrency } from '../lib/api';
 import PaymentForm, { PaymentHistory } from './PaymentForm';
+import CreditTransferForm from './CreditTransferForm';
 import Tabs from './ui/Tabs';
 import Icon from './ui/Icon';
+
+const PLANS = {
+  monthly: { price: 50000, duration: 30, label: 'Monthly' },
+  quarterly: { price: 135000, duration: 90, label: 'Quarterly (10% off)' },
+  yearly: { price: 480000, duration: 365, label: 'Yearly (20% off)' },
+};
 
 // Bank Account Card Component - iOS Style with Copy to Clipboard
 function BankAccountCard({ bank }) {
@@ -211,6 +218,8 @@ export default function Wallet({ token }) {
       <Tabs
         items={[
           { id: 'topup', label: 'Top Up', icon: <Icon name="add_card" size="small" /> },
+          { id: 'subscription', label: 'Subscription', icon: <Icon name="card_membership" size="small" /> },
+          { id: 'transfer', label: 'Transfer', icon: <Icon name="swap_horiz" size="small" /> },
           { id: 'history', label: 'History', icon: <Icon name="history" size="small" /> },
           { id: 'transactions', label: 'Transactions', icon: <Icon name="receipt_long" size="small" /> },
         ]}
@@ -248,6 +257,57 @@ export default function Wallet({ token }) {
             onSuccess={handleTopupSuccess}
             defaultAmount={50000}
           />
+        </div>
+      )}
+
+      {/* Subscription Form - iOS Style */}
+      {activeTab === 'subscription' && (
+        <div className="space-y-4 sm:space-y-5">
+          {/* Bank Accounts Info - iOS Style */}
+          {bankAccountsLocal.length > 0 && (
+            <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.2)] border border-gray-100/50 dark:border-[#38383A]/50">
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-500/5 dark:from-purple-500/20 dark:to-purple-500/5 flex items-center justify-center">
+                  <span className="text-lg">🏦</span>
+                </div>
+                <h2 className="text-base font-semibold text-dark dark:text-white tracking-tight">Transfer To</h2>
+              </div>
+
+              <div className="space-y-3">
+                {bankAccountsLocal.map((bank) => (
+                  <BankAccountCard key={bank.id} bank={bank} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Reusable Payment Form in plan mode */}
+          <PaymentForm
+            mode="plan"
+            plans={plans.length > 0 ? plans : Object.entries(PLANS).map(([id, p]) => ({
+              id,
+              label: p.label,
+              price: p.price,
+              duration_days: p.duration,
+            }))}
+            bankAccounts={bankAccountsLocal}
+            onSuccess={handleTopupSuccess}
+            defaultAmount={plans[0]?.price || PLANS.monthly.price}
+          />
+        </div>
+      )}
+
+      {/* Credit Transfer Form - iOS Style */}
+      {activeTab === 'transfer' && (
+        <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.2)] border border-gray-100/50 dark:border-[#38383A]/50">
+          <div className="flex items-center gap-2.5 mb-5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-500/5 dark:from-purple-500/20 dark:to-purple-500/5 flex items-center justify-center">
+              <span className="text-lg">💸</span>
+            </div>
+            <h2 className="text-base font-semibold text-dark dark:text-white tracking-tight">Transfer Credit</h2>
+          </div>
+
+          <CreditTransferForm onSuccess={handleRefresh} />
         </div>
       )}
 

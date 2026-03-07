@@ -143,40 +143,113 @@ const PLANS = {
  *         description: Billing disabled
  */
 router.post('/submit', 
-  verifyAuth, 
+  verifyAuth,
   checkBillingEnabled,
   rateLimiters.billingSubmit,
-  upload.single('proof'), 
+  upload.single('proof'),
   validateProofFile,
   async (req, res) => {
   try {
     const { uid } = req.user;
     const { amount, plan, bank_from, transfer_date, notes } = req.body;
 
-    // Validate plan
-    if (!plan || !PLANS[plan]) {
-      if (req.file) {
-        fs.unlinkSync(req.file.path);
-      }
-      return res.status(400).json({ 
-        error: 'Invalid plan',
-        available_plans: Object.keys(PLANS)
-      });
-    }
+    console.log('📥 [BILLING SUBMIT] Received:', { plan, amount, bank_from, transfer_date, mode: plan === 'topup' ? 'topup' : 'subscription' });
 
-    const planInfo = PLANS[plan];
+    // Determine if this is a topup or subscription
+    const isTopup = plan === 'topup' || !plan;
+    
+    let planInfo = null;
 
-    // Validate amount (allow small difference for bank fees)
-    const parsedAmount = parseInt(amount);
-    if (isNaN(parsedAmount) || parsedAmount < planInfo.price * 0.9) {
-      if (req.file) {
-        fs.unlinkSync(req.file.path);
+    if (!isTopup) {
+      // Validate plan for subscription
+      if (!plan) {
+        if (req.file) {
+          fs.unlinkSync(req.file.path);
+        }
+        return res.status(400).json({
+          error: 'Invalid plan',
+          message: 'Plan is required for subscription',
+          available_plans: Object.keys(PLANS)
+        });
       }
-      return res.status(400).json({ 
-        error: 'Invalid amount',
-        expected: planInfo.price,
-        submitted: amount
-      });
+
+      // Get plan info - try hardcoded PLANS first, then check database
+      planInfo = PLANS[plan];
+      
+      if (!planInfo) {
+        // Try to get plans from payment_settings
+        try {
+          const settingsDoc = await db.collection('payment_settings').doc('config').get();
+          const settings = settingsDoc.exists ? settingsDoc.data() : {};
+          const plans = settings.plans || [];
+          const foundPlan = plans.find(p => p.id === plan);
+          
+          if (foundPlan) {
+            planInfo = {
+              price: foundPlan.price || 0,
+              duration: foundPlan.duration || 0,
+              label: foundPlan.label || plan,
+            };
+            console.log('✅ [BILLING SUBMIT] Found plan in database:', planInfo);
+          }
+        } catch (dbError) {
+          console.warn('⚠️ [BILLING SUBMIT] Failed to get plans from database:', dbError.message);
+        }
+      }
+
+      if (!planInfo) {
+        if (req.file) {
+          fs.unlinkSync(req.file.path);
+        }
+        console.error('❌ [BILLING SUBMIT] Invalid plan:', plan);
+        console.error('   Available plans:', Object.keys(PLANS));
+        console.error('   Plans from DB:', settings.plans?.map(p => p.id) || 'none');
+        
+        return res.status(400).json({
+          error: 'Invalid plan',
+          message: `Plan "${plan}" not found. Available: ${Object.keys(PLANS).join(', ')}`,
+          received_plan: plan,
+          available_plans: Object.keys(PLANS)
+        });
+      }
+
+      console.log('✅ [BILLING SUBMIT] Plan validated:', planInfo);
+
+      // Validate amount for subscription (allow small difference for bank fees)
+      const parsedAmount = parseInt(amount);
+      if (isNaN(parsedAmount) || parsedAmount < planInfo.price * 0.9) {
+        if (req.file) {
+          fs.unlinkSync(req.file.path);
+        }
+        return res.status(400).json({
+          error: 'Invalid amount',
+          expected: planInfo.price,
+          submitted: amount
+        });
+      }
+    } else {
+      // Topup mode - validate minimum amount
+      const parsedAmount = parseInt(amount);
+      const minTopup = 10000; // Default minimum topup
+      
+      if (isNaN(parsedAmount) || parsedAmount < minTopup) {
+        if (req.file) {
+          fs.unlinkSync(req.file.path);
+        }
+        return res.status(400).json({
+          error: 'Invalid amount',
+          message: `Minimum topup is ${formatCurrency(minTopup)}`,
+          submitted: amount
+        });
+      }
+
+      planInfo = {
+        price: parsedAmount,
+        duration: 0,
+        label: 'Top Up',
+      };
+
+      console.log('✅ [BILLING SUBMIT] Topup validated:', planInfo);
     }
 
     // Validate transfer date
@@ -200,7 +273,7 @@ router.post('/submit',
 
     if (pendingPayments.size > 0) {
       fs.unlinkSync(req.file.path);
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'You have a pending payment',
         message: 'Please wait for admin approval before submitting another payment'
       });
@@ -210,10 +283,10 @@ router.post('/submit',
     const paymentRef = db.collection('payments').doc();
     const paymentData = {
       user_id: uid,
-      amount: parsedAmount,
-      plan,
+      amount: parseInt(amount),
+      plan: isTopup ? 'topup' : plan,
       plan_label: planInfo.label,
-      duration_days: planInfo.duration,
+      duration_days: planInfo.duration || 0,
       bank_from: bank_from || 'Unknown',
       transfer_date: new Date(transfer_date).toISOString(),
       proof_image_url: `/uploads/proofs/${req.file.filename}`,
@@ -222,6 +295,7 @@ router.post('/submit',
       notes: notes || '',
       admin_note: '',
       approved_by: null,
+      is_topup: isTopup,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };

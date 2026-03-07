@@ -30,12 +30,18 @@ const verifyAdmin = async (req, res, next) => {
 router.get('/', verifyAdmin, async (req, res) => {
   try {
     const settings = {};
-    
+
     // Get all setting categories
     const categories = ['whatsapp', 'email', 'billing', 'general', 'notifications'];
-    
+
     for (const category of categories) {
-      const doc = await db.collection('settings').doc(category).get();
+      let doc;
+      // Use unified collection for billing category
+      if (category === 'billing') {
+        doc = await db.collection('payment_settings').doc('config').get();
+      } else {
+        doc = await db.collection('settings').doc(category).get();
+      }
       settings[category] = doc.exists ? doc.data() : {};
     }
 
@@ -50,8 +56,15 @@ router.get('/', verifyAdmin, async (req, res) => {
 router.get('/:category', verifyAdmin, async (req, res) => {
   try {
     const { category } = req.params;
-    const doc = await db.collection('settings').doc(category).get();
     
+    // Use unified collection for billing category
+    let doc;
+    if (category === 'billing') {
+      doc = await db.collection('payment_settings').doc('config').get();
+    } else {
+      doc = await db.collection('settings').doc(category).get();
+    }
+
     res.json({
       settings: doc.exists ? doc.data() : {},
       category,
@@ -299,7 +312,8 @@ router.patch('/billing', verifyAdmin, async (req, res) => {
       reminder_days,
     } = req.body;
 
-    const settingsRef = db.collection('settings').doc('billing');
+    // Use unified collection: payment_settings (same as user-facing endpoint)
+    const settingsRef = db.collection('payment_settings').doc('config');
     const settingsDoc = await settingsRef.get();
 
     const data = {
@@ -321,6 +335,30 @@ router.patch('/billing', verifyAdmin, async (req, res) => {
     }
 
     await settingsRef.set(data, { merge: true });
+
+    // Also update legacy settings/billing for backward compatibility
+    try {
+      const legacyRef = db.collection('settings').doc('billing');
+      const legacyDoc = await legacyRef.get();
+      const legacyData = {
+        ...(legacyDoc.exists ? legacyDoc.data() : {}),
+        billing_enabled: data.billing_enabled,
+        currency: data.currency,
+        min_topup: data.min_topup,
+        max_topup: data.max_topup,
+        auto_renewal_enabled: data.auto_renewal_enabled,
+        low_balance_days: data.low_balance_days,
+        reminder_days: data.reminder_days,
+        updated_at: data.updated_at,
+        updated_by: data.updated_by,
+      };
+      if (!legacyDoc.exists) {
+        legacyData.created_at = data.created_at;
+      }
+      await legacyRef.set(legacyData, { merge: true });
+    } catch (legacyError) {
+      console.warn('⚠️ Failed to update legacy settings/billing:', legacyError.message);
+    }
 
     res.json({
       message: 'Billing settings updated',

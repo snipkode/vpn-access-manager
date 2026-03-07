@@ -93,7 +93,7 @@ router.get('/transactions', verifyAuth, async (req, res) => {
 });
 
 // Transfer credit to another user
-router.post('/transfer', verifyAuth, rateLimiters.billingSubmit, async (req, res) => {
+router.post('/transfer', verifyAuth, rateLimiters.creditTransfer, async (req, res) => {
   try {
     const { uid } = req.user;
     const { to_user_email, to_user_id, amount, description, notes } = req.body;
