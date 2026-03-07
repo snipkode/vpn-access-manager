@@ -39,10 +39,26 @@ export const apiFetch = async (endpoint, options = {}, requestKey = null) => {
 
     if (!res.ok) {
       const error = await res.json().catch(() => ({ error: 'Request failed' }));
+      
+      // Handle rate limit errors with user-friendly message
+      if (res.status === 429) {
+        const retryAfter = res.headers.get('Retry-After');
+        const waitSeconds = retryAfter ? parseInt(retryAfter) : 30;
+        throw new Error(
+          `Too many requests. Please wait ${waitSeconds} seconds before trying again.`
+        );
+      }
+      
       throw new Error(error.error || error.message || 'Request failed');
     }
 
     return res.json();
+  } catch (error) {
+    // Re-throw rate limit errors with special handling
+    if (error.message.includes('Too many requests')) {
+      throw error;
+    }
+    throw error;
   } finally {
     // Remove request from pending list
     if (requestKey) {

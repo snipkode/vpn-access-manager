@@ -166,7 +166,21 @@ export default function Dashboard({ token, userData }) {
       fetchData();
     } catch (error) {
       console.error('🔴 Generate config error:', error);
-      showNotification(error.message, 'error');
+      
+      // Handle rate limit error with specific message
+      if (error.message.includes('Too many requests')) {
+        showNotification(
+          '⏱️ Too many attempts. Please wait 30 seconds before trying again.',
+          'error'
+        );
+      } else if (error.message.includes('rate limit')) {
+        showNotification(
+          '⏱️ Rate limit exceeded. Please slow down and try again.',
+          'error'
+        );
+      } else {
+        showNotification(error.message || 'Failed to generate config', 'error');
+      }
     }
   };
 
@@ -178,7 +192,22 @@ export default function Dashboard({ token, userData }) {
       setSelectedDevice(null);
       fetchData();
     } catch (error) {
-      showNotification('Failed to remove device', 'error');
+      console.error('🔴 Revoke device error:', error);
+      
+      // Handle rate limit error with specific message
+      if (error.message.includes('Too many requests')) {
+        showNotification(
+          '⏱️ Too many attempts. Please wait 30 seconds before trying again.',
+          'error'
+        );
+      } else if (error.message.includes('rate limit')) {
+        showNotification(
+          '⏱️ Rate limit exceeded. Please slow down and try again.',
+          'error'
+        );
+      } else {
+        showNotification(error.message || 'Failed to remove device', 'error');
+      }
     }
   };
 
