@@ -58,6 +58,14 @@ function createRateLimiter({ windowMs, max, message, keyGenerator }) {
 // Development mode: 1000 requests for all endpoints
 // Production mode: Specific limits per endpoint
 export const rateLimiters = {
+  // General API rate limit - HIGH for development
+  general: createRateLimiter({
+    windowMs: 60 * 1000, // 1 minute
+    max: process.env.NODE_ENV === 'development' ? 1000 : 30,
+    message: process.env.NODE_ENV === 'development'
+      ? 'Too many requests. Maximum 1000 per minute.'
+      : 'Too many requests. Maximum 30 per minute.',
+  }),
   // Payment submission
   billingSubmit: createRateLimiter({
     windowMs: 60 * 60 * 1000, // 1 hour
