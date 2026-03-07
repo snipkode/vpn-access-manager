@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false, // Disabled for better dev experience
-  swcMinify: false,
+  swcMinify: true, // Enabled for production builds
 
   // Disable experimental features that cause issues on Android
   experimental: {

@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react';
-import { useVpnStore, useSubscriptionStore, useUIStore } from '../store';
-import { vpnAPI, billingAPI } from '../lib/api';
+import { useVpnStore, useUIStore } from '../store';
+import { vpnAPI } from '../lib/api';
 import { useRequestPending } from '../components/RequestBlockingOverlay';
 
 export default function Dashboard({ token, userData }) {
   const { devices, setDevices, selectedDevice, setSelectedDevice, updateDeviceConfig } = useVpnStore();
-  const { subscription, setSubscription, loading: subLoading } = useSubscriptionStore();
   const { showNotification } = useUIStore();
   const [deviceName, setDeviceName] = useState('');
   const [loading, setLoading] = useState(true);
-  const [deviceType, setDeviceType] = useState('');
   const [fetchingConfig, setFetchingConfig] = useState(false);
   
   // Use request pending hook for generate VPN
@@ -38,39 +36,13 @@ export default function Dashboard({ token, userData }) {
     }
   }, [selectedDevice?.id]); // Only depend on ID, not entire object
 
-  const deviceSuggestions = [
-    { type: 'iphone', label: 'iPhone', icon: '📱', prefix: 'iPhone' },
-    { type: 'android', label: 'Android', icon: '📱', prefix: 'Android' },
-    { type: 'ipad', label: 'iPad', icon: '📟', prefix: 'iPad' },
-    { type: 'laptop', label: 'Laptop', icon: '💻', prefix: 'Laptop' },
-    { type: 'desktop', label: 'Desktop', icon: '🖥️', prefix: 'Desktop' },
-  ];
-
-  const selectDeviceType = (type) => {
-    setDeviceType(type);
-    const suggestion = deviceSuggestions.find(s => s.type === type);
-    if (suggestion) {
-      // Count existing devices with similar prefix
-      const count = devices.filter(d =>
-        d.device_name?.toLowerCase().includes(suggestion.prefix.toLowerCase())
-      ).length;
-      // Generate dynamic name with timestamp
-      const timestamp = new Date().toLocaleTimeString('id-ID', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      }).replace(/:/g, '');
-      setDeviceName(`${suggestion.prefix} ${count + 1} - ${timestamp}`);
-    }
-  };
-
   // Generate dynamic placeholder based on existing devices
   const getDynamicPlaceholder = () => {
     const lastDevice = devices[devices.length - 1];
     if (lastDevice?.device_name) {
       return `e.g., ${lastDevice.device_name.replace(/\d+$/, n => parseInt(n) + 1)}`;
     }
-    return 'Device name (e.g., iPhone 1, MacBook Pro)';
+    return 'Device name (e.g., iPhone 1)';
   };
 
   const fetchData = async () => {
@@ -243,47 +215,9 @@ export default function Dashboard({ token, userData }) {
 
   return (
     <div className="max-w-[700px] mx-auto space-y-6">
-      {/* Subscription Card */}
-      {subscription && !subLoading && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <div className="text-lg font-semibold text-dark mb-2">
-                {subscription.plan_label || subscription.plan || 'No Plan'}
-              </div>
-              <div className="text-sm">
-                {subscription.active ? (
-                  <span className="text-success flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-success" />
-                    Active
-                  </span>
-                ) : (
-                  <span className="text-gray-400">Inactive</span>
-                )}
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-3xl font-bold text-primary">
-                {subscription.days_remaining}
-                <span className="text-sm font-normal text-gray-400 ml-1">days</span>
-              </div>
-            </div>
-          </div>
-          {subscription.subscription_end && (
-            <div className="text-xs text-gray-400 pt-3 border-t border-gray-100">
-              Expires {new Date(subscription.subscription_end).toLocaleDateString('id-ID', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric'
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* VPN Configuration */}
+      {/* Add New Device */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <h2 className="text-base font-semibold text-dark mb-4">VPN Configuration</h2>
+        <h2 className="text-base font-semibold text-dark mb-4">Add New Device</h2>
 
         {!userData?.vpn_enabled ? (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
@@ -293,34 +227,12 @@ export default function Dashboard({ token, userData }) {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Device Type Quick Select */}
-            <div className="flex flex-wrap gap-2">
-              {deviceSuggestions.map((suggestion) => (
-                <button
-                  key={suggestion.type}
-                  onClick={() => selectDeviceType(suggestion.type)}
-                  disabled={devices.length >= 3 || generatingVpn}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                    deviceType === suggestion.type
-                      ? 'bg-primary text-white shadow-md shadow-primary/30'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  } ${devices.length >= 3 || generatingVpn ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  <span>{suggestion.icon}</span>
-                  <span>{suggestion.label}</span>
-                </button>
-              ))}
-            </div>
-
             {/* Device Name Input */}
             <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
                 value={deviceName}
-                onChange={(e) => {
-                  setDeviceName(e.target.value);
-                  setDeviceType('');
-                }}
+                onChange={(e) => setDeviceName(e.target.value)}
                 placeholder={getDynamicPlaceholder()}
                 disabled={devices.length >= 3 || generatingVpn}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-dark text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-gray-100 transition-all"
@@ -342,9 +254,7 @@ export default function Dashboard({ token, userData }) {
                 ) : devices.length >= 3 ? 'Limit Reached' : 'Add Device'}
               </button>
             </div>
-            {devices.length < 3 && (
-              <p className="text-xs text-gray-400">You can add up to {3 - devices.length} more device(s)</p>
-            )}
+            <p className="text-xs text-gray-400">You can add up to {3 - devices.length} more device(s)</p>
           </div>
         )}
       </div>
