@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useUIStore, useBillingStore } from '../store';
 import { creditAPI, billingAPI, formatCurrency } from '../lib/api';
-import PaymentForm, { BankAccountsDisplay, PaymentHistory } from './PaymentForm';
+import PaymentForm, { PaymentHistory } from './PaymentForm';
 import Tabs from './ui/Tabs';
 import Icon from './ui/Icon';
 
@@ -145,9 +145,6 @@ export default function Wallet({ token }) {
             </div>
             <h2 className="text-base font-semibold text-dark dark:text-white tracking-tight">Submit Top Up Request</h2>
           </div>
-
-          {/* Bank Accounts Info */}
-          <BankAccountsDisplay bankAccounts={bankAccountsLocal} />
 
           {/* Reusable Payment Form in topup mode */}
           <PaymentForm
