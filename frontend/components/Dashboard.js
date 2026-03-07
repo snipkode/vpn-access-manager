@@ -233,15 +233,53 @@ export default function Dashboard({ token, userData }) {
 
   return (
     <div className="max-w-[700px] mx-auto space-y-6">
+      {/* Subscription Card */}
+      {subscription && !subLoading && (
+        <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-[#38383A]">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <div className="text-lg font-semibold text-dark dark:text-white mb-2">
+                {subscription.plan_label || subscription.plan || 'No Plan'}
+              </div>
+              <div className="text-sm">
+                {subscription.active ? (
+                  <span className="text-success flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-success" />
+                    Active
+                  </span>
+                ) : (
+                  <span className="text-gray-400 dark:text-gray-500">Inactive</span>
+                )}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-3xl font-bold text-primary">
+                {subscription.days_remaining}
+                <span className="text-sm font-normal text-gray-400 dark:text-gray-500 ml-1">days</span>
+              </div>
+            </div>
+          </div>
+          {subscription.subscription_end && (
+            <div className="text-xs text-gray-400 dark:text-gray-500 pt-3 border-t border-gray-100 dark:border-[#38383A]">
+              Expires {new Date(subscription.subscription_end).toLocaleDateString('id-ID', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Add New Device */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <h2 className="text-base font-semibold text-dark mb-4">Add New Device</h2>
+      <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-[#38383A]">
+        <h2 className="text-base font-semibold text-dark dark:text-white mb-4">Add New Device</h2>
 
         {!userData?.vpn_enabled ? (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
+          <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-200/30 rounded-xl p-6 text-center">
             <span className="text-4xl mb-3 block">⚠️</span>
-            <div className="text-base font-semibold text-dark mb-1">VPN Access Disabled</div>
-            <div className="text-sm text-gray-500">Contact admin to enable VPN access</div>
+            <div className="text-base font-semibold text-dark dark:text-white mb-1">VPN Access Disabled</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">Contact admin to enable VPN access</div>
           </div>
         ) : (
           <div className="space-y-4">
@@ -253,7 +291,7 @@ export default function Dashboard({ token, userData }) {
                 onChange={(e) => setDeviceName(e.target.value)}
                 placeholder={getDynamicPlaceholder()}
                 disabled={devices.length >= 3 || generatingVpn}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-dark text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-gray-100 transition-all"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#38383A] rounded-xl text-dark dark:text-white text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-gray-100 dark:disabled:bg-[#1C1C1E] transition-all"
               />
               <button
                 onClick={generateConfig}
@@ -272,35 +310,35 @@ export default function Dashboard({ token, userData }) {
                 ) : devices.length >= 3 ? 'Limit Reached' : 'Add Device'}
               </button>
             </div>
-            <p className="text-xs text-gray-400">You can add up to {3 - devices.length} more device(s)</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">You can add up to {3 - devices.length} more device(s)</p>
           </div>
         )}
       </div>
 
       {/* Devices List */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+      <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-[#38383A]">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-base font-semibold text-dark">My Devices</h2>
-          <span className="text-sm text-gray-400 font-medium">{devices.length}/3</span>
+          <h2 className="text-base font-semibold text-dark dark:text-white">My Devices</h2>
+          <span className="text-sm text-gray-400 dark:text-gray-500 font-medium">{devices.length}/3</span>
         </div>
 
         {devices.length === 0 ? (
-          <div className="bg-gray-50 rounded-xl p-10 text-center">
+          <div className="bg-gray-50 dark:bg-[#2C2C2E] rounded-xl p-10 text-center">
             <span className="text-5xl mb-4 block opacity-50">📱</span>
-            <div className="text-base font-semibold text-dark mb-1">No devices yet</div>
-            <div className="text-sm text-gray-400">Add your first device above</div>
+            <div className="text-base font-semibold text-dark dark:text-white mb-1">No devices yet</div>
+            <div className="text-sm text-gray-400 dark:text-gray-500">Add your first device above</div>
           </div>
         ) : (
           <div className="space-y-2">
             {devices.map((device, index) => {
               // Fallback key: use device_id, public_key, or index
               const deviceKey = device.id || device.device_id || device.public_key || `device-${index}`;
-              
+
               // Get device name with proper fallback
-              const displayName = device.device_name 
-                ? device.device_name.trim() 
+              const displayName = device.device_name
+                ? device.device_name.trim()
                 : `${device.ip_address || 'Device'} ${index + 1}`;
-              
+
               return (
                 <div
                   key={deviceKey}
@@ -312,26 +350,26 @@ export default function Dashboard({ token, userData }) {
                     };
                     setSelectedDevice(deviceWithId);
                   }}
-                  className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all active:scale-[0.98]"
+                  className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-[#2C2C2E] rounded-xl border border-gray-100 dark:border-[#38383A] cursor-pointer hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/10 transition-all active:scale-[0.98]"
                   data-device-id={deviceKey}
                 >
-                  <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-2xl flex-shrink-0 shadow-sm">
+                  <div className="w-12 h-12 rounded-xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center text-2xl flex-shrink-0 shadow-sm">
                     {getDeviceIcon(displayName)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-base font-medium text-dark truncate">{displayName}</div>
+                    <div className="text-base font-medium text-dark dark:text-white truncate">{displayName}</div>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <div className="text-xs text-gray-400 font-mono">{device.ip_address || 'No IP'}</div>
+                      <div className="text-xs text-gray-400 dark:text-gray-500 font-mono">{device.ip_address || 'No IP'}</div>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                        device.status === 'active' ? 'bg-green-100 text-green-600' : 
-                        device.status === 'disabled' ? 'bg-amber-100 text-amber-600' :
-                        'bg-gray-100 text-gray-500'
+                        device.status === 'active' ? 'bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400' :
+                        device.status === 'disabled' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400' :
+                        'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
                       }`}>
                         {device.status || 'unknown'}
                       </span>
                     </div>
                   </div>
-                  <div className={`w-2.5 h-2.5 rounded-full ${device.status === 'active' ? 'bg-success' : 'bg-gray-300'}`} />
+                  <div className={`w-2.5 h-2.5 rounded-full ${device.status === 'active' ? 'bg-success' : 'bg-gray-300 dark:bg-gray-600'}`} />
                 </div>
               );
             })}
