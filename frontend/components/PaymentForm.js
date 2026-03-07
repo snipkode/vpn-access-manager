@@ -659,7 +659,7 @@ export function PlanDetailsModal({ plan, onClose }) {
           <div className="text-3xl sm:text-4xl font-bold text-dark dark:text-white tracking-tight mb-3">
             {formatCurrency(plan.price)}
           </div>
-          <div className="flex items-center gap-3 text-[13px] sm:text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-3 text-[13px] sm:text-sm text-gray-500 dark:text-gray-400 mb-4">
             <div className="flex items-center gap-1.5">
               <Icon name="calendar_today" variant="round" size="small" />
               <span className="font-medium">{durationDisplay}</span>
@@ -668,6 +668,22 @@ export function PlanDetailsModal({ plan, onClose }) {
             <div className="flex items-center gap-1.5">
               <Icon name="payments" variant="round" size="small" />
               <span className="font-medium">One-time payment</span>
+            </div>
+          </div>
+          
+          {/* Price Breakdown */}
+          <div className="pt-4 border-t border-[#007AFF]/20">
+            <div className="flex items-center justify-between text-[12px] sm:text-[13px]">
+              <span className="text-gray-500 dark:text-gray-400">Price per day</span>
+              <span className="font-semibold text-dark dark:text-white">
+                {formatCurrency(Math.round(plan.price / plan.duration_days))}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-[12px] sm:text-[13px] mt-1.5">
+              <span className="text-gray-500 dark:text-gray-400">Price per month</span>
+              <span className="font-semibold text-dark dark:text-white">
+                {formatCurrency(Math.round(plan.price / (plan.duration_days / 30)))}
+              </span>
             </div>
           </div>
         </div>
