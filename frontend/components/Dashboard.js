@@ -588,16 +588,18 @@ function DeviceModal({ device, onClose, onRevoke, onDisable, onReactivate, onDow
                 <div className="bg-gradient-to-br from-gray-50 to-gray-100/80 dark:from-[#2C2C2E] dark:to-[#252527] rounded-2xl p-6 sm:p-8 text-center border border-gray-200/50 dark:border-[#38383A]/50">
                   <div className="text-sm sm:text-base font-semibold text-gray-500 dark:text-gray-400 mb-6 uppercase tracking-wider">Scan to Connect</div>
                   <div className="flex justify-center">
-                    {/* QR Code Container - Explicit 200x200px */}
-                    <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-black/30 border-2 border-gray-300 dark:border-gray-600 p-4 flex items-center justify-center">
-                      {/* SVG QR Code - Explicit 200x200px */}
+                    {/* QR Code - Force square 200x200 with overflow hidden */}
+                    <div 
+                      className="bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-black/30 border-2 border-gray-300 dark:border-gray-600 overflow-hidden"
+                      style={{ width: '200px', height: '200px' }}
+                    >
                       <div
-                        style={{ width: '200px', height: '200px' }}
                         dangerouslySetInnerHTML={{
                           __html: device.qr
-                            .replace(/<svg/, '<svg width="200" height="200" preserveAspectRatio="xMidYMid meet" style="display:block;">')
-                            .replace(/width="[^"]*"/, '')
-                            .replace(/height="[^"]*"/, '')
+                            .replace(/<svg/, '<svg width="200" height="200" viewBox="0 0 200 200" preserveAspectRatio="xMidYMid meet" style="display:block;width:200px;height:200px;">')
+                            .replace(/width="[^"]*"/g, '')
+                            .replace(/height="[^"]*"/g, '')
+                            .replace(/viewBox="[^"]*"/g, '')
                         }}
                       />
                     </div>
