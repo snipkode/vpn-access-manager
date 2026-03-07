@@ -81,8 +81,11 @@ export default function Layout({
               <div className={`w-10 h-10 bg-gradient-to-br ${theme.gradient} rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg`}>
                 <Icon name={theme.icon} variant="round" size="large" color="white" />
               </div>
-              <span className="text-lg sm:text-xl font-bold text-dark dark:text-white truncate whitespace-nowrap">
+              <span className="text-lg sm:text-xl font-bold text-dark dark:text-white truncate whitespace-nowrap hidden sm:block">
                 {isAdmin ? 'Admin Panel' : 'VPN Access'}
+              </span>
+              <span className="text-lg font-bold text-dark dark:text-white truncate whitespace-nowrap sm:hidden">
+                {isAdmin ? 'Admin' : 'VPN'}
               </span>
             </div>
             {!isDesktop && (
