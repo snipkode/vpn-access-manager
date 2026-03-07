@@ -428,6 +428,43 @@ router.get('/config', async (req, res) => {
     const settingsDoc = await db.collection('payment_settings').doc('config').get();
     const settings = settingsDoc.exists ? settingsDoc.data() : {};
 
+    // Get subscription plans from Firestore
+    let plans = [];
+    try {
+      const plansSnapshot = await db.collection('subscription_plans')
+        .where('order', '>=', 0)
+        .orderBy('order', 'asc')
+        .get();
+
+      plansSnapshot.forEach(doc => {
+        plans.push({
+          id: doc.id,
+          ...doc.data(),
+        });
+      });
+    } catch (indexError) {
+      // Fallback: Get all plans without ordering
+      console.warn('⚠️ subscription_plans index missing, fetching without order');
+      const plansSnapshot = await db.collection('subscription_plans').get();
+      
+      plans = plansSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      
+      // Sort client-side
+      plans.sort((a, b) => (a.order || 0) - (b.order || 0));
+    }
+
+    // Fallback to default plans if none configured
+    if (plans.length === 0) {
+      plans = [
+        { id: 'monthly', label: 'Monthly', price: 50000, duration_days: 30 },
+        { id: 'quarterly', label: 'Quarterly', price: 135000, duration_days: 90 },
+        { id: 'yearly', label: 'Yearly', price: 480000, duration_days: 365 },
+      ];
+    }
+
     // Get active bank accounts with fallback for missing index
     let bank_accounts = [];
     try {
@@ -446,7 +483,7 @@ router.get('/config', async (req, res) => {
       if (process.env.NODE_ENV === 'development') {
         console.warn('⚠️ Firestore index missing for bank_accounts.order, using fallback');
       }
-      
+
       const banksSnapshot = await db.collection('bank_accounts')
         .where('active', '==', true)
         .get();
@@ -463,11 +500,7 @@ router.get('/config', async (req, res) => {
     res.json({
       billing_enabled: settings.billing_enabled || false,
       currency: settings.currency || 'IDR',
-      plans: settings.plans || [
-        { id: 'monthly', label: 'Monthly', price: 50000, duration: 30 },
-        { id: 'quarterly', label: 'Quarterly', price: 135000, duration: 90 },
-        { id: 'yearly', label: 'Yearly', price: 480000, duration: 365 },
-      ],
+      plans,
       bank_accounts,
       has_bank_accounts: bank_accounts.length > 0,
       bank_accounts_count: bank_accounts.length,
