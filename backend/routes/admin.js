@@ -1,5 +1,6 @@
 import express from 'express';
 import { auth, db } from '../config/firebase.js';
+import { disablePeer, reactivatePeer } from '../services/wireguard.js';
 
 const router = express.Router();
 
@@ -183,6 +184,105 @@ router.delete('/device/:id', verifyAdmin, async (req, res) => {
   } catch (error) {
     console.error('Revoke device error:', error.message);
     res.status(500).json({ error: 'Failed to revoke device', details: error.message });
+  }
+});
+
+// Disable device (admin) - soft disable, keeps in database
+router.post('/device/:id/disable', verifyAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deviceRef = db.collection('devices').doc(id);
+    const deviceDoc = await deviceRef.get();
+
+    if (!deviceDoc.exists) {
+      return res.status(404).json({ error: 'Device not found' });
+    }
+
+    const deviceData = deviceDoc.data();
+
+    // Check if already disabled or revoked
+    if (deviceData.status === 'disabled') {
+      return res.status(400).json({ error: 'Device already disabled' });
+    }
+
+    if (deviceData.status === 'revoked') {
+      return res.status(400).json({ error: 'Device already revoked' });
+    }
+
+    // Remove peer from WireGuard
+    try {
+      disablePeer(deviceData.public_key);
+    } catch (wgError) {
+      console.error('WireGuard disable error:', wgError.message);
+    }
+
+    // Update status in Firestore
+    await deviceRef.update({
+      status: 'disabled',
+      disabled_at: new Date().toISOString(),
+    });
+
+    res.json({
+      message: 'Device disabled successfully',
+      device_id: id,
+      device_name: deviceData.device_name,
+      ip_address: deviceData.ip_address,
+      status: 'disabled'
+    });
+  } catch (error) {
+    console.error('Disable device error:', error.message);
+    res.status(500).json({ error: 'Failed to disable device', details: error.message });
+  }
+});
+
+// Reactivate device (admin) - restore disabled device
+router.post('/device/:id/reactivate', verifyAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deviceRef = db.collection('devices').doc(id);
+    const deviceDoc = await deviceRef.get();
+
+    if (!deviceDoc.exists) {
+      return res.status(404).json({ error: 'Device not found' });
+    }
+
+    const deviceData = deviceDoc.data();
+
+    // Check if device is disabled
+    if (deviceData.status !== 'disabled') {
+      return res.status(400).json({
+        error: 'Device not disabled',
+        current_status: deviceData.status
+      });
+    }
+
+    // Add peer back to WireGuard
+    try {
+      reactivatePeer(deviceData.public_key, deviceData.ip_address);
+    } catch (wgError) {
+      console.error('WireGuard reactivate error:', wgError.message);
+      return res.status(500).json({
+        error: 'Failed to reactivate WireGuard peer',
+        details: wgError.message
+      });
+    }
+
+    // Update status in Firestore
+    await deviceRef.update({
+      status: 'active',
+      reactivated_at: new Date().toISOString(),
+    });
+
+    res.json({
+      message: 'Device reactivated successfully',
+      device_id: id,
+      device_name: deviceData.device_name,
+      ip_address: deviceData.ip_address,
+      status: 'active'
+    });
+  } catch (error) {
+    console.error('Reactivate device error:', error.message);
+    res.status(500).json({ error: 'Failed to reactivate device', details: error.message });
   }
 });
 

@@ -51,12 +51,14 @@ export function addPeer(publicKey, ipAddress) {
 
     console.log(`Adding WireGuard peer: ${publicKey} with IP: ${ipAddress}`);
 
+    // Add peer to running interface
     execSync(`wg set ${WG_INTERFACE} peer ${publicKey} allowed-ips ${ipAddress}/32`, {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 5000
     });
 
-    execSync(`wg-quick strip ${WG_INTERFACE} | wg setconf ${WG_INTERFACE} /dev/stdin`, {
+    // Save current config (including new peer) to config file using wg showconf
+    execSync(`wg showconf ${WG_INTERFACE} > /etc/wireguard/${WG_INTERFACE}.conf`, {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 5000
     });
@@ -77,12 +79,14 @@ export function removePeer(publicKey) {
 
     console.log(`Removing WireGuard peer: ${publicKey}`);
 
+    // Remove peer from running interface
     execSync(`wg set ${WG_INTERFACE} peer ${publicKey} remove`, {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 5000
     });
 
-    execSync(`wg-quick strip ${WG_INTERFACE} | wg setconf ${WG_INTERFACE} /dev/stdin`, {
+    // Save current config (without removed peer) to config file
+    execSync(`wg showconf ${WG_INTERFACE} > /etc/wireguard/${WG_INTERFACE}.conf`, {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 5000
     });
@@ -91,6 +95,56 @@ export function removePeer(publicKey) {
     return true;
   } catch (error) {
     const errorMsg = `Failed to remove WireGuard peer: ${error.message}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
+  }
+}
+
+// Disable peer from WireGuard (remove from interface but keep in database)
+export function disablePeer(publicKey) {
+  try {
+    const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
+
+    console.log(`Disabling WireGuard peer: ${publicKey}`);
+
+    // Remove peer from running interface only (don't save config)
+    execSync(`wg set ${WG_INTERFACE} peer ${publicKey} remove`, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 5000
+    });
+
+    console.log('WireGuard peer disabled successfully (kept in config file)');
+    return true;
+  } catch (error) {
+    const errorMsg = `Failed to disable WireGuard peer: ${error.message}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
+  }
+}
+
+// Reactivate peer in WireGuard (add back to interface from config)
+export function reactivatePeer(publicKey, ipAddress) {
+  try {
+    const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
+
+    console.log(`Reactivating WireGuard peer: ${publicKey} with IP: ${ipAddress}`);
+
+    // Add peer back to running interface
+    execSync(`wg set ${WG_INTERFACE} peer ${publicKey} allowed-ips ${ipAddress}/32`, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 5000
+    });
+
+    // Save current config (including reactivated peer) to config file
+    execSync(`wg showconf ${WG_INTERFACE} > /etc/wireguard/${WG_INTERFACE}.conf`, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 5000
+    });
+
+    console.log('WireGuard peer reactivated successfully');
+    return true;
+  } catch (error) {
+    const errorMsg = `Failed to reactivate WireGuard peer: ${error.message}`;
     console.error(errorMsg);
     throw new Error(errorMsg);
   }

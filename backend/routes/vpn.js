@@ -1,7 +1,7 @@
 import express from 'express';
 import QRCode from 'qrcode';
 import { auth, db } from '../config/firebase.js';
-import { generateKeypair, addPeer, generateConfig, getNextAvailableIP, isWireGuardHealthy } from '../services/wireguard.js';
+import { generateKeypair, addPeer, generateConfig, getNextAvailableIP, isWireGuardHealthy, disablePeer, reactivatePeer } from '../services/wireguard.js';
 import { rateLimiters } from '../middleware/rateLimit.js';
 
 const router = express.Router();
@@ -450,8 +450,8 @@ router.delete('/device/:id',
       console.error('Failed to create audit log:', auditError.message);
       // Don't fail the request if audit log fails
     }
-    
-    res.json({ 
+
+    res.json({
       message: 'Device revoked successfully',
       device_id: id,
       device_name: deviceData.device_name,
@@ -460,8 +460,246 @@ router.delete('/device/:id',
     });
   } catch (error) {
     console.error('Revoke device error:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to revoke device', 
+    res.status(500).json({
+      error: 'Failed to revoke device',
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/vpn/device/{id}/disable:
+ *   post:
+ *     summary: Disable a VPN device (admin only)
+ *     tags: [VPN]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Device ID
+ *     responses:
+ *       200:
+ *         description: Device disabled successfully
+ *       404:
+ *         description: Device not found
+ *       500:
+ *         description: Failed to disable device
+ */
+router.post('/device/:id/disable', verifyAuth, async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { id } = req.params;
+
+    // Verify admin
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists || userDoc.data().role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    // Validate device ID format
+    if (!isValidDocId(id)) {
+      return res.status(400).json({
+        error: 'Invalid device ID',
+        message: 'Device ID must be alphanumeric (max 50 chars)'
+      });
+    }
+
+    const deviceRef = db.collection('devices').doc(id);
+    const deviceDoc = await deviceRef.get();
+
+    if (!deviceDoc.exists) {
+      return res.status(404).json({ error: 'Device not found' });
+    }
+
+    const deviceData = deviceDoc.data();
+
+    // Check if already disabled or revoked
+    if (deviceData.status === 'disabled') {
+      return res.status(400).json({
+        error: 'Device already disabled',
+        message: 'This device is already disabled'
+      });
+    }
+
+    if (deviceData.status === 'revoked') {
+      return res.status(400).json({
+        error: 'Device already revoked',
+        message: 'This device has been revoked'
+      });
+    }
+
+    // Sanitize public key
+    const sanitizedPublicKey = sanitizePublicKey(deviceData.public_key);
+
+    // Remove from WireGuard interface (disable)
+    try {
+      disablePeer(sanitizedPublicKey);
+    } catch (wgError) {
+      console.error('WireGuard disable error:', wgError.message);
+      // Continue anyway - we still want to update the database
+    }
+
+    // Update device status to disabled
+    await deviceRef.update({
+      status: 'disabled',
+      disabled_at: new Date().toISOString(),
+      disabled_by: uid,
+    });
+
+    // Create audit log
+    try {
+      await db.collection('audit_logs').doc().set({
+        action: 'device_disabled',
+        user_id: uid,
+        device_id: id,
+        device_name: deviceData.device_name,
+        device_public_key: sanitizedPublicKey,
+        device_ip: deviceData.ip_address,
+        timestamp: new Date().toISOString(),
+        ip_address: req.ip,
+        user_agent: req.headers['user-agent']?.substring(0, 200) || 'unknown'
+      });
+      console.log(`Audit log created for device disable: ${id}`);
+    } catch (auditError) {
+      console.error('Failed to create audit log:', auditError.message);
+    }
+
+    res.json({
+      message: 'Device disabled successfully',
+      device_id: id,
+      device_name: deviceData.device_name,
+      ip_address: deviceData.ip_address,
+      wireguard_removed: true,
+      disabled_at: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Disable device error:', error.message);
+    res.status(500).json({
+      error: 'Failed to disable device',
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/vpn/device/{id}/reactivate:
+ *   post:
+ *     summary: Reactivate a disabled VPN device (admin only)
+ *     tags: [VPN]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Device ID
+ *     responses:
+ *       200:
+ *         description: Device reactivated successfully
+ *       400:
+ *         description: Device not disabled
+ *       404:
+ *         description: Device not found
+ *       500:
+ *         description: Failed to reactivate device
+ */
+router.post('/device/:id/reactivate', verifyAuth, async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { id } = req.params;
+
+    // Verify admin
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists || userDoc.data().role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    // Validate device ID format
+    if (!isValidDocId(id)) {
+      return res.status(400).json({
+        error: 'Invalid device ID',
+        message: 'Device ID must be alphanumeric (max 50 chars)'
+      });
+    }
+
+    const deviceRef = db.collection('devices').doc(id);
+    const deviceDoc = await deviceRef.get();
+
+    if (!deviceDoc.exists) {
+      return res.status(404).json({ error: 'Device not found' });
+    }
+
+    const deviceData = deviceDoc.data();
+
+    // Check if device is disabled
+    if (deviceData.status !== 'disabled') {
+      return res.status(400).json({
+        error: 'Device not disabled',
+        message: `Cannot reactivate device with status: ${deviceData.status}`
+      });
+    }
+
+    // Sanitize public key
+    const sanitizedPublicKey = sanitizePublicKey(deviceData.public_key);
+
+    // Add back to WireGuard interface (reactivate)
+    try {
+      reactivatePeer(sanitizedPublicKey, deviceData.ip_address);
+    } catch (wgError) {
+      console.error('WireGuard reactivate error:', wgError.message);
+      return res.status(500).json({
+        error: 'Failed to reactivate WireGuard peer',
+        details: wgError.message
+      });
+    }
+
+    // Update device status to active
+    await deviceRef.update({
+      status: 'active',
+      reactivated_at: new Date().toISOString(),
+      reactivated_by: uid,
+    });
+
+    // Create audit log
+    try {
+      await db.collection('audit_logs').doc().set({
+        action: 'device_reactivated',
+        user_id: uid,
+        device_id: id,
+        device_name: deviceData.device_name,
+        device_public_key: sanitizedPublicKey,
+        device_ip: deviceData.ip_address,
+        timestamp: new Date().toISOString(),
+        ip_address: req.ip,
+        user_agent: req.headers['user-agent']?.substring(0, 200) || 'unknown'
+      });
+      console.log(`Audit log created for device reactivation: ${id}`);
+    } catch (auditError) {
+      console.error('Failed to create audit log:', auditError.message);
+    }
+
+    res.json({
+      message: 'Device reactivated successfully',
+      device_id: id,
+      device_name: deviceData.device_name,
+      ip_address: deviceData.ip_address,
+      wireguard_added: true,
+      reactivated_at: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Reactivate device error:', error.message);
+    res.status(500).json({
+      error: 'Failed to reactivate device',
       details: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
