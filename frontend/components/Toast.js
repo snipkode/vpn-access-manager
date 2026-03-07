@@ -8,15 +8,13 @@ export default function Toast() {
   const getIcon = (type) => {
     switch (type) {
       case 'success':
-        return '✅';
+        return '✓';
       case 'error':
-        return '❌';
+        return '✕';
       case 'warning':
-        return '⚠️';
-      case 'info':
-        return 'ℹ️';
+        return '!';
       default:
-        return '📢';
+        return '•';
     }
   };
 
@@ -28,26 +26,20 @@ export default function Toast() {
         return 'bg-red-500';
       case 'warning':
         return 'bg-amber-500';
-      case 'info':
-        return 'bg-blue-500';
       default:
-        return 'bg-gray-500';
+        return 'bg-blue-500';
     }
   };
 
   return (
     <div className="fixed top-4 right-4 z-[100] animate-slide-in-right">
       <div
-        className={`${getBgColor(notification.type)} text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 min-w-[300px] max-w-md`}
+        className={`${getBgColor(notification.type)} text-white px-5 py-3.5 rounded-xl shadow-lg flex items-center gap-3 min-w-[280px] max-w-md`}
       >
-        <span className="text-2xl">{getIcon(notification.type)}</span>
-        <span className="flex-1 font-medium">{notification.message}</span>
-        <button
-          onClick={() => useUIStore.getState().showNotification(null)}
-          className="text-white/80 hover:text-white transition-colors text-xl"
-        >
-          ✕
-        </button>
+        <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold">
+          {getIcon(notification.type)}
+        </span>
+        <span className="flex-1 font-medium text-sm">{notification.message}</span>
       </div>
     </div>
   );

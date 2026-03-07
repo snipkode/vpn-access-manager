@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useUIStore, useBillingStore } from '../store';
-import { creditAPI, billingAPI, formatCurrency } from '../lib/api';
+import { useUIStore, useBillingStore, useAuthStore } from '../store';
+import { creditAPI, billingAPI, userAPI, formatCurrency } from '../lib/api';
 import PaymentForm, { PaymentHistory } from './PaymentForm';
 import CreditTransferForm from './CreditTransferForm';
 import Tabs from './ui/Tabs';
 import Icon from './ui/Icon';
+import { db } from '../lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 const PLANS = {
   monthly: { price: 50000, duration: 30, label: 'Monthly' },
@@ -15,7 +17,7 @@ const PLANS = {
 export default function Wallet({ token }) {
   const { showNotification } = useUIStore();
   const { plans, setBillingData } = useBillingStore();
-  const [balance, setBalance] = useState(0);
+  const { user, userData, updateUserData } = useAuthStore();
   const [transactions, setTransactions] = useState([]);
   const [topups, setTopups] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +25,48 @@ export default function Wallet({ token }) {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('transactions');
   const [bankAccountsLocal, setBankAccountsLocal] = useState([]);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+
+  // Get balance directly from global Zustand state
+  const balance = userData?.credit_balance || 0;
+
+  // Real-time Firestore listener for credit_balance
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const userRef = doc(db, 'users', user.uid);
+    
+    const unsubscribe = onSnapshot(userRef, (docSnapshot) => {
+      if (docSnapshot.exists()) {
+        const data = docSnapshot.data();
+        const newBalance = data.credit_balance || 0;
+        
+        // Update global Zustand state
+        updateUserData({ credit_balance: newBalance });
+        setLastUpdated(new Date());
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user?.uid, updateUserData]);
+
+  // Fetch user profile on mount to ensure credit_balance is loaded
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const profileData = await userAPI.getProfile();
+        if (profileData?.profile?.credit_balance !== undefined) {
+          updateUserData({ credit_balance: profileData.profile.credit_balance });
+        }
+      } catch (error) {
+        console.error('Failed to fetch profile:', error.message);
+      }
+    };
+
+    if (user?.uid) {
+      fetchProfile();
+    }
+  }, [user?.uid, updateUserData]);
 
   const fetchData = async (isRefresh = false) => {
     try {
@@ -53,7 +97,10 @@ export default function Wallet({ token }) {
         bank_accounts: bankAccs,
       });
 
-      setBalance(balanceData.balance || 0);
+      // Sync balance to global Zustand state
+      updateUserData({ credit_balance: balanceData.balance || 0 });
+      setLastUpdated(new Date());
+
       setTransactions(transactionsData.transactions || []);
       setTopups(topupsData.payments || []);
     } catch (error) {
@@ -70,13 +117,29 @@ export default function Wallet({ token }) {
     fetchData();
   }, []);
 
-  const handleRefresh = () => {
-    fetchData(true);
+  const handleRefresh = async () => {
+    try {
+      // First, sync balance from Firestore
+      await creditAPI.syncBalance();
+      
+      // Then fetch fresh data
+      await fetchData(true);
+      
+      showNotification('Balance updated');
+    } catch (error) {
+      showNotification(error.message, 'error');
+    }
   };
 
-  const handleTopupSuccess = () => {
-    fetchData();
-    setActiveTab('history');
+  const handleTopupSuccess = async () => {
+    try {
+      await creditAPI.syncBalance();
+      await fetchData();
+      setActiveTab('history');
+    } catch (error) {
+      await fetchData();
+      setActiveTab('history');
+    }
   };
 
   if (loading) {
@@ -89,43 +152,42 @@ export default function Wallet({ token }) {
 
   return (
     <div className="max-w-[900px] mx-auto space-y-4 sm:space-y-5 px-4 sm:px-0">
-      {/* Balance Card with Integrated Refresh - iOS Style */}
-      <div className="relative bg-gradient-to-br from-[#007AFF] via-blue-500 to-blue-600 rounded-[24px] p-6 shadow-xl shadow-[#007AFF]/25 overflow-hidden">
+      {/* Balance Card - Simple & Clean */}
+      <div className="relative bg-gradient-to-br from-[#007AFF] via-blue-500 to-blue-600 rounded-[24px] p-6 sm:p-8 shadow-xl shadow-[#007AFF]/25 overflow-hidden">
         {/* Subtle gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
-        
+
         {/* Content */}
         <div className="relative z-10">
           {/* Header with Refresh Button */}
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <span className="text-xl">💳</span>
-              </div>
-              <div>
-                <div className="text-[13px] sm:text-sm text-white/80 font-medium">Available Balance</div>
-                <div className="text-3xl sm:text-4xl font-bold text-white tracking-tight mt-0.5">{formatCurrency(balance)}</div>
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <div className="text-[13px] sm:text-sm text-white/80 font-medium">Available Balance</div>
+              <div className="text-4xl sm:text-5xl font-bold text-white tracking-tight mt-1">
+                {formatCurrency(balance)}
               </div>
             </div>
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/30 transition-all active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/30 transition-all active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
               title="Refresh balance"
             >
-              <Icon 
-                name="refresh" 
-                variant="round" 
-                size="small" 
-                className={`text-white ${refreshing ? 'animate-spin' : ''}`} 
+              <Icon
+                name="refresh"
+                variant="round"
+                size="small"
+                className={`text-white ${refreshing ? 'animate-spin' : ''}`}
               />
             </button>
           </div>
           
-          {/* Footer info */}
+          {/* Last Updated */}
           <div className="flex items-center gap-2 pt-4 border-t border-white/20">
             <div className="w-2 h-2 rounded-full bg-green-400 shadow-sm shadow-green-400/50" />
-            <div className="text-[13px] sm:text-sm text-white/80 font-medium">Credit available for subscription</div>
+            <div className="text-[13px] sm:text-sm text-white/70">
+              Last updated: {lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </div>
           </div>
         </div>
       </div>

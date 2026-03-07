@@ -146,13 +146,30 @@ router.post('/payments/:id/approve', verifyAdmin, rateLimiters.adminBillingWrite
     const isTopup = paymentData.plan === 'topup' || !paymentData.duration_days || paymentData.duration_days === 0;
 
     if (isTopup) {
-      // For top-up: Add credit to user balance
-      const newBalance = creditBalance + paymentData.amount;
+      // For top-up: Add credit to user balance using Firestore Transaction
+      let newBalance = 0;
       
-      await userRef.update({
-        credit_balance: newBalance,
-        updated_at: new Date().toISOString(),
+      console.log(`💰 Starting transaction for user ${paymentData.user_id}`);
+      
+      await db.runTransaction(async (transaction) => {
+        const userDoc = await transaction.get(userRef);
+        
+        if (!userDoc.exists) {
+          throw new Error('User not found');
+        }
+        
+        const currentBalance = userDoc.data().credit_balance || 0;
+        newBalance = currentBalance + paymentData.amount;
+        
+        console.log(`💰 Transaction: ${currentBalance} + ${paymentData.amount} = ${newBalance}`);
+        
+        transaction.update(userRef, {
+          credit_balance: newBalance,
+          updated_at: new Date().toISOString(),
+        });
       });
+
+      console.log(`✅ Balance updated via transaction: user=${paymentData.user_id}, newBalance=${newBalance}`);
 
       // Create credit transaction record
       const transactionRef = db.collection('credit_transactions').doc();

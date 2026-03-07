@@ -382,6 +382,14 @@ export const creditAPI = {
   },
 
   /**
+   * Sync user credit balance
+   * POST /api/credit/sync
+   */
+  syncBalance: async () => {
+    return apiFetch('/credit/sync', { method: 'POST' });
+  },
+
+  /**
    * Get credit transactions history
    * GET /api/credit/transactions
    */

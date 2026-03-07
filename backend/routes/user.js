@@ -44,6 +44,7 @@ router.get('/profile', verifyAuth, async (req, res) => {
         avatar_url: userData.avatar_url || null,
         role: userData.role,
         vpn_enabled: userData.vpn_enabled,
+        credit_balance: userData.credit_balance || 0,
         subscription_plan: userData.subscription_plan || null,
         subscription_end: userData.subscription_end || null,
         created_at: userData.created_at,

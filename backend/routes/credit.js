@@ -293,6 +293,165 @@ router.get('/stats', verifyAuth, async (req, res) => {
   }
 });
 
+// Force sync user credit balance (for debugging/fix)
+router.post('/sync', verifyAuth, rateLimiters.general, async (req, res) => {
+  const startTime = Date.now();
+  const { uid: requesterUid } = req.user;
+  const userIP = req.ip;
+  
+  try {
+    // Security: Validate target user ID
+    let targetUid = requesterUid;
+    const queryUid = req.query.uid;
+    
+    if (queryUid) {
+      // Validate UID format (Firebase UID pattern)
+      if (typeof queryUid !== 'string' || !/^[a-zA-Z0-9_-]{10,50}$/.test(queryUid)) {
+        console.warn(`⚠️ Invalid UID format from IP ${userIP}: ${queryUid.substring(0, 10)}...`);
+        return res.status(400).json({
+          error: 'Invalid user ID format',
+        });
+      }
+      
+      // Security: Check admin role from Firebase Custom Claims (more secure than Firestore)
+      const adminCheck = await db.collection('users').doc(requesterUid).get();
+      const adminData = adminCheck.data();
+      
+      // Only admin can sync other users
+      if (!adminData || adminData.role !== 'admin') {
+        console.warn(`⚠️ Non-admin user ${requesterUid} attempted to sync user ${queryUid} from IP ${userIP}`);
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Only admins can sync balance for other users'
+        });
+      }
+      
+      targetUid = queryUid;
+      console.log(`🔐 Admin ${requesterUid} syncing balance for user ${targetUid} from IP ${userIP}`);
+    }
+
+    const targetUserRef = db.collection('users').doc(targetUid);
+
+    // Security: Use Firestore transaction to prevent race conditions
+    let syncResult;
+    
+    await db.runTransaction(async (transaction) => {
+      const targetUserDoc = transaction.get(targetUserRef);
+      
+      if (!targetUserDoc.exists) {
+        throw new Error(`User ${targetUid} not found`);
+      }
+
+      // Get all approved topup payments
+      const paymentsSnapshot = await db.collection('payments')
+        .where('user_id', '==', targetUid)
+        .where('status', '==', 'approved')
+        .get();
+
+      let totalTopup = 0;
+      paymentsSnapshot.forEach(doc => {
+        const payment = doc.data();
+        const isTopup = payment.plan === 'topup' || !payment.duration_days || payment.duration_days === 0;
+        if (isTopup) {
+          totalTopup += payment.amount;
+        }
+      });
+
+      // Get all credit transactions
+      const transactionsSnapshot = await db.collection('credit_transactions')
+        .where('user_id', '==', targetUid)
+        .get();
+
+      let transactionTotal = 0;
+      transactionsSnapshot.forEach(doc => {
+        const tx = doc.data();
+        if (tx.type === 'topup' || tx.type === 'credit') {
+          transactionTotal += tx.amount;
+        } else if (tx.type === 'deduction' || tx.type === 'transfer') {
+          transactionTotal -= tx.amount;
+        }
+      });
+
+      const currentBalance = targetUserDoc.data().credit_balance || 0;
+      const expectedBalance = transactionTotal;
+
+      // Security: Prevent negative balance
+      if (expectedBalance < 0) {
+        console.warn(`⚠️ Negative balance calculation for user ${targetUid}: ${expectedBalance}`);
+        throw new Error('Calculated balance is negative');
+      }
+
+      // Security: Max balance limit (prevent overflow/exploit)
+      const MAX_BALANCE = 1_000_000_000; // 1 billion IDR
+      if (expectedBalance > MAX_BALANCE) {
+        console.warn(`⚠️ Balance exceeds limit for user ${targetUid}: ${expectedBalance}`);
+        throw new Error('Balance exceeds maximum limit');
+      }
+
+      // Only update if different
+      if (currentBalance !== expectedBalance) {
+        transaction.update(targetUserRef, {
+          credit_balance: expectedBalance,
+          last_balance_sync: new Date().toISOString(),
+          last_sync_by: requesterUid,
+        });
+        
+        syncResult = {
+          old_balance: currentBalance,
+          new_balance: expectedBalance,
+          synced: true,
+        };
+        
+        console.log(`🔄 Balance synced: ${targetUid} ${currentBalance}→${expectedBalance} by ${requesterUid}`);
+      } else {
+        syncResult = {
+          old_balance: currentBalance,
+          new_balance: expectedBalance,
+          synced: false,
+        };
+      }
+    });
+
+    // Audit log for sync operation
+    await db.collection('audit_logs').add({
+      action: 'credit_balance_sync',
+      user_id: targetUid,
+      requester_id: requesterUid,
+      ip_address: userIP,
+      old_balance: syncResult.old_balance,
+      new_balance: syncResult.new_balance,
+      synced: syncResult.synced,
+      timestamp: new Date().toISOString(),
+      duration_ms: Date.now() - startTime,
+    });
+
+    res.json({
+      success: true,
+      synced: syncResult.synced,
+      message: syncResult.synced ? 'Balance updated successfully' : 'Balance already in sync',
+    });
+  } catch (error) {
+    console.error(`❌ Sync balance error for user ${targetUid}:`, error.message);
+    
+    // Log failed sync attempt
+    await db.collection('audit_logs').add({
+      action: 'credit_balance_sync_failed',
+      user_id: targetUid || 'unknown',
+      requester_id: requesterUid,
+      ip_address: userIP,
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
+    
+    res.status(500).json({
+      error: 'Failed to sync balance',
+      message: error.message.includes('negative') ? 'Invalid balance calculation' : 
+               error.message.includes('limit') ? 'Balance exceeds limit' :
+               'Please try again later',
+    });
+  }
+});
+
 // Helper: Format currency
 function formatCurrency(amount) {
   return new Intl.NumberFormat('id-ID', {

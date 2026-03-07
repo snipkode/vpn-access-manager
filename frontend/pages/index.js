@@ -112,6 +112,7 @@ export default function App() {
           provider: userData.provider || firebaseUser.providerData[0]?.providerId || 'google.com',
           uid: firebaseUser.uid,
           emailVerified: userData.emailVerified !== undefined ? userData.emailVerified : firebaseUser.emailVerified,
+          credit_balance: userData.credit_balance || 0,
         };
 
         // Debug: Log user data
