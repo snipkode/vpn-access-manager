@@ -185,13 +185,13 @@ export default function PaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-      {/* Plan Selection - Redesigned Cards */}
+      {/* Plan Selection - Simple Square Cards */}
       {mode === 'plan' && plans.length > 0 && (
         <div>
           <label className="block text-[10px] sm:text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 sm:mb-3">
             Pilih Paket
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
             {plans.map((plan) => {
               const durationDisplay = getDurationDisplay(plan.duration_days);
               
@@ -205,36 +205,35 @@ export default function PaymentForm({
                       : 'border-gray-200 dark:border-[#38383A] bg-gray-50 dark:bg-[#2C2C2E] hover:border-[#007AFF]/50'
                   }`}
                 >
-                  {/* Plan Name */}
-                  <div className="text-[13px] sm:text-[14px] font-bold text-dark dark:text-white mb-2 leading-tight">
-                    {plan.label}
-                  </div>
-                  
-                  {/* Duration Badge */}
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-[#007AFF]/10 dark:bg-[#007AFF]/20 rounded-lg mb-2.5">
-                    <Icon name="calendar_today" variant="round" size="small" className="text-[#007AFF] w-3.5 h-3.5" />
-                    <span className="text-[11px] sm:text-[12px] font-bold text-[#007AFF]">
-                      {durationDisplay}
-                    </span>
-                  </div>
-                  
-                  {/* View Details Button */}
+                  {/* Info Icon - Top Right Corner */}
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleViewPlanDetails(plan);
                     }}
-                    className="w-full py-1.5 px-2 bg-white dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#38383A] rounded-lg text-[11px] sm:text-[12px] font-semibold text-gray-600 dark:text-gray-300 hover:text-[#007AFF] hover:border-[#007AFF]/50 transition-all flex items-center justify-center gap-1"
+                    className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white/80 dark:bg-[#2C2C2E]/80 flex items-center justify-center hover:bg-[#007AFF]/20 transition-colors group"
                   >
-                    <Icon name="info" variant="round" size="small" className="w-3.5 h-3.5" />
-                    View Details
+                    <Icon name="info" variant="round" size="small" className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 group-hover:text-[#007AFF]" />
                   </button>
                   
-                  {/* Selected Indicator */}
+                  {/* Plan Name */}
+                  <div className="text-[12px] sm:text-[13px] font-bold text-dark dark:text-white mb-1.5 leading-tight pr-6">
+                    {plan.label}
+                  </div>
+                  
+                  {/* Duration Badge */}
+                  <div className="inline-flex items-center gap-1 px-1.5 py-1 bg-[#007AFF]/10 dark:bg-[#007AFF]/20 rounded-md">
+                    <Icon name="calendar_today" variant="round" size="small" className="text-[#007AFF] w-3 h-3" />
+                    <span className="text-[10px] sm:text-[11px] font-bold text-[#007AFF]">
+                      {durationDisplay}
+                    </span>
+                  </div>
+                  
+                  {/* Selected Checkmark */}
                   {selectedPlan === plan.id && (
-                    <div className="absolute top-2 right-2 w-5 h-5 bg-[#007AFF] rounded-full flex items-center justify-center shadow-md">
-                      <Icon name="check" variant="round" size="small" className="text-white w-3.5 h-3.5" />
+                    <div className="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2 w-5 h-5 bg-[#007AFF] rounded-full flex items-center justify-center shadow-md">
+                      <Icon name="check" variant="round" size="small" className="text-white w-3 h-3" />
                     </div>
                   )}
                 </div>
