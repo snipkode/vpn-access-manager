@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useUIStore } from '../store';
 import RequestBlockingOverlay from './RequestBlockingOverlay';
+import Toast from './Toast';
 
 export default function Layout({
   children,
@@ -200,6 +201,9 @@ export default function Layout({
 
       {/* Request Blocking Overlay - Global loading state */}
       <RequestBlockingOverlay />
+      
+      {/* Toast Notifications */}
+      <Toast />
     </div>
   );
 }

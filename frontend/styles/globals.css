@@ -18,6 +18,21 @@
   .animate-spin-slow {
     animation: spin 1s linear infinite;
   }
+  
+  .animate-slide-in-right {
+    animation: slideInRight 0.3s ease-out;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 /* QR Code Responsive Styles */
