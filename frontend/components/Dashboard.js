@@ -277,44 +277,45 @@ export default function Dashboard({ token, userData }) {
           <h2 className="text-sm sm:text-base font-semibold text-dark dark:text-white mb-4">Add New Device</h2>
 
           {!userData?.vpn_enabled ? (
-          <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-200/30 rounded-xl p-5 sm:p-6 text-center">
-            <span className="text-3xl sm:text-4xl mb-2 sm:mb-3 block">⚠️</span>
-            <div className="text-sm sm:text-base font-semibold text-dark dark:text-white mb-1">VPN Access Disabled</div>
-            <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Contact admin to enable VPN access</div>
-          </div>
-        ) : (
-          <div className="space-y-3 sm:space-y-4">
-            {/* Device Name Input */}
-            <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
-              <input
-                type="text"
-                value={deviceName}
-                onChange={(e) => setDeviceName(e.target.value)}
-                placeholder={getDynamicPlaceholder()}
-                disabled={devices.length >= 3 || generatingVpn}
-                className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#38383A] rounded-xl text-dark dark:text-white text-sm sm:text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-gray-100 dark:disabled:bg-[#1C1C1E] transition-all"
-              />
-              <button
-                onClick={generateConfig}
-                disabled={generatingVpn || devices.length >= 3 || !deviceName.trim()}
-                className={`w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 bg-primary text-white dark:bg-primary-600 rounded-xl text-sm sm:text-base font-semibold whitespace-nowrap transition-all ${
-                  generatingVpn || devices.length >= 3
-                    ? 'opacity-50 cursor-not-allowed'
-                    : 'hover:bg-primary/90 dark:hover:bg-primary-700 active:scale-95'
-                }`}
-              >
-                {generatingVpn ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Adding...
-                  </span>
-                ) : devices.length >= 3 ? 'Limit Reached' : 'Add Device'}
-              </button>
+            <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-200/30 rounded-xl p-5 sm:p-6 text-center">
+              <span className="text-3xl sm:text-4xl mb-2 sm:mb-3 block">⚠️</span>
+              <div className="text-sm sm:text-base font-semibold text-dark dark:text-white mb-1">VPN Access Disabled</div>
+              <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Contact admin to enable VPN access</div>
             </div>
-            <p className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500">You can add up to {3 - devices.length} more device(s)</p>
-          </div>
-        )}
-      </div>
+          ) : (
+            <div className="space-y-3 sm:space-y-4">
+              {/* Device Name Input */}
+              <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
+                <input
+                  type="text"
+                  value={deviceName}
+                  onChange={(e) => setDeviceName(e.target.value)}
+                  placeholder={getDynamicPlaceholder()}
+                  disabled={devices.length >= 3 || generatingVpn}
+                  className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#38383A] rounded-xl text-dark dark:text-white text-sm sm:text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-gray-100 dark:disabled:bg-[#1C1C1E] transition-all"
+                />
+                <button
+                  onClick={generateConfig}
+                  disabled={generatingVpn || devices.length >= 3 || !deviceName.trim()}
+                  className={`w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 bg-primary text-white dark:bg-primary-600 rounded-xl text-sm sm:text-base font-semibold whitespace-nowrap transition-all ${
+                    generatingVpn || devices.length >= 3
+                      ? 'opacity-50 cursor-not-allowed'
+                      : 'hover:bg-primary/90 dark:hover:bg-primary-700 active:scale-95'
+                  }`}
+                >
+                  {generatingVpn ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Adding...
+                    </span>
+                  ) : devices.length >= 3 ? 'Limit Reached' : 'Add Device'}
+                </button>
+              </div>
+              <p className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500">You can add up to {3 - devices.length} more device(s)</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Devices List - Only show if subscription is active */}
       {subscription && !subLoading && subscription.active && (
