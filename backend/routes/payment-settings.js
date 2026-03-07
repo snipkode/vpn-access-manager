@@ -47,25 +47,36 @@ router.get('/settings', verifyAdmin, async (req, res) => {
       notification_email: null,
     };
 
-    // Get bank accounts
-    const banksSnapshot = await db.collection('bank_accounts')
-      .orderBy('order', 'asc')
-      .get();
+    // Get bank accounts with fallback for missing index
+    let bank_accounts = [];
+    try {
+      const banksSnapshot = await db.collection('bank_accounts')
+        .orderBy('order', 'asc')
+        .get();
 
-    const bank_accounts = banksSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+      bank_accounts = banksSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+    } catch (indexError) {
+      console.warn('⚠️ Firestore index missing, using fallback');
+      const banksSnapshot = await db.collection('bank_accounts').get();
+      bank_accounts = banksSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      bank_accounts.sort((a, b) => (a.order || 999) - (b.order || 999));
+    }
 
-    res.json({ 
+    res.json({
       settings,
       bank_accounts,
     });
   } catch (error) {
     console.error('Get payment settings error:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to get payment settings', 
-      details: error.message 
+    res.status(500).json({
+      error: 'Failed to get payment settings',
+      details: error.message
     });
   }
 });
@@ -417,16 +428,36 @@ router.get('/config', async (req, res) => {
     const settingsDoc = await db.collection('payment_settings').doc('config').get();
     const settings = settingsDoc.exists ? settingsDoc.data() : {};
 
-    // Get active bank accounts
-    const banksSnapshot = await db.collection('bank_accounts')
-      .where('active', '==', true)
-      .orderBy('order', 'asc')
-      .get();
+    // Get active bank accounts with fallback for missing index
+    let bank_accounts = [];
+    try {
+      // Try with orderBy first (requires index)
+      const banksSnapshot = await db.collection('bank_accounts')
+        .where('active', '==', true)
+        .orderBy('order', 'asc')
+        .get();
 
-    const bank_accounts = banksSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+      bank_accounts = banksSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+    } catch (indexError) {
+      // Fallback: query without orderBy if index is missing
+      console.warn('⚠️ Firestore index missing for bank_accounts.order, using fallback query');
+      console.warn('Error:', indexError.message);
+      
+      const banksSnapshot = await db.collection('bank_accounts')
+        .where('active', '==', true)
+        .get();
+
+      bank_accounts = banksSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      // Sort client-side as fallback
+      bank_accounts.sort((a, b) => (a.order || 999) - (b.order || 999));
+    }
 
     res.json({
       billing_enabled: settings.billing_enabled || false,
@@ -447,6 +478,7 @@ router.get('/config', async (req, res) => {
         : null,
     });
   } catch (error) {
+    console.error('❌ Failed to get payment config:', error);
     res.status(500).json({
       error: 'Failed to get payment config',
       details: error.message
