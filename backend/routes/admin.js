@@ -416,13 +416,29 @@ router.get('/stats', verifyAdmin, async (req, res) => {
     const devicesSnapshot = await db.collection('devices').where('status', '==', 'active').get();
 
     const users = usersSnapshot.docs.map(doc => doc.data());
-    const enabledUsers = users.filter(u => u.vpn_enabled).length;
+    
+    // Count by role
+    const adminUsers = users.filter(u => u.role === 'admin').length;
+    const regularUsers = users.filter(u => !u.role || u.role === 'user').length;
+    
+    // Count by VPN status
+    const enabledUsers = users.filter(u => u.vpn_enabled === true).length;
+    const disabledUsers = users.filter(u => u.vpn_enabled === false || u.vpn_enabled === undefined).length;
 
     res.json({
       total_users: users.length,
       vpn_enabled_users: enabledUsers,
-      vpn_disabled_users: users.length - enabledUsers,
+      vpn_disabled_users: disabledUsers,
       active_devices: devicesSnapshot.size,
+      // Additional breakdown
+      users_by_role: {
+        admin: adminUsers,
+        user: regularUsers,
+      },
+      users_by_vpn_status: {
+        enabled: enabledUsers,
+        disabled: disabledUsers,
+      },
     });
   } catch (error) {
     console.error('Get stats error:', error.message);
