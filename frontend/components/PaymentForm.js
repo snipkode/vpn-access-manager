@@ -13,12 +13,15 @@ export default function PaymentForm({
   defaultAmount,
   plans = [],
   bankAccounts = [],
+  onViewPlanDetails,
 }) {
   const { showNotification } = useUIStore();
   const [submitting, setSubmitting] = useState(false);
   const [proofFile, setProofFile] = useState(null);
   const [proofPreview, setProofPreview] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [showPlanDetails, setShowPlanDetails] = useState(false);
+  const [selectedPlanDetails, setSelectedPlanDetails] = useState(null);
 
   // Form state
   const [amount, setAmount] = useState(defaultAmount || (mode === 'topup' ? 50000 : plans[0]?.price || 50000));
@@ -78,6 +81,16 @@ export default function PaymentForm({
     const plan = plans.find(p => p.id === planId);
     if (plan) {
       setAmount(plan.price);
+      setSelectedPlanDetails(plan);
+    }
+  };
+
+  const handleViewPlanDetails = (plan) => {
+    if (onViewPlanDetails) {
+      onViewPlanDetails(plan);
+    } else {
+      setSelectedPlanDetails(plan);
+      setShowPlanDetails(true);
     }
   };
 
@@ -192,24 +205,62 @@ export default function PaymentForm({
         </div>
       )}
 
-      {/* Amount */}
-      <div>
-        <label className="block text-[10px] sm:text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5 sm:mb-2">
-          Nominal {mode === 'topup' ? 'Top Up' : 'Pembayaran'} (IDR)
-        </label>
-        <input
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(parseInt(e.target.value))}
-          className="w-full px-3 sm:px-4 py-[10px] sm:py-[12px] bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#38383A] rounded-lg sm:rounded-xl text-dark dark:text-white text-[14px] sm:text-[15px] font-semibold focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 outline-none transition-all"
-          min="10000"
-          step="10000"
-          required
-        />
-        <p className="text-[9px] sm:text-[11px] text-gray-400 dark:text-gray-500 mt-1 sm:mt-1.5 font-medium">
-          Minimal: {formatCurrency(mode === 'topup' ? 10000 : (plans.find(p => p.id === selectedPlan)?.price || 10000))}
-        </p>
-      </div>
+      {/* Amount - Only show for topup mode */}
+      {mode === 'topup' && (
+        <div>
+          <label className="block text-[10px] sm:text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5 sm:mb-2">
+            Nominal Top Up (IDR)
+          </label>
+          <input
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(parseInt(e.target.value))}
+            className="w-full px-3 sm:px-4 py-[10px] sm:py-[12px] bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#38383A] rounded-lg sm:rounded-xl text-dark dark:text-white text-[14px] sm:text-[15px] font-semibold focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 outline-none transition-all"
+            min="10000"
+            step="10000"
+            required
+          />
+          <p className="text-[9px] sm:text-[11px] text-gray-400 dark:text-gray-500 mt-1 sm:mt-1.5 font-medium">
+            Minimal: {formatCurrency(10000)}
+          </p>
+        </div>
+      )}
+
+      {/* Plan Details Display - For subscription mode */}
+      {mode === 'plan' && selectedPlan && (
+        <div className="bg-gradient-to-br from-[#F2F2F7] dark:from-[#1C1C1E] to-white dark:to-[#2C2C2E] rounded-xl p-5 border border-gray-100 dark:border-[#38383A] shadow-sm">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <div className="text-[13px] sm:text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Selected Plan</div>
+              <div className="text-xl sm:text-2xl font-bold text-dark dark:text-white tracking-tight">
+                {plans.find(p => p.id === selectedPlan)?.label || 'Subscription'}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleViewPlanDetails(plans.find(p => p.id === selectedPlan))}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#007AFF]/10 hover:bg-[#007AFF]/20 text-[#007AFF] text-[12px] sm:text-[13px] font-semibold rounded-lg transition-all active:scale-95"
+            >
+              <Icon name="info" variant="round" size="small" />
+              Details
+            </button>
+          </div>
+          <div className="flex items-center gap-4 pt-3 border-t border-gray-200 dark:border-[#38383A]">
+            <div className="flex-1">
+              <div className="text-[10px] sm:text-[11px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide mb-0.5">Price</div>
+              <div className="text-lg sm:text-xl font-bold text-[#007AFF]">
+                {formatCurrency(plans.find(p => p.id === selectedPlan)?.price || 0)}
+              </div>
+            </div>
+            <div className="flex-1">
+              <div className="text-[10px] sm:text-[11px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide mb-0.5">Duration</div>
+              <div className="text-base sm:text-lg font-bold text-dark dark:text-white">
+                {plans.find(p => p.id === selectedPlan)?.duration_days || 0} days
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bank Penerima - Dropdown with Account Number Display */}
       <div>
@@ -413,6 +464,14 @@ export default function PaymentForm({
           </span>
         )}
       </button>
+
+      {/* Plan Details Modal */}
+      {showPlanDetails && (
+        <PlanDetailsModal 
+          plan={selectedPlanDetails} 
+          onClose={() => setShowPlanDetails(false)} 
+        />
+      )}
     </form>
   );
 }
@@ -543,5 +602,78 @@ function StatusBadge({ status }) {
     >
       {status}
     </span>
+  );
+}
+
+/**
+ * Plan Details Modal - iPhone Style
+ */
+export function PlanDetailsModal({ plan, onClose }) {
+  if (!plan) return null;
+
+  const benefits = plan.benefits || [
+    'Unlimited bandwidth',
+    'High-speed VPN connection',
+    'Multiple device support',
+    '24/7 customer support',
+  ];
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      
+      {/* Modal Content */}
+      <div className="relative bg-white dark:bg-[#1C1C1E] rounded-[24px] p-6 sm:p-8 max-w-md w-full shadow-2xl animate-scale-in">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-dark dark:text-white tracking-tight">Plan Details</h2>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-gray-100 dark:bg-[#2C2C2E] flex items-center justify-center text-gray-400 hover:text-dark dark:hover:text-white transition-all hover:rotate-90"
+          >
+            <Icon name="close" variant="round" size="small" />
+          </button>
+        </div>
+
+        {/* Plan Info */}
+        <div className="bg-gradient-to-br from-[#007AFF]/10 to-[#007AFF]/5 dark:from-[#007AFF]/20 dark:to-[#007AFF]/5 rounded-2xl p-5 mb-6 border border-[#007AFF]/20">
+          <div className="text-[13px] sm:text-sm font-semibold text-[#007AFF] uppercase tracking-wide mb-1">{plan.label}</div>
+          <div className="text-3xl sm:text-4xl font-bold text-dark dark:text-white tracking-tight mb-2">
+            {formatCurrency(plan.price)}
+          </div>
+          <div className="flex items-center gap-2 text-[13px] sm:text-sm text-gray-500 dark:text-gray-400">
+            <Icon name="calendar_today" variant="round" size="small" />
+            <span className="font-medium">{plan.duration_days} days</span>
+          </div>
+        </div>
+
+        {/* Benefits */}
+        <div className="mb-6">
+          <h3 className="text-[13px] sm:text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">What's Included</h3>
+          <div className="space-y-2.5">
+            {benefits.map((benefit, index) => (
+              <div key={index} className="flex items-start gap-3">
+                <div className="w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Icon name="check" variant="round" size="small" className="text-green-600 dark:text-green-400 w-3.5 h-3.5" />
+                </div>
+                <span className="text-[14px] sm:text-[15px] text-dark dark:text-white font-medium leading-relaxed">{benefit}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <button
+          onClick={onClose}
+          className="w-full py-[14px] px-4 bg-[#007AFF] hover:bg-[#0056CC] text-white text-[15px] font-semibold rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-[#007AFF]/30"
+        >
+          Got it
+        </button>
+      </div>
+    </div>
   );
 }

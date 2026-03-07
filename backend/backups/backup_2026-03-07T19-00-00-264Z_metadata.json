@@ -1,0 +1,98 @@
+{
+  "backup_id": "backup_2026-03-07T19-00-00-264Z",
+  "started_at": "2026-03-07T19:00:00.265Z",
+  "collections": [
+    {
+      "collection": "users",
+      "count": 2,
+      "size": 634,
+      "status": "success"
+    },
+    {
+      "collection": "devices",
+      "count": 2,
+      "size": 953,
+      "status": "success"
+    },
+    {
+      "collection": "payments",
+      "count": 3,
+      "size": 2209,
+      "status": "success"
+    },
+    {
+      "collection": "credit_transactions",
+      "count": 2,
+      "size": 1063,
+      "status": "success"
+    },
+    {
+      "collection": "user_credits",
+      "count": 7,
+      "size": 1999,
+      "status": "success"
+    },
+    {
+      "collection": "fraud_alerts",
+      "count": 1,
+      "size": 753,
+      "status": "success"
+    },
+    {
+      "collection": "fraud_log",
+      "count": 1,
+      "size": 783,
+      "status": "success"
+    },
+    {
+      "collection": "bank_accounts",
+      "count": 0,
+      "size": 108,
+      "status": "success"
+    },
+    {
+      "collection": "payment_settings",
+      "count": 1,
+      "size": 609,
+      "status": "success"
+    },
+    {
+      "collection": "email_settings",
+      "count": 0,
+      "size": 109,
+      "status": "success"
+    },
+    {
+      "collection": "cron_settings",
+      "count": 0,
+      "size": 108,
+      "status": "success"
+    },
+    {
+      "collection": "fraud_config",
+      "count": 0,
+      "size": 107,
+      "status": "success"
+    },
+    {
+      "collection": "user_preferences",
+      "count": 0,
+      "size": 111,
+      "status": "success"
+    },
+    {
+      "collection": "audit_logs",
+      "count": 1454,
+      "size": 1074518,
+      "status": "success"
+    }
+  ],
+  "total_documents": 1473,
+  "total_size": 1084064,
+  "compressed_size": 63419,
+  "encrypted": false,
+  "status": "completed",
+  "compressed": true,
+  "backup_file": "backup_2026-03-07T19-00-00-264Z.tar.gz",
+  "completed_at": "2026-03-07T19:00:03.523Z"
+}

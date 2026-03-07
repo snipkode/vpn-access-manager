@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useUIStore, useBillingStore, useAuthStore } from '../store';
 import { creditAPI, billingAPI, userAPI, formatCurrency } from '../lib/api';
-import PaymentForm, { PaymentHistory } from './PaymentForm';
+import PaymentForm, { PaymentHistory, PlanDetailsModal } from './PaymentForm';
 import CreditTransferForm from './CreditTransferForm';
 import Tabs from './ui/Tabs';
 import Icon from './ui/Icon';
@@ -26,6 +26,8 @@ export default function Wallet({ token }) {
   const [activeTab, setActiveTab] = useState('transactions');
   const [bankAccountsLocal, setBankAccountsLocal] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [showPlanDetails, setShowPlanDetails] = useState(false);
+  const [selectedPlanDetails, setSelectedPlanDetails] = useState(null);
 
   // Get balance directly from global Zustand state
   const balance = userData?.credit_balance || 0;
@@ -236,8 +238,20 @@ export default function Wallet({ token }) {
             bankAccounts={bankAccountsLocal}
             onSuccess={handleTopupSuccess}
             defaultAmount={plans[0]?.price || PLANS.monthly.price}
+            onViewPlanDetails={(plan) => {
+              setSelectedPlanDetails(plan);
+              setShowPlanDetails(true);
+            }}
           />
         </div>
+      )}
+
+      {/* Plan Details Modal */}
+      {showPlanDetails && selectedPlanDetails && (
+        <PlanDetailsModal
+          plan={selectedPlanDetails}
+          onClose={() => setShowPlanDetails(false)}
+        />
       )}
 
       {/* Credit Transfer Form - iOS Style */}

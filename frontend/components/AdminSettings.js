@@ -45,6 +45,57 @@ export default function AdminSettings({ token }) {
     auto_renewal_enabled: true,
     low_balance_days: 5,
   });
+
+  const [plans, setPlans] = useState([
+    {
+      id: 'monthly',
+      label: 'Monthly',
+      price: 50000,
+      duration_days: 30,
+      benefits: [
+        'Unlimited bandwidth',
+        'High-speed connection',
+        '1 device',
+        'Basic support',
+      ],
+    },
+    {
+      id: 'quarterly',
+      label: 'Quarterly (10% off)',
+      price: 135000,
+      duration_days: 90,
+      benefits: [
+        'Unlimited bandwidth',
+        'High-speed connection',
+        '2 devices',
+        'Priority support',
+        'Save 10%',
+      ],
+    },
+    {
+      id: 'yearly',
+      label: 'Yearly (20% off)',
+      price: 480000,
+      duration_days: 365,
+      benefits: [
+        'Unlimited bandwidth',
+        'Premium high-speed',
+        '5 devices',
+        '24/7 priority support',
+        'Save 20%',
+        'Free 1 month',
+      ],
+    },
+  ]);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [editingPlan, setEditingPlan] = useState(null);
+  const [planForm, setPlanForm] = useState({
+    id: '',
+    label: '',
+    price: 0,
+    duration_days: 30,
+    benefits: [''],
+  });
   
   const [notifications, setNotifications] = useState({
     whatsapp_enabled: true,
@@ -534,6 +585,83 @@ export default function AdminSettings({ token }) {
               <p className="text-[12px] text-gray-400 mt-1.5">Alert user when balance is low X days before expiry</p>
             </div>
 
+            {/* Subscription Plans Management */}
+            <div className="pt-4 border-t border-gray-100">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <div className="text-[15px] font-semibold text-dark">Subscription Plans</div>
+                  <div className="text-[12px] text-gray-400 mt-0.5">Manage plans and benefits</div>
+                </div>
+                <button
+                  onClick={() => {
+                    setEditingPlan(null);
+                    setPlanForm({
+                      id: '',
+                      label: '',
+                      price: 0,
+                      duration_days: 30,
+                      benefits: [''],
+                    });
+                    setShowPlanModal(true);
+                  }}
+                  className="px-4 py-2 bg-primary text-white rounded-lg text-[13px] font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5"
+                >
+                  <i className="fas fa-plus" />
+                  Add Plan
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {plans.map((plan, index) => (
+                  <div
+                    key={plan.id}
+                    className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-xl p-4"
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <div className="text-[16px] font-bold text-dark mb-1">{plan.label}</div>
+                        <div className="flex items-center gap-3 text-[13px] text-gray-500">
+                          <span className="font-semibold text-primary">{plan.duration_days} days</span>
+                          <span>•</span>
+                          <span className="font-bold text-dark">{formatCurrency(plan.price)}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingPlan(plan);
+                            setPlanForm({ ...plan, benefits: plan.benefits || [''] });
+                            setShowPlanModal(true);
+                          }}
+                          className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[12px] font-medium hover:bg-blue-100 transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => {
+                            setPlans(plans.filter(p => p.id !== plan.id));
+                            showNotification('Plan deleted', 'success');
+                          }}
+                          className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-[12px] font-medium hover:bg-red-100 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                    <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Benefits</div>
+                    <div className="space-y-1.5">
+                      {(plan.benefits || []).map((benefit, idx) => (
+                        <div key={idx} className="flex items-start gap-2 text-[13px] text-dark">
+                          <i className="fas fa-check text-green-500 text-[10px] mt-0.5" />
+                          <span>{benefit}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="pt-4">
               <button
                 onClick={handleSave}
@@ -922,6 +1050,142 @@ export default function AdminSettings({ token }) {
                   className="flex-1 py-[11px] bg-primary text-white rounded-xl font-semibold text-[14px] hover:bg-primary/90 transition-colors disabled:opacity-50"
                 >
                   {loading ? 'Saving...' : (editingBank ? 'Update' : 'Add')} Bank
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Subscription Plan Modal */}
+      {showPlanModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowPlanModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="p-5 sm:p-6 border-b border-gray-100">
+              <div className="flex justify-between items-center">
+                <h2 className="text-[17px] sm:text-[20px] font-bold text-dark">
+                  {editingPlan ? 'Edit Plan' : 'Add Subscription Plan'}
+                </h2>
+                <button
+                  onClick={() => setShowPlanModal(false)}
+                  className="text-gray-400 hover:text-dark text-[24px] sm:text-[28px] transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-4">
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Plan ID</label>
+                <input
+                  type="text"
+                  value={planForm.id}
+                  onChange={(e) => setPlanForm(s => ({ ...s, id: e.target.value }))}
+                  placeholder="e.g., monthly, quarterly, yearly"
+                  className="w-full px-4 py-[11px] bg-gray-50 border border-gray-200 rounded-xl text-dark text-[15px] focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  disabled={!!editingPlan}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Plan Label</label>
+                <input
+                  type="text"
+                  value={planForm.label}
+                  onChange={(e) => setPlanForm(s => ({ ...s, label: e.target.value }))}
+                  placeholder="e.g., Monthly Plan"
+                  className="w-full px-4 py-[11px] bg-gray-50 border border-gray-200 rounded-xl text-dark text-[15px] focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Price (IDR)</label>
+                  <input
+                    type="number"
+                    value={planForm.price}
+                    onChange={(e) => setPlanForm(s => ({ ...s, price: parseInt(e.target.value) || 0 }))}
+                    placeholder="50000"
+                    className="w-full px-4 py-[11px] bg-gray-50 border border-gray-200 rounded-xl text-dark text-[15px] focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Duration (Days)</label>
+                  <input
+                    type="number"
+                    value={planForm.duration_days}
+                    onChange={(e) => setPlanForm(s => ({ ...s, duration_days: parseInt(e.target.value) || 0 }))}
+                    placeholder="30"
+                    className="w-full px-4 py-[11px] bg-gray-50 border border-gray-200 rounded-xl text-dark text-[15px] focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Benefits</label>
+                <div className="space-y-2">
+                  {planForm.benefits.map((benefit, index) => (
+                    <div key={index} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={benefit}
+                        onChange={(e) => {
+                          const newBenefits = [...planForm.benefits];
+                          newBenefits[index] = e.target.value;
+                          setPlanForm(s => ({ ...s, benefits: newBenefits }));
+                        }}
+                        placeholder={`Benefit ${index + 1}`}
+                        className="flex-1 px-4 py-[11px] bg-gray-50 border border-gray-200 rounded-xl text-dark text-[14px] focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newBenefits = planForm.benefits.filter((_, i) => i !== index);
+                          setPlanForm(s => ({ ...s, benefits: newBenefits }));
+                        }}
+                        className="px-3 py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
+                      >
+                        <i className="fas fa-trash" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPlanForm(s => ({ ...s, benefits: [...s.benefits, ''] }))}
+                  className="mt-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[13px] font-medium hover:bg-blue-100 transition-colors flex items-center gap-2"
+                >
+                  <i className="fas fa-plus" />
+                  Add Benefit
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5 sm:p-6 border-t border-gray-100">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowPlanModal(false)}
+                  disabled={loading}
+                  className="flex-1 py-[11px] bg-gray-100 text-gray-600 rounded-xl font-semibold text-[14px] hover:bg-gray-200 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (editingPlan) {
+                      setPlans(plans.map(p => p.id === planForm.id ? planForm : p));
+                      showNotification('Plan updated', 'success');
+                    } else {
+                      setPlans([...plans, planForm]);
+                      showNotification('Plan added', 'success');
+                    }
+                    setShowPlanModal(false);
+                  }}
+                  disabled={loading}
+                  className="flex-1 py-[11px] bg-primary text-white rounded-xl font-semibold text-[14px] hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {loading ? 'Saving...' : (editingPlan ? 'Update' : 'Add')} Plan
                 </button>
               </div>
             </div>
