@@ -232,150 +232,211 @@ export default function Dashboard({ token, userData }) {
   }
 
   return (
-    <div className="max-w-[700px] mx-auto space-y-6">
-      {/* Subscription Card - Only show if subscription exists and is active */}
-      {subscription && !subLoading && subscription.active && (
-        <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-5 sm:p-6 shadow-sm border border-gray-100 dark:border-[#38383A]">
-          <div className="flex justify-between items-start mb-3 sm:mb-4">
-            <div>
-              <div className="text-sm sm:text-lg font-semibold text-dark dark:text-white mb-2">
+    <div className="max-w-[700px] mx-auto space-y-4 sm:space-y-5 px-4 sm:px-0">
+      {/* Subscription Card - iOS Style */}
+      {subscription && !subLoading && (
+        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-[#1C1C1E] dark:to-[#151516] rounded-[20px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.2)] border border-gray-100/50 dark:border-[#38383A]/50">
+          <div className="flex justify-between items-start">
+            <div className="space-y-1">
+              <div className="text-base sm:text-lg font-semibold text-dark dark:text-white tracking-tight">
                 {subscription.plan_label || subscription.plan || 'No Plan'}
               </div>
-              <div className="text-xs sm:text-sm">
-                <span className="text-success flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-success" />
-                  Active
+              <div className="flex items-center gap-1.5">
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                  subscription.active 
+                    ? 'bg-green-100/80 dark:bg-green-500/15 text-green-700 dark:text-green-400' 
+                    : 'bg-gray-100/80 dark:bg-gray-700/50 text-gray-600 dark:text-gray-400'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${subscription.active ? 'bg-green-500' : 'bg-gray-400'}`} />
+                  {subscription.active ? 'Active' : 'Inactive'}
                 </span>
               </div>
             </div>
             <div className="text-right">
-              <div className="text-2xl sm:text-3xl font-bold text-primary">
+              <div className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
                 {subscription.days_remaining}
-                <span className="text-xs sm:text-sm font-normal text-gray-400 dark:text-gray-500 ml-1">days</span>
               </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">days left</div>
             </div>
           </div>
           {subscription.subscription_end && (
-            <div className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500 pt-3 border-t border-gray-100 dark:border-[#38383A]">
-              Expires {new Date(subscription.subscription_end).toLocaleDateString('id-ID', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric'
-              })}
+            <div className="flex items-center gap-1.5 mt-4 pt-4 border-t border-gray-100/60 dark:border-[#38383A]/60">
+              <span className="text-[11px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">Expires</span>
+              <span className="text-xs text-gray-600 dark:text-gray-300 font-medium">
+                {new Date(subscription.subscription_end).toLocaleDateString('id-ID', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric'
+                })}
+              </span>
             </div>
           )}
         </div>
       )}
 
-      {/* Add New Device - Only show if subscription is active */}
-      {subscription && !subLoading && subscription.active && (
-        <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-5 sm:p-6 shadow-sm border border-gray-100 dark:border-[#38383A]">
-          <h2 className="text-sm sm:text-base font-semibold text-dark dark:text-white mb-4">Add New Device</h2>
-
-          {!userData?.vpn_enabled ? (
-            <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-200/30 rounded-xl p-5 sm:p-6 text-center">
-              <span className="text-3xl sm:text-4xl mb-2 sm:mb-3 block">⚠️</span>
-              <div className="text-sm sm:text-base font-semibold text-dark dark:text-white mb-1">VPN Access Disabled</div>
-              <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Contact admin to enable VPN access</div>
-            </div>
-          ) : (
-            <div className="space-y-3 sm:space-y-4">
-              {/* Device Name Input */}
-              <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
-                <input
-                  type="text"
-                  value={deviceName}
-                  onChange={(e) => setDeviceName(e.target.value)}
-                  placeholder={getDynamicPlaceholder()}
-                  disabled={devices.length >= 3 || generatingVpn}
-                  className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#38383A] rounded-xl text-dark dark:text-white text-sm sm:text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-gray-100 dark:disabled:bg-[#1C1C1E] transition-all"
-                />
-                <button
-                  onClick={generateConfig}
-                  disabled={generatingVpn || devices.length >= 3 || !deviceName.trim()}
-                  className={`w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 bg-primary text-white dark:bg-primary-600 rounded-xl text-sm sm:text-base font-semibold whitespace-nowrap transition-all ${
-                    generatingVpn || devices.length >= 3
-                      ? 'opacity-50 cursor-not-allowed'
-                      : 'hover:bg-primary/90 dark:hover:bg-primary-700 active:scale-95'
-                  }`}
-                >
-                  {generatingVpn ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Adding...
-                    </span>
-                  ) : devices.length >= 3 ? 'Limit Reached' : 'Add Device'}
-                </button>
-              </div>
-              <p className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500">You can add up to {3 - devices.length} more device(s)</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Devices List - Only show if subscription is active */}
-      {subscription && !subLoading && subscription.active && (
-        <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-5 sm:p-6 shadow-sm border border-gray-100 dark:border-[#38383A]">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-sm sm:text-base font-semibold text-dark dark:text-white">My Devices</h2>
-            <span className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 font-medium">{devices.length}/3</span>
+      {/* Add New Device - iOS Style */}
+      <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.2)] border border-gray-100/50 dark:border-[#38383A]/50">
+        <div className="flex items-center gap-2.5 mb-5">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 dark:from-primary-600/20 dark:to-primary-600/5 flex items-center justify-center">
+            <span className="text-lg">📱</span>
           </div>
-
-          {devices.length === 0 ? (
-            <div className="bg-gray-50 dark:bg-[#2C2C2E] rounded-xl p-6 sm:p-10 text-center">
-              <span className="text-4xl sm:text-5xl mb-3 sm:mb-4 block opacity-50">📱</span>
-              <div className="text-sm sm:text-base font-semibold text-dark dark:text-white mb-1">No devices yet</div>
-              <div className="text-xs sm:text-sm text-gray-400 dark:text-gray-500">Add your first device above</div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {devices.map((device, index) => {
-                // Fallback key: use device_id, public_key, or index
-                const deviceKey = device.id || device.device_id || device.public_key || `device-${index}`;
-
-                // Get device name with proper fallback
-                const displayName = device.device_name
-                  ? device.device_name.trim()
-                  : `${device.ip_address || 'Device'} ${index + 1}`;
-
-                return (
-                  <div
-                    key={deviceKey}
-                    onClick={() => {
-                      const deviceWithId = {
-                        ...device,
-                        id: device.id || device.device_id || device.public_key,
-                        device_name: displayName,
-                      };
-                      setSelectedDevice(deviceWithId);
-                    }}
-                    className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 dark:bg-[#2C2C2E] rounded-xl border border-gray-100 dark:border-[#38383A] cursor-pointer hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/10 transition-all active:scale-[0.98]"
-                    data-device-id={deviceKey}
-                  >
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center text-xl sm:text-2xl flex-shrink-0 shadow-sm">
-                      {getDeviceIcon(displayName)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm sm:text-base font-medium text-dark dark:text-white truncate">{displayName}</div>
-                      <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5">
-                        <div className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500 font-mono">{device.ip_address || 'No IP'}</div>
-                        <span className={`text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded ${
-                          device.status === 'active' ? 'bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400' :
-                          device.status === 'disabled' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400' :
-                          'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-                        }`}>
-                          {device.status || 'unknown'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${device.status === 'active' ? 'bg-success' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <h2 className="text-base font-semibold text-dark dark:text-white tracking-tight">Add New Device</h2>
         </div>
-      )}
+
+        {!subscription || !subscription.active ? (
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100/80 dark:from-[#2C2C2E] dark:to-[#252527] rounded-2xl p-8 text-center border border-gray-200/50 dark:border-[#38383A]/50">
+            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center shadow-sm">
+              <span className="text-2xl">🔒</span>
+            </div>
+            <div className="text-sm font-semibold text-dark dark:text-white mb-1.5">Subscription Required</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-4 leading-relaxed">Subscribe to add new devices to your account</div>
+            <button
+              onClick={() => setActivePage('payment')}
+              className="px-5 py-2.5 bg-gradient-to-r from-primary to-primary/90 dark:from-primary-600 dark:to-primary-500 text-white rounded-xl text-sm font-semibold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-200"
+            >
+              Subscribe Now
+            </button>
+          </div>
+        ) : !userData?.vpn_enabled ? (
+          <div className="bg-gradient-to-br from-amber-50 to-amber-100/60 dark:from-amber-500/10 dark:to-amber-500/5 rounded-2xl p-8 text-center border border-amber-200/50 dark:border-amber-200/20">
+            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center shadow-sm">
+              <span className="text-2xl">⚠️</span>
+            </div>
+            <div className="text-sm font-semibold text-dark dark:text-white mb-1.5">VPN Access Disabled</div>
+            <div className="text-xs text-amber-700/80 dark:text-amber-400/80 leading-relaxed">Contact admin to enable VPN access</div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                value={deviceName}
+                onChange={(e) => setDeviceName(e.target.value)}
+                placeholder={getDynamicPlaceholder()}
+                disabled={devices.length >= 3 || generatingVpn}
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#2C2C2E] border border-gray-200/60 dark:border-[#38383A] rounded-xl text-dark dark:text-white text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 disabled:bg-gray-100 dark:disabled:bg-[#1C1C1E]/50 disabled:opacity-60 transition-all duration-200"
+              />
+              <button
+                onClick={generateConfig}
+                disabled={generatingVpn || devices.length >= 3 || !deviceName.trim()}
+                className={`w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 ${
+                  generatingVpn || devices.length >= 3
+                    ? 'bg-gray-100 dark:bg-[#2C2C2E] text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-primary to-primary/90 dark:from-primary-600 dark:to-primary-500 text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]'
+                }`}
+              >
+                {generatingVpn ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Adding...
+                  </span>
+                ) : devices.length >= 3 ? 'Limit Reached' : (
+                  <span className="flex items-center justify-center gap-1.5">
+                    <span>+</span>
+                    <span>Add Device</span>
+                  </span>
+                )}
+              </button>
+            </div>
+            <div className="flex items-center gap-2 px-1">
+              <div className="flex-1 h-1 bg-gray-100 dark:bg-[#2C2C2E] rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all duration-300"
+                  style={{ width: `${(devices.length / 3) * 100}%` }}
+                />
+              </div>
+              <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">{devices.length}/3</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Devices List - iOS Style */}
+      <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.2)] border border-gray-100/50 dark:border-[#38383A]/50">
+        <div className="flex justify-between items-center mb-5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 dark:from-blue-500/20 dark:to-blue-500/5 flex items-center justify-center">
+              <span className="text-lg">📋</span>
+            </div>
+            <h2 className="text-base font-semibold text-dark dark:text-white tracking-tight">My Devices</h2>
+          </div>
+          <div className="px-2.5 py-1.5 bg-gray-100 dark:bg-[#2C2C2E] rounded-lg">
+            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">{devices.length}/3</span>
+          </div>
+        </div>
+
+        {!subscription || !subscription.active ? (
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100/80 dark:from-[#2C2C2E] dark:to-[#252527] rounded-2xl p-8 text-center border border-gray-200/50 dark:border-[#38383A]/50">
+            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center shadow-sm">
+              <span className="text-2xl">🔒</span>
+            </div>
+            <div className="text-sm font-semibold text-dark dark:text-white mb-1.5">Subscription Required</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-4 leading-relaxed">Subscribe to view and manage your devices</div>
+            <button
+              onClick={() => setActivePage('payment')}
+              className="px-5 py-2.5 bg-gradient-to-r from-primary to-primary/90 dark:from-primary-600 dark:to-primary-500 text-white rounded-xl text-sm font-semibold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-200"
+            >
+              Subscribe Now
+            </button>
+          </div>
+        ) : devices.length === 0 ? (
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100/60 dark:from-[#2C2C2E] dark:to-[#252527] rounded-2xl p-10 text-center border border-gray-200/50 dark:border-[#38383A]/50">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center shadow-sm">
+              <span className="text-3xl opacity-60">📱</span>
+            </div>
+            <div className="text-sm font-semibold text-dark dark:text-white mb-1.5">No devices yet</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">Add your first device above to get started</div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {devices.map((device, index) => {
+              const deviceKey = device.id || device.device_id || device.public_key || `device-${index}`;
+              const displayName = device.device_name
+                ? device.device_name.trim()
+                : `${device.ip_address || 'Device'} ${index + 1}`;
+
+              return (
+                <div
+                  key={deviceKey}
+                  onClick={() => {
+                    const deviceWithId = {
+                      ...device,
+                      id: device.id || device.device_id || device.public_key,
+                      device_name: displayName,
+                    };
+                    setSelectedDevice(deviceWithId);
+                  }}
+                  className="group flex items-center gap-3 p-3.5 bg-gray-50/80 dark:bg-[#2C2C2E]/80 rounded-xl border border-gray-100/60 dark:border-[#38383A] cursor-pointer hover:border-primary/40 hover:bg-primary/5 dark:hover:bg-primary/10 hover:shadow-md hover:shadow-primary/5 active:scale-[0.98] transition-all duration-200"
+                  data-device-id={deviceKey}
+                >
+                  <div className="w-11 h-11 rounded-xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center text-xl shadow-sm group-hover:scale-105 transition-transform duration-200">
+                    {getDeviceIcon(displayName)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-dark dark:text-white truncate">{displayName}</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="text-[11px] text-gray-400 dark:text-gray-500 font-mono">{device.ip_address || 'No IP'}</div>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${
+                        device.status === 'active' ? 'bg-green-100/80 dark:bg-green-500/15 text-green-600 dark:text-green-400' :
+                        device.status === 'disabled' ? 'bg-amber-100/80 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400' :
+                        'bg-gray-100/80 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400'
+                      }`}>
+                        {device.status || 'unknown'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${
+                      device.status === 'active' ? 'bg-green-500 shadow-sm shadow-green-500/50' : 'bg-gray-300 dark:bg-gray-600'
+                    }`} />
+                    <span className="text-gray-300 dark:text-gray-600 group-hover:text-primary/60 transition-colors">›</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Device Modal */}
       {selectedDevice && (
@@ -418,7 +479,7 @@ export default function Dashboard({ token, userData }) {
   );
 }
 
-// Device Modal Component
+// Device Modal Component - iOS Style
 function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) {
   const [activeTab, setActiveTab] = useState('qrcode');
   const deletingDevice = useRequestPending('delete_vpn_device');
@@ -433,12 +494,14 @@ function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) 
 
   if (!deviceId) {
     return (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-        <div className="bg-white rounded-3xl w-full max-w-lg p-8 text-center" onClick={(e) => e.stopPropagation()}>
-          <div className="text-5xl mb-4">⚠️</div>
-          <div className="text-lg font-semibold text-dark mb-2">Device ID Missing</div>
-          <div className="text-sm text-gray-500">Unable to load device details. Please try again.</div>
-          <button onClick={onClose} className="mt-6 px-6 py-2.5 bg-primary text-white dark:bg-primary-600 rounded-xl font-medium hover:bg-primary/90 dark:hover:bg-primary-700 transition-colors">
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4" onClick={onClose}>
+        <div className="bg-white dark:bg-[#1C1C1E] rounded-[28px] w-full max-w-lg p-8 text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-100 dark:bg-amber-500/10 flex items-center justify-center">
+            <span className="text-3xl">⚠️</span>
+          </div>
+          <div className="text-lg font-semibold text-dark dark:text-white mb-2">Device ID Missing</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400 mb-6">Unable to load device details. Please try again.</div>
+          <button onClick={onClose} className="w-full px-6 py-3.5 bg-gradient-to-r from-primary to-primary/90 dark:from-primary-600 dark:to-primary-500 text-white rounded-xl font-semibold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all active:scale-[0.98]">
             Close
           </button>
         </div>
@@ -447,57 +510,67 @@ function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) 
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div
-        className="bg-white rounded-3xl w-full max-w-lg max-h-[90vh] overflow-auto shadow-2xl"
+        className="bg-white dark:bg-[#1C1C1E] rounded-[28px] w-full max-w-lg max-h-[90vh] overflow-auto shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex justify-between items-center p-5 border-b border-gray-100 sticky top-0 bg-white rounded-t-3xl">
-          <div>
-            <div className="text-lg font-semibold text-dark">{displayName}</div>
-            <div className="text-xs text-gray-400 font-mono mt-0.5">{device.ip_address || 'No IP'}</div>
+        {/* Header - iOS Style */}
+        <div className="flex justify-between items-center p-5 border-b border-gray-100/60 dark:border-[#38383A]/60 sticky top-0 bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl rounded-t-[28px] z-10">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 dark:from-primary-600/20 dark:to-primary-600/5 flex items-center justify-center">
+              <span className="text-lg">{getDeviceIcon(displayName)}</span>
+            </div>
+            <div>
+              <div className="text-base font-semibold text-dark dark:text-white">{displayName}</div>
+              <div className="text-[11px] text-gray-400 dark:text-gray-500 font-mono mt-0.5">{device.ip_address || 'No IP'}</div>
+            </div>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-dark text-xl p-1 transition-colors">✕</button>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-[#2C2C2E] flex items-center justify-center text-gray-400 hover:text-dark dark:hover:text-white transition-colors">
+            <span className="text-lg leading-none">×</span>
+          </button>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex border-b border-gray-100 sticky top-[73px] bg-white">
+        {/* Tab Navigation - iOS Style */}
+        <div className="flex gap-1.5 p-1.5 mx-5 mt-5 bg-gray-100/80 dark:bg-[#2C2C2E] rounded-xl sticky top-[73px] bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl z-10">
           <button
             onClick={() => setActiveTab('qrcode')}
-            className={`flex-1 py-3 text-sm font-medium transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
               activeTab === 'qrcode'
-                ? 'text-primary border-b-2 border-primary'
-                : 'text-gray-400 hover:text-gray-600'
+                ? 'bg-white dark:bg-[#1C1C1E] text-primary shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
-            📱 QR Code
+            <span>📱</span>
+            <span>QR</span>
           </button>
           <button
             onClick={() => setActiveTab('config')}
-            className={`flex-1 py-3 text-sm font-medium transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
               activeTab === 'config'
-                ? 'text-primary border-b-2 border-primary'
-                : 'text-gray-400 hover:text-gray-600'
+                ? 'bg-white dark:bg-[#1C1C1E] text-primary shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
-            ⚙️ Config
+            <span>⚙️</span>
+            <span>Config</span>
           </button>
           <button
             onClick={() => setActiveTab('guide')}
-            className={`flex-1 py-3 text-sm font-medium transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
               activeTab === 'guide'
-                ? 'text-primary border-b-2 border-primary'
-                : 'text-gray-400 hover:text-gray-600'
+                ? 'bg-white dark:bg-[#1C1C1E] text-primary shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
-            📖 Panduan
+            <span>📖</span>
+            <span>Guide</span>
           </button>
         </div>
 
         {/* Content */}
         <div className="p-5 space-y-4">
-          {/* Device Info */}
+          {/* Device Info - iOS Style */}
           <div className="grid grid-cols-2 gap-3">
             <InfoCard label="Status" value={device.status} active={device.status === 'active'} />
             <InfoCard label="Created" value={new Date(device.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} />
@@ -507,17 +580,17 @@ function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) 
           {activeTab === 'qrcode' && (
             <div className="space-y-4">
               {fetchingConfig ? (
-                <div className="bg-gray-50 rounded-xl p-8 text-center">
-                  <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-3" />
-                  <div className="text-sm text-gray-500">Loading configuration...</div>
+                <div className="bg-gray-50 dark:bg-[#2C2C2E] rounded-2xl p-10 text-center">
+                  <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Loading configuration...</div>
                 </div>
               ) : device.qr ? (
-                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 text-center border border-gray-200">
-                  <div className="text-sm font-semibold text-gray-500 mb-4 uppercase tracking-wide">Scan to Connect</div>
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100/80 dark:from-[#2C2C2E] dark:to-[#252527] rounded-2xl p-6 text-center border border-gray-200/50 dark:border-[#38383A]/50">
+                  <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-4 uppercase tracking-wider">Scan to Connect</div>
                   <div className="flex justify-center">
                     {/* QR Code Container - Force square with aspect-ratio */}
-                    <div 
-                      className="bg-white p-2 sm:p-3 rounded-2xl shadow-md"
+                    <div
+                      className="bg-white dark:bg-[#1C1C1E] p-3 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-black/20"
                       style={{
                         maxWidth: '220px',
                         width: '100%',
@@ -537,21 +610,23 @@ function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) 
                           justifyContent: 'center',
                           overflow: 'hidden'
                         }}
-                        dangerouslySetInnerHTML={{ 
+                        dangerouslySetInnerHTML={{
                           __html: device.qr
                             .replace(/<svg/, '<svg style="max-width: 100%; max-height: 100%; width: auto; height: auto;" preserveAspectRatio="xMidYMid meet"')
                         }}
                       />
                     </div>
                   </div>
-                  <div className="text-xs text-gray-400 mt-4">
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mt-4">
                     Use WireGuard app to scan this QR code
                   </div>
                 </div>
               ) : (
-                <div className="bg-gray-50 rounded-xl p-8 text-center">
-                  <div className="text-5xl mb-3">⚠️</div>
-                  <div className="text-sm text-gray-500">QR Code not available</div>
+                <div className="bg-gray-50 dark:bg-[#2C2C2E] rounded-2xl p-10 text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center shadow-sm">
+                    <span className="text-3xl">⚠️</span>
+                  </div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">QR Code not available</div>
                 </div>
               )}
             </div>
@@ -561,31 +636,34 @@ function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) 
           {activeTab === 'config' && (
             <div className="space-y-3">
               {fetchingConfig ? (
-                <div className="bg-gray-50 rounded-xl p-8 text-center">
-                  <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-3" />
-                  <div className="text-sm text-gray-500">Loading configuration...</div>
+                <div className="bg-gray-50 dark:bg-[#2C2C2E] rounded-2xl p-10 text-center">
+                  <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Loading configuration...</div>
                 </div>
               ) : device.config ? (
                 <>
                   <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Configuration File</div>
+                    <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Configuration File</div>
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(device.config);
                       }}
-                      className="text-xs text-primary hover:text-primary/80 font-medium"
+                      className="text-xs text-primary hover:text-primary/80 dark:text-primary-400 font-semibold flex items-center gap-1"
                     >
-                      📋 Copy
+                      <span>📋</span>
+                      <span>Copy</span>
                     </button>
                   </div>
-                  <pre className="bg-gray-900 rounded-xl p-4 text-xs font-mono text-green-400 overflow-auto max-h-80 leading-relaxed">
+                  <pre className="bg-gray-900 dark:bg-black/40 rounded-xl p-4 text-xs font-mono text-green-400 overflow-auto max-h-80 leading-relaxed border border-gray-800">
                     {device.config}
                   </pre>
                 </>
               ) : (
-                <div className="bg-gray-50 rounded-xl p-8 text-center">
-                  <div className="text-5xl mb-3">📄</div>
-                  <div className="text-sm text-gray-500">Configuration not available</div>
+                <div className="bg-gray-50 dark:bg-[#2C2C2E] rounded-2xl p-10 text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center shadow-sm">
+                    <span className="text-3xl">📄</span>
+                  </div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Configuration not available</div>
                 </div>
               )}
             </div>
@@ -593,34 +671,46 @@ function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) 
 
           {/* Guide Tab */}
           {activeTab === 'guide' && (
-            <div className="space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <div className="text-sm font-semibold text-blue-800 mb-2">📥 Step 1: Download WireGuard App</div>
-                <p className="text-xs text-blue-700 leading-relaxed">
+            <div className="space-y-3">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100/60 dark:from-blue-500/10 dark:to-blue-500/5 border border-blue-200/50 dark:border-blue-500/20 rounded-2xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-lg bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center text-sm">1</div>
+                  <div className="text-sm font-semibold text-blue-800 dark:text-blue-400">Download WireGuard App</div>
+                </div>
+                <p className="text-xs text-blue-700/80 dark:text-blue-300/80 leading-relaxed pl-9">
                   Download dan install aplikasi WireGuard dari App Store (iOS), Google Play Store (Android),
                   atau website resmi WireGuard untuk desktop.
                 </p>
               </div>
 
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                <div className="text-sm font-semibold text-green-800 mb-2">📱 Step 2: Scan QR Code / Import Config</div>
-                <p className="text-xs text-green-700 leading-relaxed">
+              <div className="bg-gradient-to-br from-green-50 to-green-100/60 dark:from-green-500/10 dark:to-green-500/5 border border-green-200/50 dark:border-green-500/20 rounded-2xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-lg bg-green-500/10 dark:bg-green-500/20 flex items-center justify-center text-sm">2</div>
+                  <div className="text-sm font-semibold text-green-800 dark:text-green-400">Scan QR Code / Import Config</div>
+                </div>
+                <p className="text-xs text-green-700/80 dark:text-green-300/80 leading-relaxed pl-9">
                   <strong>Mobile:</strong> Buka aplikasi WireGuard, tap "+" dan pilih "Scan from QR code".<br />
                   <strong>Desktop:</strong> Buka aplikasi WireGuard, pilih "Import tunnel from file" dan download config dari tab Config.
                 </p>
               </div>
 
-              <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-                <div className="text-sm font-semibold text-purple-800 mb-2">🔌 Step 3: Connect to VPN</div>
-                <p className="text-xs text-purple-700 leading-relaxed">
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100/60 dark:from-purple-500/10 dark:to-purple-500/5 border border-purple-200/50 dark:border-purple-500/20 rounded-2xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-lg bg-purple-500/10 dark:bg-purple-500/20 flex items-center justify-center text-sm">3</div>
+                  <div className="text-sm font-semibold text-purple-800 dark:text-purple-400">Connect to VPN</div>
+                </div>
+                <p className="text-xs text-purple-700/80 dark:text-purple-300/80 leading-relaxed pl-9">
                   Setelah konfigurasi berhasil diimport, tap tombol power/connect di aplikasi WireGuard
                   untuk mulai menggunakan VPN.
                 </p>
               </div>
 
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                <div className="text-sm font-semibold text-amber-800 mb-2">💡 Tips</div>
-                <ul className="text-xs text-amber-700 leading-relaxed space-y-1">
+              <div className="bg-gradient-to-br from-amber-50 to-amber-100/60 dark:from-amber-500/10 dark:to-amber-500/5 border border-amber-200/50 dark:border-amber-500/20 rounded-2xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-lg bg-amber-500/10 dark:bg-amber-500/20 flex items-center justify-center text-sm">💡</div>
+                  <div className="text-sm font-semibold text-amber-800 dark:text-amber-400">Tips</div>
+                </div>
+                <ul className="text-xs text-amber-700/80 dark:text-amber-300/80 leading-relaxed space-y-1 pl-9">
                   <li>• Pastikan koneksi internet aktif saat connect</li>
                   <li>• VPN akan aktif hingga Anda disconnect manual</li>
                   <li>• Anda bisa menambahkan maksimal 3 devices</li>
@@ -630,60 +720,60 @@ function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) 
           )}
         </div>
 
-        {/* Actions */}
-        <div className="flex gap-3 p-5 border-t border-gray-100 sticky bottom-0 bg-white rounded-b-3xl">
+        {/* Actions - iOS Style */}
+        <div className="flex gap-2.5 p-5 pt-2 border-t border-gray-100/60 dark:border-[#38383A]/60 sticky bottom-0 bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl rounded-b-[28px]">
           {/* Show Download button only if config is available */}
           {device.config && !fetchingConfig && (
             <button
               onClick={onDownload}
-              className="flex-1 flex items-center justify-center gap-2 py-3 bg-gray-100 text-primary rounded-xl font-semibold hover:bg-gray-200 transition-all active:scale-[0.98]"
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-gray-100 dark:bg-[#2C2C2E] text-primary dark:text-primary-400 rounded-xl font-semibold hover:bg-gray-200 dark:hover:bg-[#38383A] transition-all active:scale-[0.98]"
             >
-              <i className="fas fa-download" />
-              Download
+              <span>⬇️</span>
+              <span>Download</span>
             </button>
           )}
-          
+
           {/* Show Disable/Reactivate based on status */}
           {device.status === 'disabled' ? (
             <button
               onClick={onReactivate}
               disabled={reactivatingDevice || fetchingConfig}
-              className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-50 text-green-600 rounded-xl font-semibold hover:bg-green-100 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 rounded-xl font-semibold hover:bg-green-100 dark:hover:bg-green-500/20 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {reactivatingDevice ? (
-                <span className="w-4 h-4 border-2 border-green-600/30 border-t-green-600 rounded-full animate-spin" />
+                <span className="w-4 h-4 border-2 border-green-600/30 border-t-green-600 dark:border-green-400/30 dark:border-t-green-400 rounded-full animate-spin" />
               ) : (
-                <i className="fas fa-check-circle" />
+                <span>✅</span>
               )}
-              {reactivatingDevice ? 'Reactivating...' : 'Reactivate'}
+              {reactivatingDevice ? '...' : 'Reactivate'}
             </button>
           ) : device.status === 'active' ? (
             <button
               onClick={onDisable}
               disabled={disablingDevice || fetchingConfig}
-              className="flex-1 flex items-center justify-center gap-2 py-3 bg-amber-50 text-amber-600 rounded-xl font-semibold hover:bg-amber-100 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl font-semibold hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {disablingDevice ? (
-                <span className="w-4 h-4 border-2 border-amber-600/30 border-t-amber-600 rounded-full animate-spin" />
+                <span className="w-4 h-4 border-2 border-amber-600/30 border-t-amber-600 dark:border-amber-400/30 dark:border-t-amber-400 rounded-full animate-spin" />
               ) : (
-                <i className="fas fa-pause-circle" />
+                <span>⏸️</span>
               )}
-              {disablingDevice ? 'Disabling...' : 'Disable'}
+              {disablingDevice ? '...' : 'Disable'}
             </button>
           ) : null}
-          
+
           {/* Hard Remove button - always show for revoked or active devices */}
           <button
             onClick={onRevoke}
             disabled={deletingDevice || fetchingConfig}
-            className="flex-1 flex items-center justify-center gap-2 py-3 bg-red-50 text-red-500 rounded-xl font-semibold hover:bg-red-100 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 flex items-center justify-center gap-2 py-3 bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400 rounded-xl font-semibold hover:bg-red-100 dark:hover:bg-red-500/20 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {deletingDevice ? (
-              <span className="w-4 h-4 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin" />
+              <span className="w-4 h-4 border-2 border-red-500/30 border-t-red-500 dark:border-red-400/30 dark:border-t-red-400 rounded-full animate-spin" />
             ) : (
-              <i className="fas fa-trash" />
+              <span>🗑️</span>
             )}
-            {deletingDevice ? 'Removing...' : 'Remove'}
+            {deletingDevice ? '...' : 'Remove'}
           </button>
         </div>
       </div>
@@ -693,10 +783,10 @@ function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) 
 
 function InfoCard({ label, value, active = false }) {
   return (
-    <div className="bg-gray-50 dark:bg-[#2C2C2E] rounded-xl p-3 text-center">
-      <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">{label}</div>
-      <div className={`text-sm font-semibold ${active ? 'text-success' : 'text-dark dark:text-white'}`}>
-        {active && <span className="inline-block w-2 h-2 rounded-full bg-success mr-1.5" />}
+    <div className="bg-gradient-to-br from-gray-50 to-gray-100/80 dark:from-[#2C2C2E] dark:to-[#252527] rounded-xl p-3.5 text-center border border-gray-200/50 dark:border-[#38383A]/50">
+      <div className="text-[10px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">{label}</div>
+      <div className={`text-sm font-semibold flex items-center justify-center gap-1.5 ${active ? 'text-green-600 dark:text-green-400' : 'text-dark dark:text-white'}`}>
+        {active && <span className="w-2 h-2 rounded-full bg-green-500 shadow-sm shadow-green-500/50" />}
         {value}
       </div>
     </div>
