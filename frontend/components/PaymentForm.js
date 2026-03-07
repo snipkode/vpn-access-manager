@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useUIStore } from '../store';
 import { billingAPI, formatCurrency } from '../lib/api';
+import Icon from './ui/Icon';
 
 /**
  * Reusable Payment Form Component - iPhone Style Design

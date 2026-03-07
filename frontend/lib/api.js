@@ -449,46 +449,46 @@ export const referralAPI = {
 export const notificationsAPI = {
   /**
    * Get user notifications
-   * GET /api/notifications
+   * GET /api/user/notifications
    */
   getNotifications: async (params = {}) => {
     const queryString = new URLSearchParams(params).toString();
-    const url = queryString ? `/notifications?${queryString}` : '/notifications';
+    const url = queryString ? `/user/notifications?${queryString}` : '/user/notifications';
     return apiFetch(url);
   },
 
   /**
    * Get notification history
-   * GET /api/notifications/history
+   * GET /api/user/notifications/history
    */
   getHistory: async (params = {}) => {
     const queryString = new URLSearchParams(params).toString();
-    const url = queryString ? `/notifications/history?${queryString}` : '/notifications/history';
+    const url = queryString ? `/user/notifications/history?${queryString}` : '/user/notifications/history';
     return apiFetch(url);
   },
 
   /**
    * Mark notification as read
-   * PATCH /api/notifications/:id/read
+   * PATCH /api/user/notifications/:id/read
    */
   markAsRead: async (notificationId) => {
-    return apiFetch(`/notifications/${notificationId}/read`, { method: 'PATCH' });
+    return apiFetch(`/user/notifications/${notificationId}/read`, { method: 'PATCH' });
   },
 
   /**
    * Mark all notifications as read
-   * PATCH /api/notifications/read-all
+   * PATCH /api/user/notifications/read-all
    */
   markAllAsRead: async () => {
-    return apiFetch('/notifications/read-all', { method: 'PATCH' });
+    return apiFetch('/user/notifications/read-all', { method: 'PATCH' });
   },
 
   /**
    * Update notification preferences
-   * PATCH /api/notifications/preferences
+   * PATCH /api/user/notifications/preferences
    */
   updatePreferences: async (preferences) => {
-    return apiFetch('/notifications/preferences', {
+    return apiFetch('/user/notifications/preferences', {
       method: 'PATCH',
       body: JSON.stringify(preferences),
     });

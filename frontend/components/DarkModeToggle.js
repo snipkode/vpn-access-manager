@@ -3,10 +3,8 @@ import Icon from './ui/Icon';
 
 export default function DarkModeToggle() {
   const [isDark, setIsDark] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     // Check localStorage first
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) {
@@ -18,27 +16,19 @@ export default function DarkModeToggle() {
     }
   }, []);
 
-  useEffect(() => {
-    if (!mounted) return;
-
-    if (isDark) {
+  const toggleDarkMode = () => {
+    const newIsDark = !isDark;
+    setIsDark(newIsDark);
+    
+    // Directly update the DOM element
+    if (newIsDark) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
       localStorage.setItem('theme', 'light');
     }
-  }, [isDark, mounted]);
-
-  const toggleDarkMode = () => {
-    setIsDark(!isDark);
   };
-
-  if (!mounted) {
-    return (
-      <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-[#2C2C2E] animate-pulse" />
-    );
-  }
 
   return (
     <button

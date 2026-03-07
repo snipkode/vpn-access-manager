@@ -254,7 +254,7 @@ export default function AdminSettings({ token }) {
               <button
                 onClick={handleSave}
                 disabled={loading}
-                className="flex-1 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                className="flex-1 py-3 bg-primary text-white dark:bg-primary-600 rounded-xl font-semibold hover:bg-primary/90 dark:hover:bg-primary-700 transition-colors disabled:opacity-50"
               >
                 {loading ? 'Saving...' : 'Save Settings'}
               </button>
@@ -360,7 +360,7 @@ export default function AdminSettings({ token }) {
               <button
                 onClick={handleSave}
                 disabled={loading}
-                className="flex-1 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                className="flex-1 py-3 bg-primary text-white dark:bg-primary-600 rounded-xl font-semibold hover:bg-primary/90 dark:hover:bg-primary-700 transition-colors disabled:opacity-50"
               >
                 {loading ? 'Saving...' : 'Save Settings'}
               </button>
@@ -447,7 +447,7 @@ export default function AdminSettings({ token }) {
               <button
                 onClick={handleSave}
                 disabled={loading}
-                className="w-full py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                className="w-full py-3 bg-primary text-white dark:bg-primary-600 rounded-xl font-semibold hover:bg-primary/90 dark:hover:bg-primary-700 transition-colors disabled:opacity-50"
               >
                 {loading ? 'Saving...' : 'Save Settings'}
               </button>
@@ -557,7 +557,7 @@ export default function AdminSettings({ token }) {
               <button
                 onClick={handleSave}
                 disabled={loading}
-                className="w-full py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                className="w-full py-3 bg-primary text-white dark:bg-primary-600 rounded-xl font-semibold hover:bg-primary/90 dark:hover:bg-primary-700 transition-colors disabled:opacity-50"
               >
                 {loading ? 'Saving...' : 'Save Settings'}
               </button>
@@ -617,7 +617,7 @@ export default function AdminSettings({ token }) {
               <button
                 onClick={handleSave}
                 disabled={loading}
-                className="w-full py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                className="w-full py-3 bg-primary text-white dark:bg-primary-600 rounded-xl font-semibold hover:bg-primary/90 dark:hover:bg-primary-700 transition-colors disabled:opacity-50"
               >
                 {loading ? 'Saving...' : 'Save Settings'}
               </button>

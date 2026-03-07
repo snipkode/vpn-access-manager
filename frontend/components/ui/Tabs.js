@@ -49,7 +49,7 @@ export default function Tabs({
   // Variant configurations
   const variantConfig = {
     default: {
-      container: 'bg-gray-100 dark:bg-[#2C2C2E] p-1',
+      container: 'bg-gray-100 dark:bg-[#2C2C2E] p-1 rounded-lg',
       active: 'bg-white dark:bg-[#1C1C1E] text-dark dark:text-white shadow-sm',
       inactive: 'text-gray-500 dark:text-gray-400 hover:text-dark dark:hover:text-white',
     },

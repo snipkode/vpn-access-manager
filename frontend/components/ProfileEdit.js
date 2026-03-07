@@ -39,10 +39,19 @@ export default function ProfileEdit({ token }) {
         userAPI.getProfile(),
         notificationsAPI.getNotifications(),
       ]);
-      setProfile(profileData.profile || profile);
+      
+      // Merge profile data with fallback from Firebase user
+      const mergedProfile = {
+        display_name: profileData.profile?.display_name || user?.displayName || user?.email?.split('@')[0] || '',
+        phone: profileData.profile?.phone || '',
+        whatsapp: profileData.profile?.whatsapp || '',
+        avatar_url: profileData.profile?.avatar_url || user?.photoURL || '',
+      };
+      
+      setProfile(mergedProfile);
       setPreferences(prefsData.preferences || preferences);
-      if (profileData.profile?.avatar_url) {
-        setAvatarPreview(profileData.profile.avatar_url);
+      if (mergedProfile.avatar_url) {
+        setAvatarPreview(mergedProfile.avatar_url);
       }
     } catch (error) {
       showNotification('Failed to load profile data', 'error');

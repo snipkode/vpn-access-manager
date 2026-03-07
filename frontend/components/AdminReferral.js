@@ -307,7 +307,7 @@ function ReferralDetailModal({ referral, onClose, onUpdateTier }) {
                   onClick={() => { onUpdateTier(referral.user_id, tier); setShowTierSelect(false); }}
                   className={`w-full px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
                     referral.tier === tier
-                      ? 'bg-primary text-white'
+                      ? 'bg-primary text-white dark:bg-primary-600'
                       : 'bg-white border border-gray-200 text-dark hover:bg-gray-100'
                   }`}
                 >

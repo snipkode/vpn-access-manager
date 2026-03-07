@@ -145,7 +145,7 @@ export default function AdminBilling({ token }) {
               onClick={() => setActiveTab(tab.id)}
               className={`flex-1 min-w-[100px] px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
                 activeTab === tab.id
-                  ? 'bg-primary text-white shadow-md'
+                  ? 'bg-primary text-white dark:bg-primary-600 shadow-md'
                   : 'text-gray-500 hover:bg-gray-100'
               }`}
             >

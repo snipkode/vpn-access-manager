@@ -4,10 +4,24 @@ module.exports = {
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        primary: '#007AFF',
+        primary: {
+          DEFAULT: '#007AFF',
+          dark: '#0A84FF',
+          50: '#E5F1FF',
+          100: '#B3D4FF',
+          200: '#80B7FF',
+          300: '#4D99FF',
+          400: '#1A7CFF',
+          500: '#007AFF',
+          600: '#0062CC',
+          700: '#004999',
+          800: '#003166',
+          900: '#001833',
+        },
         success: '#34C759',
         danger: '#FF3B30',
         warning: '#FF9500',

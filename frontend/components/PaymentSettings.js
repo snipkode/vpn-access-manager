@@ -311,7 +311,7 @@ export default function PaymentSettings({ token }) {
           <button
             onClick={handleSaveSettings}
             disabled={loading}
-            className="w-full mt-6 py-3.5 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/30"
+            className="w-full mt-6 py-3.5 bg-primary text-white dark:bg-primary-600 rounded-xl font-semibold hover:bg-primary/90 dark:hover:bg-primary-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/30 dark:shadow-none"
           >
             {loading ? 'Saving...' : 'Save Settings'}
           </button>
@@ -347,7 +347,7 @@ export default function PaymentSettings({ token }) {
                 setEditingBank(null);
                 setShowBankModal(true);
               }}
-              className="px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors"
+              className="px-4 py-2.5 bg-primary text-white dark:bg-primary-600 rounded-xl text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary-700 transition-colors"
             >
               <i className="fas fa-plus mr-2" />
               Add Bank
