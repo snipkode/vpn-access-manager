@@ -94,6 +94,19 @@ export default function PaymentForm({
     }
   };
 
+  // Helper to convert days to months/years
+  const getDurationDisplay = (days) => {
+    if (days >= 365 && days % 365 === 0) {
+      const years = days / 365;
+      return `${years} ${years === 1 ? 'year' : 'years'}`;
+    }
+    if (days >= 30 && days % 30 === 0) {
+      const months = days / 30;
+      return `${months} ${months === 1 ? 'month' : 'months'}`;
+    }
+    return `${days} ${days === 1 ? 'day' : 'days'}`;
+  };
+
   const handleBankChange = (bankId) => {
     setSelectedBank(bankId);
     setCopiedBankId(null); // Reset copy state when bank changes
@@ -172,35 +185,61 @@ export default function PaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-      {/* Plan Selection (only for plan mode) */}
+      {/* Plan Selection - Redesigned Cards */}
       {mode === 'plan' && plans.length > 0 && (
         <div>
           <label className="block text-[10px] sm:text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 sm:mb-3">
             Pilih Paket
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-            {plans.map((plan) => (
-              <div
-                key={plan.id}
-                onClick={() => handlePlanChange(plan.id)}
-                className={`cursor-pointer rounded-lg sm:rounded-xl p-2.5 sm:p-3.5 border-2 transition-all duration-200 ${
-                  selectedPlan === plan.id
-                    ? 'border-[#007AFF] bg-[#007AFF]/10 dark:bg-[#007AFF]/20 shadow-lg shadow-[#007AFF]/20'
-                    : 'border-gray-200 dark:border-[#38383A] bg-gray-50 dark:bg-[#2C2C2E] hover:border-[#007AFF]/50'
-                }`}
-              >
-                <div className="text-[12px] sm:text-[13px] font-semibold text-dark dark:text-white mb-1">{plan.label}</div>
-                <div className="text-lg sm:text-xl font-bold text-[#007AFF] mb-0.5 sm:mb-1 tracking-tight">
-                  {formatCurrency(plan.price)}
-                </div>
-                <div className="text-[9px] sm:text-[11px] text-gray-400 dark:text-gray-500 font-medium">{plan.duration_days} hari</div>
-                {selectedPlan === plan.id && (
-                  <div className="mt-1 sm:mt-1.5 text-[8px] sm:text-[10px] text-[#007AFF] font-bold uppercase tracking-wide">
-                    <Icon name="check_circle" size="small" variant="round" /> Terpilih
+            {plans.map((plan) => {
+              const durationDisplay = getDurationDisplay(plan.duration_days);
+              
+              return (
+                <div
+                  key={plan.id}
+                  onClick={() => handlePlanChange(plan.id)}
+                  className={`relative cursor-pointer rounded-lg sm:rounded-xl p-3 sm:p-4 border-2 transition-all duration-200 ${
+                    selectedPlan === plan.id
+                      ? 'border-[#007AFF] bg-[#007AFF]/10 dark:bg-[#007AFF]/20 shadow-lg shadow-[#007AFF]/25'
+                      : 'border-gray-200 dark:border-[#38383A] bg-gray-50 dark:bg-[#2C2C2E] hover:border-[#007AFF]/50'
+                  }`}
+                >
+                  {/* Plan Name */}
+                  <div className="text-[13px] sm:text-[14px] font-bold text-dark dark:text-white mb-2 leading-tight">
+                    {plan.label}
                   </div>
-                )}
-              </div>
-            ))}
+                  
+                  {/* Duration Badge */}
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-[#007AFF]/10 dark:bg-[#007AFF]/20 rounded-lg mb-2.5">
+                    <Icon name="calendar_today" variant="round" size="small" className="text-[#007AFF] w-3.5 h-3.5" />
+                    <span className="text-[11px] sm:text-[12px] font-bold text-[#007AFF]">
+                      {durationDisplay}
+                    </span>
+                  </div>
+                  
+                  {/* View Details Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewPlanDetails(plan);
+                    }}
+                    className="w-full py-1.5 px-2 bg-white dark:bg-[#2C2C2E] border border-gray-200 dark:border-[#38383A] rounded-lg text-[11px] sm:text-[12px] font-semibold text-gray-600 dark:text-gray-300 hover:text-[#007AFF] hover:border-[#007AFF]/50 transition-all flex items-center justify-center gap-1"
+                  >
+                    <Icon name="info" variant="round" size="small" className="w-3.5 h-3.5" />
+                    View Details
+                  </button>
+                  
+                  {/* Selected Indicator */}
+                  {selectedPlan === plan.id && (
+                    <div className="absolute top-2 right-2 w-5 h-5 bg-[#007AFF] rounded-full flex items-center justify-center shadow-md">
+                      <Icon name="check" variant="round" size="small" className="text-white w-3.5 h-3.5" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -255,7 +294,7 @@ export default function PaymentForm({
             <div className="flex-1">
               <div className="text-[10px] sm:text-[11px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide mb-0.5">Duration</div>
               <div className="text-base sm:text-lg font-bold text-dark dark:text-white">
-                {plans.find(p => p.id === selectedPlan)?.duration_days || 0} days
+                {getDurationDisplay(plans.find(p => p.id === selectedPlan)?.duration_days || 0)}
               </div>
             </div>
           </div>
@@ -618,6 +657,18 @@ export function PlanDetailsModal({ plan, onClose }) {
     '24/7 customer support',
   ];
 
+  const durationDisplay = ((days) => {
+    if (days >= 365 && days % 365 === 0) {
+      const years = days / 365;
+      return `${years} ${years === 1 ? 'year' : 'years'}`;
+    }
+    if (days >= 30 && days % 30 === 0) {
+      const months = days / 30;
+      return `${months} ${months === 1 ? 'month' : 'months'}`;
+    }
+    return `${days} ${days === 1 ? 'day' : 'days'}`;
+  })(plan.duration_days);
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
       {/* Backdrop */}
@@ -642,12 +693,19 @@ export function PlanDetailsModal({ plan, onClose }) {
         {/* Plan Info */}
         <div className="bg-gradient-to-br from-[#007AFF]/10 to-[#007AFF]/5 dark:from-[#007AFF]/20 dark:to-[#007AFF]/5 rounded-2xl p-5 mb-6 border border-[#007AFF]/20">
           <div className="text-[13px] sm:text-sm font-semibold text-[#007AFF] uppercase tracking-wide mb-1">{plan.label}</div>
-          <div className="text-3xl sm:text-4xl font-bold text-dark dark:text-white tracking-tight mb-2">
+          <div className="text-3xl sm:text-4xl font-bold text-dark dark:text-white tracking-tight mb-3">
             {formatCurrency(plan.price)}
           </div>
-          <div className="flex items-center gap-2 text-[13px] sm:text-sm text-gray-500 dark:text-gray-400">
-            <Icon name="calendar_today" variant="round" size="small" />
-            <span className="font-medium">{plan.duration_days} days</span>
+          <div className="flex items-center gap-3 text-[13px] sm:text-sm text-gray-500 dark:text-gray-400">
+            <div className="flex items-center gap-1.5">
+              <Icon name="calendar_today" variant="round" size="small" />
+              <span className="font-medium">{durationDisplay}</span>
+            </div>
+            <div className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+            <div className="flex items-center gap-1.5">
+              <Icon name="payments" variant="round" size="small" />
+              <span className="font-medium">One-time payment</span>
+            </div>
           </div>
         </div>
 
