@@ -45,8 +45,11 @@
     background-color: var(--bg-primary);
     color: var(--text-primary);
     font-size: 17px;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    -webkit-text-size-adjust: 100%;
   }
 
   * {
@@ -55,30 +58,64 @@
     box-sizing: border-box;
   }
 
+  /* Prevent text wrapping issues */
+  h1, h2, h3, h4, h5, h6 {
+    text-wrap: balance;
+    hyphens: none;
+    -webkit-hyphens: none;
+    -moz-hyphens: none;
+  }
+
+  p, span, a, li, td, th {
+    text-wrap: pretty;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+    -webkit-hyphens: auto;
+    -moz-hyphens: auto;
+  }
+
+  /* Prevent font boosting on mobile */
+  * {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
   /* Responsive typography for mobile */
   @media (max-width: 640px) {
     body {
       font-size: 15px;
+      line-height: 1.4;
     }
     
     h1 {
       font-size: 20px !important;
+      text-wrap: balance;
     }
     
     h2 {
       font-size: 17px !important;
+      text-wrap: balance;
     }
     
     h3 {
       font-size: 15px !important;
+      text-wrap: balance;
     }
     
-    p, span, div {
+    p, span, div, a, li {
       font-size: 13px !important;
+      line-height: 1.5;
     }
     
     small, .text-xs {
       font-size: 11px !important;
+    }
+    
+    /* Prevent text overflow in cards */
+    .card-content {
+      min-width: 0;
     }
   }
 }
@@ -91,6 +128,7 @@
   /* iOS-style font sizes */
   .text-ios-caption {
     font-size: 11px;
+    line-height: 1.4;
     @media (max-width: 640px) {
       font-size: 10px;
     }
@@ -98,6 +136,7 @@
   
   .text-ios-body {
     font-size: 13px;
+    line-height: 1.5;
     @media (max-width: 640px) {
       font-size: 12px;
     }
@@ -105,6 +144,7 @@
   
   .text-ios-callout {
     font-size: 15px;
+    line-height: 1.4;
     @media (max-width: 640px) {
       font-size: 14px;
     }
@@ -112,6 +152,7 @@
   
   .text-ios-headline {
     font-size: 17px;
+    line-height: 1.3;
     @media (max-width: 640px) {
       font-size: 16px;
     }
@@ -119,6 +160,7 @@
   
   .text-ios-title {
     font-size: 20px;
+    line-height: 1.2;
     @media (max-width: 640px) {
       font-size: 18px;
     }
@@ -126,6 +168,7 @@
   
   .text-ios-large-title {
     font-size: 28px;
+    line-height: 1.1;
     @media (max-width: 640px) {
       font-size: 24px;
     }
@@ -162,6 +205,50 @@
   .dark-border {
     @apply border-gray-100 dark:border-[#38383A];
   }
+
+  /* Text utilities to prevent wrapping issues */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  .text-no-wrap {
+    white-space: nowrap;
+  }
+
+  .text-clip {
+    text-overflow: clip;
+  }
+
+  .text-ellipsis {
+    text-overflow: ellipsis;
+  }
+
+  /* Prevent font boosting */
+  .text-anti-boost {
+    -webkit-text-size-adjust: none;
+    text-size-adjust: none;
+  }
+
+  /* Better line breaking */
+  .break-word {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    -ms-word-break: break-all;
+    word-break: break-word;
+  }
+
+  /* Truncate with ellipsis */
+  .truncate-lines {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 /* Custom scrollbar */
@@ -180,5 +267,24 @@
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-gray-400 dark:bg-[#48484A];
+}
+
+/* Prevent text overflow in all elements */
+body * {
+  min-width: 0;
+}
+
+/* Fix for long words/URLs */
+a, span, p, div {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+/* Prevent iOS font size adjustment on orientation change */
+@media screen and (orientation: landscape) {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
 }
 
