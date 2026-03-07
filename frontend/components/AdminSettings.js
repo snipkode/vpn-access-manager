@@ -46,47 +46,7 @@ export default function AdminSettings({ token }) {
     low_balance_days: 5,
   });
 
-  const [plans, setPlans] = useState([
-    {
-      id: 'monthly',
-      label: 'Monthly',
-      price: 50000,
-      duration_days: 30,
-      benefits: [
-        'Unlimited bandwidth',
-        'High-speed connection',
-        '1 device',
-        'Basic support',
-      ],
-    },
-    {
-      id: 'quarterly',
-      label: 'Quarterly (10% off)',
-      price: 135000,
-      duration_days: 90,
-      benefits: [
-        'Unlimited bandwidth',
-        'High-speed connection',
-        '2 devices',
-        'Priority support',
-        'Save 10%',
-      ],
-    },
-    {
-      id: 'yearly',
-      label: 'Yearly (20% off)',
-      price: 480000,
-      duration_days: 365,
-      benefits: [
-        'Unlimited bandwidth',
-        'Premium high-speed',
-        '5 devices',
-        '24/7 priority support',
-        'Save 20%',
-        'Free 1 month',
-      ],
-    },
-  ]);
+  const [plans, setPlans] = useState([]);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
   const [planForm, setPlanForm] = useState({
@@ -135,14 +95,22 @@ export default function AdminSettings({ token }) {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const data = await adminSettingsAPI.getSettings();
-      const settings = data.settings || {};
+      const [settingsData, plansData] = await Promise.all([
+        adminSettingsAPI.getSettings(),
+        adminBillingAPI.getPlans().catch(() => ({ plans: [] })),
+      ]);
+      const settings = settingsData.settings || {};
 
       if (settings.whatsapp) setWhatsapp(settings.whatsapp);
       if (settings.email) setEmail(settings.email);
       if (settings.billing) setBilling(settings.billing);
       if (settings.notifications) setNotifications(settings.notifications);
       if (settings.general) setGeneral(settings.general);
+      
+      // Load plans from API
+      if (plansData.plans && plansData.plans.length > 0) {
+        setPlans(plansData.plans);
+      }
     } catch (error) {
       console.error('Failed to load settings:', error);
       showNotification('Failed to load settings: ' + error.message, 'error');
@@ -241,9 +209,20 @@ export default function AdminSettings({ token }) {
         default:
           categoryData = {};
       }
+
+      // Save settings and plans in parallel
+      const savePromises = [
+        adminSettingsAPI.updateSettings(activeTab, categoryData),
+      ];
+
+      // Save plans if in billing tab
+      if (activeTab === 'billing' && plans.length > 0) {
+        savePromises.push(adminBillingAPI.savePlans(plans));
+      }
+
+      await Promise.all(savePromises);
       
-      await adminSettingsAPI.updateSettings(activeTab, categoryData);
-      showNotification(`${activeTab} settings saved successfully`);
+      showNotification(`${activeTab} settings saved successfully${activeTab === 'billing' && plans.length > 0 ? ` with ${plans.length} plans` : ''}`);
     } catch (error) {
       console.error('Failed to save settings:', error);
       showNotification('Failed to save settings: ' + error.message, 'error');

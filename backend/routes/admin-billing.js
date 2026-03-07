@@ -412,6 +412,93 @@ router.get('/stats', verifyAdmin, rateLimiters.adminBillingView, async (req, res
   }
 });
 
+// Get subscription plans
+router.get('/plans', verifyAdmin, rateLimiters.adminBillingView, async (req, res) => {
+  try {
+    const plansSnapshot = await db.collection('subscription_plans').orderBy('order', 'asc').get();
+    
+    const plans = [];
+    plansSnapshot.forEach(doc => {
+      plans.push({
+        id: doc.id,
+        ...doc.data(),
+      });
+    });
+
+    res.json({ plans });
+  } catch (error) {
+    console.error('Get plans error:', error.message);
+    res.status(500).json({
+      error: 'Failed to get subscription plans',
+      details: error.message
+    });
+  }
+});
+
+// Create/Update subscription plans
+router.post('/plans', verifyAdmin, rateLimiters.adminBillingWrite, async (req, res) => {
+  try {
+    const { plans } = req.body;
+
+    if (!Array.isArray(plans)) {
+      return res.status(400).json({
+        error: 'Invalid request',
+        message: 'Plans must be an array'
+      });
+    }
+
+    // Batch write for efficiency
+    const batch = db.batch();
+    const plansRef = db.collection('subscription_plans');
+
+    plans.forEach((plan, index) => {
+      const planRef = plansRef.doc(plan.id);
+      batch.set(planRef, {
+        ...plan,
+        order: index,
+        updated_at: new Date().toISOString(),
+      }, { merge: true });
+    });
+
+    await batch.commit();
+
+    console.log(`✅ Updated ${plans.length} subscription plans`);
+
+    res.json({
+      success: true,
+      message: 'Plans updated successfully',
+      count: plans.length,
+    });
+  } catch (error) {
+    console.error('Update plans error:', error.message);
+    res.status(500).json({
+      error: 'Failed to update subscription plans',
+      details: error.message
+    });
+  }
+});
+
+// Delete subscription plan
+router.delete('/plans/:id', verifyAdmin, rateLimiters.adminBillingWrite, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.collection('subscription_plans').doc(id).delete();
+    
+    console.log(`✅ Deleted plan: ${id}`);
+    
+    res.json({
+      success: true,
+      message: 'Plan deleted successfully',
+    });
+  } catch (error) {
+    console.error('Delete plan error:', error.message);
+    res.status(500).json({
+      error: 'Failed to delete plan',
+      details: error.message
+    });
+  }
+});
+
 // Get pending payments count (for notification badge)
 // This endpoint is frequently polled by frontend, so we use a more lenient limiter
 router.get('/payments/pending/count', verifyAdmin, rateLimiters.adminBillingView, async (req, res) => {

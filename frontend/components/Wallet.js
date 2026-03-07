@@ -1,18 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useUIStore, useBillingStore, useAuthStore } from '../store';
-import { creditAPI, billingAPI, userAPI, formatCurrency } from '../lib/api';
+import { creditAPI, billingAPI, userAPI, adminBillingAPI, formatCurrency } from '../lib/api';
 import PaymentForm, { PaymentHistory, PlanDetailsModal } from './PaymentForm';
 import CreditTransferForm from './CreditTransferForm';
 import Tabs from './ui/Tabs';
 import Icon from './ui/Icon';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
-
-const PLANS = {
-  monthly: { price: 50000, duration: 30, label: 'Monthly' },
-  quarterly: { price: 135000, duration: 90, label: 'Quarterly (10% off)' },
-  yearly: { price: 480000, duration: 365, label: 'Yearly (20% off)' },
-};
 
 export default function Wallet({ token }) {
   const { showNotification } = useUIStore();
@@ -79,23 +73,24 @@ export default function Wallet({ token }) {
       }
       setError(null);
 
-      // Fetch bank accounts, balance, transactions, and topups in parallel
-      const [settingsData, balanceData, transactionsData, topupsData] = await Promise.all([
+      // Fetch bank accounts, balance, transactions, topups, and plans in parallel
+      const [settingsData, balanceData, transactionsData, topupsData, plansData] = await Promise.all([
         billingAPI.getSettings(),
         creditAPI.getBalance(),
         creditAPI.getTransactions({ limit: 20 }),
         billingAPI.getPayments({ limit: 10 }),
+        adminBillingAPI.getPlans().catch(() => ({ plans: [] })),
       ]);
 
       // Update bank accounts from settings
       const bankAccs = settingsData.bank_accounts || [];
       setBankAccountsLocal(bankAccs);
 
-      // Also update global billing store
+      // Also update global billing store with plans
       setBillingData({
         billing_enabled: settingsData.billing_enabled || false,
         currency: settingsData.currency || 'IDR',
-        plans: settingsData.plans || [],
+        plans: plansData.plans || [],
         bank_accounts: bankAccs,
       });
 
@@ -229,15 +224,10 @@ export default function Wallet({ token }) {
           {/* Reusable Payment Form in plan mode */}
           <PaymentForm
             mode="plan"
-            plans={plans.length > 0 ? plans : Object.entries(PLANS).map(([id, p]) => ({
-              id,
-              label: p.label,
-              price: p.price,
-              duration_days: p.duration,
-            }))}
+            plans={plans}
             bankAccounts={bankAccountsLocal}
             onSuccess={handleTopupSuccess}
-            defaultAmount={plans[0]?.price || PLANS.monthly.price}
+            defaultAmount={plans[0]?.price || 50000}
             onViewPlanDetails={(plan) => {
               setSelectedPlanDetails(plan);
               setShowPlanDetails(true);

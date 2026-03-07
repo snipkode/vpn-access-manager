@@ -703,7 +703,7 @@ export const adminBillingAPI = {
   },
 
   /**
-   * Get all plans
+   * Get all subscription plans
    * GET /api/admin/billing/plans
    */
   getPlans: async () => {
@@ -711,18 +711,25 @@ export const adminBillingAPI = {
   },
 
   /**
-   * Create new plan
+   * Save all subscription plans (bulk update)
    * POST /api/admin/billing/plans
    */
-  createPlan: async (data) => {
+  savePlans: async (plans) => {
     return apiFetch('/admin/billing/plans', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ plans }),
     });
   },
 
   /**
-   * Update plan
+   * Delete plan
+   * DELETE /api/admin/billing/plans/:id
+   */
+  deletePlan: async (planId) => {
+    return apiFetch(`/admin/billing/plans/${planId}`, {
+      method: 'DELETE',
+    });
+  },
    * PATCH /api/admin/billing/plans/:id
    */
   updatePlan: async (planId, data) => {

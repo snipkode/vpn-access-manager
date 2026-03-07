@@ -265,42 +265,6 @@ export default function PaymentForm({
         </div>
       )}
 
-      {/* Plan Details Display - For subscription mode */}
-      {mode === 'plan' && selectedPlan && (
-        <div className="bg-gradient-to-br from-[#F2F2F7] dark:from-[#1C1C1E] to-white dark:to-[#2C2C2E] rounded-xl p-5 border border-gray-100 dark:border-[#38383A] shadow-sm">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <div className="text-[13px] sm:text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Selected Plan</div>
-              <div className="text-xl sm:text-2xl font-bold text-dark dark:text-white tracking-tight">
-                {plans.find(p => p.id === selectedPlan)?.label || 'Subscription'}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => handleViewPlanDetails(plans.find(p => p.id === selectedPlan))}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#007AFF]/10 hover:bg-[#007AFF]/20 text-[#007AFF] text-[12px] sm:text-[13px] font-semibold rounded-lg transition-all active:scale-95"
-            >
-              <Icon name="info" variant="round" size="small" />
-              Details
-            </button>
-          </div>
-          <div className="flex items-center gap-4 pt-3 border-t border-gray-200 dark:border-[#38383A]">
-            <div className="flex-1">
-              <div className="text-[10px] sm:text-[11px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide mb-0.5">Price</div>
-              <div className="text-lg sm:text-xl font-bold text-[#007AFF]">
-                {formatCurrency(plans.find(p => p.id === selectedPlan)?.price || 0)}
-              </div>
-            </div>
-            <div className="flex-1">
-              <div className="text-[10px] sm:text-[11px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide mb-0.5">Duration</div>
-              <div className="text-base sm:text-lg font-bold text-dark dark:text-white">
-                {getDurationDisplay(plans.find(p => p.id === selectedPlan)?.duration_days || 0)}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Bank Penerima - Dropdown with Account Number Display */}
       <div>
         <label className="block text-[10px] sm:text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5 sm:mb-2">
