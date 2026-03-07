@@ -102,75 +102,10 @@ export default function AdminCredit({ token }) {
       <Tabs tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />
 
       {/* Transactions List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">User</th>
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Type</th>
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Amount</th>
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Recipient</th>
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Risk</th>
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {transactions.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center">
-                    <div className="text-gray-400">
-                      <span className="text-4xl mb-2 block">📭</span>
-                      No transactions found
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                transactions.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="py-4 px-4">
-                      <div className="text-sm font-medium text-dark">{tx.from_user_email || tx.from_user_id}</div>
-                      <div className="text-xs text-gray-400">
-                        {new Date(tx.created_at).toLocaleDateString()}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getTypeStyle(tx.type)}`}>
-                        {tx.type}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="text-sm font-bold text-primary">
-                        {formatCurrency(tx.amount)}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="text-sm text-gray-500">
-                        {tx.to_user_email || tx.to_user_id || '-'}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <StatusBadge status={tx.status} />
-                    </td>
-                    <td className="py-4 px-4">
-                      <RiskBadge level={tx.fraud_check?.risk_level || 'low'} />
-                    </td>
-                    <td className="py-4 px-4">
-                      <button
-                        onClick={() => setSelectedTx(tx)}
-                        className="px-3 py-1.5 bg-blue-50 text-blue-500 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors"
-                      >
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <TransactionsTable
+        transactions={transactions}
+        onView={setSelectedTx}
+      />
 
       {/* Transaction Detail Modal */}
       {selectedTx && (
@@ -337,5 +272,126 @@ function InfoRow({ label, value }) {
       <div className="text-xs text-gray-400 mb-1">{label}</div>
       <div className="text-sm font-medium text-dark">{value}</div>
     </div>
+  );
+}
+
+function TransactionsTable({ transactions, onView }) {
+  const columns = useMemo(() => [
+    {
+      key: 'user',
+      label: 'User',
+      sortable: true,
+      render: (tx) => (
+        <div>
+          <div className="text-sm font-medium text-dark">{tx.from_user_email || tx.from_user_id}</div>
+          <div className="text-xs text-gray-400">
+            {new Date(tx.created_at).toLocaleDateString()}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'type',
+      label: 'Type',
+      sortable: true,
+      render: (tx) => (
+        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getTypeStyle(tx.type)}`}>
+          {tx.type}
+        </span>
+      ),
+    },
+    {
+      key: 'amount',
+      label: 'Amount',
+      sortable: true,
+      render: (tx) => (
+        <div className="text-sm font-bold text-primary">
+          {formatCurrency(tx.amount)}
+        </div>
+      ),
+    },
+    {
+      key: 'recipient',
+      label: 'Recipient',
+      sortable: true,
+      render: (tx) => (
+        <div className="text-sm text-gray-500">
+          {tx.to_user_email || tx.to_user_id || '-'}
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      sortable: true,
+      render: (tx) => <StatusBadge status={tx.status} />,
+    },
+    {
+      key: 'risk',
+      label: 'Risk',
+      sortable: true,
+      render: (tx) => <RiskBadge level={tx.fraud_check?.risk_level || 'low'} />,
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      sortable: false,
+      render: (tx) => (
+        <button
+          onClick={() => onView(tx)}
+          className="px-3 py-1.5 bg-blue-50 text-blue-500 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors whitespace-nowrap"
+        >
+          View
+        </button>
+      ),
+    },
+  ], [onView]);
+
+  return (
+    <DataTable
+      columns={columns}
+      data={transactions}
+      itemsPerPage={10}
+      emptyMessage="No transactions found"
+      searchable={true}
+      searchKeys={['from_user_email', 'to_user_email', 'type', 'status']}
+      sortable={true}
+      mobileCardView={true}
+      renderCard={(tx) => (
+        <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+          <div className="flex justify-between items-start gap-3 mb-2">
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">User</div>
+              <div className="text-sm font-medium text-dark truncate">{tx.from_user_email || tx.from_user_id}</div>
+            </div>
+            <StatusBadge status={tx.status} />
+          </div>
+          <div className="flex justify-between items-center gap-3 mb-2">
+            <div>
+              <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">Type</div>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getTypeStyle(tx.type)}`}>
+                {tx.type}
+              </span>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">Amount</div>
+              <div className="text-sm font-bold text-primary">{formatCurrency(tx.amount)}</div>
+            </div>
+          </div>
+          <div className="flex justify-between items-center gap-3">
+            <div className="text-xs text-gray-500 truncate flex-1">
+              To: {tx.to_user_email || tx.to_user_id || '-'}
+            </div>
+            <RiskBadge level={tx.fraud_check?.risk_level || 'low'} />
+          </div>
+          <button
+            onClick={() => onView(tx)}
+            className="w-full mt-3 px-3 py-2 bg-blue-50 text-blue-500 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors"
+          >
+            View Details
+          </button>
+        </div>
+      )}
+    />
   );
 }

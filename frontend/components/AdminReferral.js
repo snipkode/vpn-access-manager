@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useUIStore } from '../store';
 import { adminReferralAPI, formatCurrency } from '../lib/api';
+import { DataTable, StatCard } from './admin';
 
 export default function AdminReferral({ token }) {
   const { showNotification } = useUIStore();
@@ -129,95 +130,11 @@ export default function AdminReferral({ token }) {
       )}
 
       {/* Referrals List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">User</th>
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Code</th>
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Tier</th>
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Referrals</th>
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Earnings</th>
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Fraud</th>
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {referrals.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center">
-                    <div className="text-gray-400">
-                      <span className="text-4xl mb-2 block">📭</span>
-                      No referrals found
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                referrals.map((ref) => (
-                  <tr key={ref.user_id} className="hover:bg-gray-50 transition-colors">
-                    <td className="py-4 px-4">
-                      <div className="text-sm font-medium text-dark">{ref.user_email}</div>
-                      <div className="text-xs text-gray-400">
-                        Joined: {new Date(ref.created_at).toLocaleDateString()}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="text-sm font-mono text-dark">{ref.referral_code}</div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <TierBadge tier={ref.tier} />
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="text-sm font-semibold text-dark">{ref.total_referrals || 0}</div>
-                      <div className="text-xs text-gray-400">
-                        Active: {ref.active_referrals || 0}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="text-sm font-bold text-success">
-                        {formatCurrency(ref.total_earned || 0)}
-                      </div>
-                      <div className="text-xs text-gray-400">
-                        Pending: {formatCurrency(ref.pending_earnings || 0)}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      {ref.fraud_flags && ref.fraud_flags.length > 0 ? (
-                        <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold">
-                          {ref.fraud_flags.length} flags
-                        </span>
-                      ) : (
-                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-                          Clean
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setSelectedReferral(ref)}
-                          className="px-3 py-1.5 bg-blue-50 text-blue-500 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors"
-                        >
-                          View
-                        </button>
-                        {ref.fraud_flags && ref.fraud_flags.length > 0 && (
-                          <button
-                            onClick={() => handleResetFraud(ref.user_id)}
-                            className="px-3 py-1.5 bg-amber-50 text-amber-600 rounded-lg text-xs font-medium hover:bg-amber-100 transition-colors"
-                          >
-                            Reset
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <ReferralsTable
+        referrals={referrals}
+        onView={setSelectedReferral}
+        onResetFraud={handleResetFraud}
+      />
 
       {/* Detail Modal */}
       {selectedReferral && (
@@ -227,18 +144,6 @@ export default function AdminReferral({ token }) {
           onUpdateTier={handleToggleTier}
         />
       )}
-    </div>
-  );
-}
-
-function StatCard({ label, value, color, bg }) {
-  return (
-    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-      <div className={`${bg} w-10 h-10 rounded-lg flex items-center justify-center mb-3`}>
-        <div className={`text-lg font-bold ${color}`}>#</div>
-      </div>
-      <div className={`text-xl font-bold ${color} mb-1`}>{value}</div>
-      <div className="text-xs text-gray-400 font-medium">{label}</div>
     </div>
   );
 }
@@ -367,5 +272,157 @@ function InfoRow({ label, value }) {
       <div className="text-xs text-gray-400 mb-1">{label}</div>
       <div className="text-sm font-medium text-dark">{value}</div>
     </div>
+  );
+}
+
+function ReferralsTable({ referrals, onView, onResetFraud }) {
+  const columns = useMemo(() => [
+    {
+      key: 'user',
+      label: 'User',
+      sortable: true,
+      render: (ref) => (
+        <div>
+          <div className="text-sm font-medium text-dark">{ref.user_email}</div>
+          <div className="text-xs text-gray-400">
+            Joined: {new Date(ref.created_at).toLocaleDateString()}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'code',
+      label: 'Code',
+      sortable: true,
+      render: (ref) => (
+        <div className="text-sm font-mono text-dark">{ref.referral_code}</div>
+      ),
+    },
+    {
+      key: 'tier',
+      label: 'Tier',
+      sortable: true,
+      render: (ref) => <TierBadge tier={ref.tier} />,
+    },
+    {
+      key: 'referrals',
+      label: 'Referrals',
+      sortable: true,
+      render: (ref) => (
+        <div>
+          <div className="text-sm font-semibold text-dark">{ref.total_referrals || 0}</div>
+          <div className="text-xs text-gray-400">Active: {ref.active_referrals || 0}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'earnings',
+      label: 'Earnings',
+      sortable: true,
+      render: (ref) => (
+        <div>
+          <div className="text-sm font-bold text-success">
+            {formatCurrency(ref.total_earned || 0)}
+          </div>
+          <div className="text-xs text-gray-400">
+            Pending: {formatCurrency(ref.pending_earnings || 0)}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'fraud',
+      label: 'Fraud',
+      sortable: true,
+      render: (ref) => (
+        ref.fraud_flags && ref.fraud_flags.length > 0 ? (
+          <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold">
+            {ref.fraud_flags.length} flags
+          </span>
+        ) : (
+          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+            Clean
+          </span>
+        )
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      sortable: false,
+      render: (ref) => (
+        <div className="flex gap-2">
+          <button
+            onClick={() => onView(ref)}
+            className="px-3 py-1.5 bg-blue-50 text-blue-500 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors whitespace-nowrap"
+          >
+            View
+          </button>
+          {ref.fraud_flags && ref.fraud_flags.length > 0 && (
+            <button
+              onClick={() => onResetFraud(ref.user_id)}
+              className="px-3 py-1.5 bg-amber-50 text-amber-600 rounded-lg text-xs font-medium hover:bg-amber-100 transition-colors whitespace-nowrap"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ], [onView, onResetFraud]);
+
+  return (
+    <DataTable
+      columns={columns}
+      data={referrals}
+      itemsPerPage={10}
+      emptyMessage="No referrals found"
+      searchable={true}
+      searchKeys={['user_email', 'referral_code', 'tier']}
+      sortable={true}
+      mobileCardView={true}
+      renderCard={(ref) => (
+        <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+          <div className="flex justify-between items-start gap-3 mb-2">
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">User</div>
+              <div className="text-sm font-medium text-dark truncate">{ref.user_email}</div>
+            </div>
+            <TierBadge tier={ref.tier} />
+          </div>
+          <div className="flex justify-between items-center gap-3 mb-2">
+            <div>
+              <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">Code</div>
+              <div className="text-sm font-mono text-dark">{ref.referral_code}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">Earnings</div>
+              <div className="text-sm font-bold text-success">{formatCurrency(ref.total_earned || 0)}</div>
+            </div>
+          </div>
+          <div className="flex justify-between items-center gap-3">
+            <div>
+              <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">Referrals</div>
+              <div className="text-sm font-semibold text-dark">{ref.total_referrals || 0}</div>
+            </div>
+            {ref.fraud_flags && ref.fraud_flags.length > 0 ? (
+              <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold">
+                {ref.fraud_flags.length} flags
+              </span>
+            ) : (
+              <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                Clean
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => onView(ref)}
+            className="w-full mt-3 px-3 py-2 bg-blue-50 text-blue-500 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors"
+          >
+            View Details
+          </button>
+        </div>
+      )}
+    />
   );
 }

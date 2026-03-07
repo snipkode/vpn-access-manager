@@ -188,12 +188,12 @@ function BulkActionsBar({ selectedCount, actions, onClear }) {
 }
 
 /**
- * Mobile Card View
+ * Mobile Card View - Compact Design
  */
 function MobileCardView({ data, columns, renderCard, onRowClick }) {
   if (renderCard) {
     return (
-      <div className="space-y-3 p-4">
+      <div className="space-y-2 p-3">
         {data.map((item, index) => (
           <div key={item.id || index} onClick={() => onRowClick?.(item)}>
             {renderCard(item)}
@@ -203,23 +203,36 @@ function MobileCardView({ data, columns, renderCard, onRowClick }) {
     );
   }
 
-  // Default card render
+  // Default compact card render
   return (
-    <div className="space-y-3 p-4">
+    <div className="space-y-2 p-3">
       {data.map((item, index) => (
         <div
           key={item.id || index}
-          className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow"
+          className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow"
           onClick={() => onRowClick?.(item)}
         >
-          {columns.map((column) => (
-            <div key={column.key} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-              <span className="text-xs font-medium text-gray-500 uppercase">{column.label}</span>
-              <span className="text-sm font-medium text-dark">
-                {column.render ? column.render(item) : item[column.key]}
-              </span>
+          <div className="flex justify-between items-start gap-3">
+            <div className="flex-1 min-w-0">
+              {columns.slice(0, 2).map((column) => (
+                <div key={column.key} className="mb-1.5 last:mb-0">
+                  <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">
+                    {column.label}
+                  </div>
+                  <div className="text-sm font-medium text-dark truncate">
+                    {column.render ? column.render(item) : item[column.key]}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+            <div className="flex flex-col items-end gap-2">
+              {columns.slice(2).map((column) => (
+                <div key={column.key}>
+                  {column.render ? column.render(item) : item[column.key]}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       ))}
     </div>
