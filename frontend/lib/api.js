@@ -529,6 +529,17 @@ export const adminUsersAPI = {
   },
 
   /**
+   * Update user role
+   * PATCH /api/admin/users/:id/role
+   */
+  updateUserRole: async (userId, role) => {
+    return apiFetch(`/admin/users/${userId}/role`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role }),
+    });
+  },
+
+  /**
    * Delete user
    * DELETE /api/admin/users/:id
    */

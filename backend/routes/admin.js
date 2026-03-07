@@ -58,6 +58,18 @@ const verifyAdmin = async (req, res, next) => {
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: role
+ *         schema:
+ *           type: string
+ *           enum: [admin, user]
+ *         description: Filter users by role
+ *       - in: query
+ *         name: vpn_enabled
+ *         schema:
+ *           type: boolean
+ *         description: Filter users by VPN access status
  *     responses:
  *       200:
  *         description: List of all users
@@ -77,8 +89,23 @@ const verifyAdmin = async (req, res, next) => {
  */
 router.get('/users', verifyAdmin, async (req, res) => {
   try {
-    const usersSnapshot = await db.collection('users').orderBy('created_at', 'desc').get();
+    const { role, vpn_enabled } = req.query;
     
+    let usersQuery = db.collection('users').orderBy('created_at', 'desc');
+    
+    // Filter by role if provided
+    if (role) {
+      usersQuery = usersQuery.where('role', '==', role);
+    }
+    
+    // Filter by vpn_enabled if provided
+    if (vpn_enabled !== undefined) {
+      const vpnEnabled = vpn_enabled === 'true';
+      usersQuery = usersQuery.where('vpn_enabled', '==', vpnEnabled);
+    }
+    
+    const usersSnapshot = await usersQuery.get();
+
     const users = usersSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
@@ -134,6 +161,75 @@ router.patch('/users/:id', verifyAdmin, async (req, res) => {
   } catch (error) {
     console.error('Update user error:', error.message);
     res.status(500).json({ error: 'Failed to update user', details: error.message });
+  }
+});
+
+// Delete user
+router.delete('/users/:id', verifyAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if user exists
+    const userRef = db.collection('users').doc(id);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Prevent deleting admin users
+    const userData = userDoc.data();
+    if (userData.role === 'admin') {
+      return res.status(400).json({ error: 'Cannot delete admin user' });
+    }
+
+    // Delete user's devices first
+    const devicesSnapshot = await db.collection('devices')
+      .where('user_id', '==', id)
+      .get();
+
+    const batch = db.batch();
+    devicesSnapshot.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+    await batch.commit();
+
+    // Delete user
+    await userRef.delete();
+
+    res.json({ message: 'User and associated devices deleted successfully' });
+  } catch (error) {
+    console.error('Delete user error:', error.message);
+    res.status(500).json({ error: 'Failed to delete user', details: error.message });
+  }
+});
+
+// Update user role
+router.patch('/users/:id/role', verifyAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    if (!['admin', 'user'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' });
+    }
+
+    const userRef = db.collection('users').doc(id);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    await userRef.update({ role });
+
+    res.json({
+      message: 'User role updated',
+      user: { id, role }
+    });
+  } catch (error) {
+    console.error('Update user role error:', error.message);
+    res.status(500).json({ error: 'Failed to update user role', details: error.message });
   }
 });
 

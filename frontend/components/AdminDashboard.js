@@ -32,13 +32,11 @@ export default function AdminDashboard({ token, userData }) {
     try {
       const [statsData, usersData, devicesData] = await Promise.all([
         adminDashboardAPI.getStats(),
-        adminUsersAPI.getUsers(),
+        adminUsersAPI.getUsers({ role: 'user' }), // Only get regular users (not admin)
         adminDevicesAPI.getDevices(),
       ]);
       setStats(statsData);
-      const allUsers = usersData.users || [];
-      const regularUsers = allUsers.filter(user => user.role !== 'admin');
-      setUsers(regularUsers);
+      setUsers(usersData.users || []);
       setDevices(devicesData.devices || []);
     } catch (error) {
       showNotification('Failed to load admin data', 'error');
@@ -54,6 +52,17 @@ export default function AdminDashboard({ token, userData }) {
       fetchData();
     } catch (error) {
       showNotification('Failed to update user', 'error');
+    }
+  };
+
+  const deleteUser = async (userId, userEmail) => {
+    if (!confirm(`Delete user ${userEmail}? This will also delete all their devices.`)) return;
+    try {
+      await adminUsersAPI.deleteUser(userId);
+      showNotification('User deleted successfully');
+      fetchData();
+    } catch (error) {
+      showNotification('Failed to delete user: ' + error.message, 'error');
     }
   };
 
@@ -81,7 +90,7 @@ export default function AdminDashboard({ token, userData }) {
       <Tabs tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />
 
       {activeTab === 'overview' && <Overview stats={stats} />}
-      {activeTab === 'users' && <UsersTable users={users} onToggle={toggleVpnAccess} />}
+      {activeTab === 'users' && <UsersTable users={users} onToggle={toggleVpnAccess} onDelete={deleteUser} />}
       {activeTab === 'devices' && <DevicesTable devices={devices} onRevoke={revokeDevice} />}
     </div>
   );
@@ -103,7 +112,7 @@ function Overview({ stats }) {
   );
 }
 
-function UsersTable({ users, onToggle }) {
+function UsersTable({ users, onToggle, onDelete }) {
   const columns = useMemo(() => [
     {
       key: 'email',
@@ -132,19 +141,27 @@ function UsersTable({ users, onToggle }) {
       label: 'Actions',
       sortable: false,
       render: (user) => (
-        <button
-          onClick={() => onToggle(user.id, user.vpn_enabled)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
-            user.vpn_enabled
-              ? 'bg-red-50 text-red-500 hover:bg-red-100'
-              : 'bg-green-50 text-success hover:bg-green-100'
-          }`}
-        >
-          {user.vpn_enabled ? 'Disable' : 'Enable'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => onToggle(user.id, user.vpn_enabled)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+              user.vpn_enabled
+                ? 'bg-red-50 text-red-500 hover:bg-red-100'
+                : 'bg-green-50 text-success hover:bg-green-100'
+            }`}
+          >
+            {user.vpn_enabled ? 'Disable' : 'Enable'}
+          </button>
+          <button
+            onClick={() => onDelete(user.id, user.email)}
+            className="px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors whitespace-nowrap"
+          >
+            Delete
+          </button>
+        </div>
       ),
     },
-  ], [onToggle]);
+  ], [onToggle, onDelete]);
 
   const headerContent = (
     <div className="bg-blue-50 border-b border-blue-100 px-6 py-3">
