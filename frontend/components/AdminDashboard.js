@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useUIStore } from '../store';
+import { useUIStore, useAuthStore } from '../store';
 import { adminUsersAPI, adminDevicesAPI, adminDashboardAPI } from '../lib/api';
 import { Tabs, DataTable, StatusBadge } from './admin';
 
@@ -23,6 +23,7 @@ export default function AdminDashboard({ token, userData }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const { showNotification } = useUIStore();
+  const { user } = useAuthStore();
 
   useEffect(() => {
     fetchData();
@@ -36,7 +37,15 @@ export default function AdminDashboard({ token, userData }) {
         adminDevicesAPI.getDevices(),
       ]);
       setStats(statsData);
-      setUsers(usersData.users || []);
+      
+      // Filter out current logged-in user and users with same email
+      const allUsers = usersData.users || [];
+      const filteredUsers = allUsers.filter(u => 
+        u.id !== user?.uid && 
+        u.email !== user?.email
+      );
+      
+      setUsers(filteredUsers);
       setDevices(devicesData.devices || []);
     } catch (error) {
       showNotification('Failed to load admin data', 'error');
