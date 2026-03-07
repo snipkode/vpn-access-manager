@@ -191,12 +191,16 @@ router.post('/generate', verifyAuth, async (req, res) => {
     // Add peer to WireGuard
     addPeer(publicKey, newIP);
     const config = generateConfig(privateKey, newIP, deviceName);
-    // Generate QR code as PNG base64
+    // Generate QR code as PNG base64 with high quality for scanning
     const qrCodeData = await QRCode.toDataURL(config, {
-      width: 200,
-      height: 200,
-      margin: 2,
-      errorCorrectionLevel: 'M'
+      width: 400,
+      height: 400,
+      margin: 3,
+      errorCorrectionLevel: 'H', // High error correction for better scanning
+      color: {
+        dark: '#000000',
+        light: '#ffffff'
+      }
     });
 
     const deviceRef = db.collection('devices').doc();
@@ -347,12 +351,16 @@ router.get('/device/:id',
 
     // Generate config and QR code on-demand
     const config = generateConfig(deviceData.private_key, deviceData.ip_address, deviceData.device_name);
-    // Generate QR code as PNG base64
+    // Generate QR code as PNG base64 with high quality for scanning
     const qrCodeData = await QRCode.toDataURL(config, {
-      width: 200,
-      height: 200,
-      margin: 2,
-      errorCorrectionLevel: 'M'
+      width: 400,
+      height: 400,
+      margin: 3,
+      errorCorrectionLevel: 'H', // High error correction for better scanning
+      color: {
+        dark: '#000000',
+        light: '#ffffff'
+      }
     });
 
     res.json({
