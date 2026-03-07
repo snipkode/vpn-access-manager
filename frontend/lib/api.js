@@ -44,21 +44,19 @@ export const apiFetch = async (endpoint, options = {}, requestKey = null) => {
       if (res.status === 429) {
         const retryAfter = res.headers.get('Retry-After');
         const waitSeconds = retryAfter ? parseInt(retryAfter) : 30;
-        throw new Error(
+        const rateLimitError = new Error(
           `Too many requests. Please wait ${waitSeconds} seconds before trying again.`
         );
+        rateLimitError.code = 'RATE_LIMIT';
+        rateLimitError.status = 429;
+        rateLimitError.retryAfter = waitSeconds;
+        throw rateLimitError;
       }
       
       throw new Error(error.error || error.message || 'Request failed');
     }
 
     return res.json();
-  } catch (error) {
-    // Re-throw rate limit errors with special handling
-    if (error.message.includes('Too many requests')) {
-      throw error;
-    }
-    throw error;
   } finally {
     // Remove request from pending list
     if (requestKey) {

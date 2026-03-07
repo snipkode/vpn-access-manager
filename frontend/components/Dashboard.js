@@ -168,9 +168,9 @@ export default function Dashboard({ token, userData }) {
       console.error('🔴 Generate config error:', error);
       
       // Handle rate limit error with specific message
-      if (error.message.includes('Too many requests')) {
+      if (error.code === 'RATE_LIMIT' || error.status === 429) {
         showNotification(
-          '⏱️ Too many attempts. Please wait 30 seconds before trying again.',
+          `⏱️ Too many attempts. Please wait ${error.retryAfter || 30} seconds before trying again.`,
           'error'
         );
       } else if (error.message.includes('rate limit')) {
@@ -193,11 +193,11 @@ export default function Dashboard({ token, userData }) {
       fetchData();
     } catch (error) {
       console.error('🔴 Revoke device error:', error);
-      
+
       // Handle rate limit error with specific message
-      if (error.message.includes('Too many requests')) {
+      if (error.code === 'RATE_LIMIT' || error.status === 429) {
         showNotification(
-          '⏱️ Too many attempts. Please wait 30 seconds before trying again.',
+          `⏱️ Too many attempts. Please wait ${error.retryAfter || 30} seconds before trying again.`,
           'error'
         );
       } else if (error.message.includes('rate limit')) {
