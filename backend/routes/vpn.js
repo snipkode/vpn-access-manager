@@ -109,8 +109,17 @@ router.post('/generate', verifyAuth, async (req, res) => {
     const { uid } = req.user;
     let { deviceName } = req.body;
 
+    // Log received device name
+    console.log('🟢 Generate VPN config request:', {
+      uid,
+      deviceName,
+      body: req.body
+    });
+
     // Sanitize device name
     deviceName = sanitizeDeviceName(deviceName);
+    
+    console.log('🟢 Sanitized device name:', deviceName);
 
     const userDoc = await db.collection('users').doc(uid).get();
     if (!userDoc.exists) {
@@ -182,6 +191,12 @@ router.post('/generate', verifyAuth, async (req, res) => {
       ip_address: newIP,
       status: 'active',
       created_at: new Date().toISOString(),
+    });
+    
+    console.log('🟢 Device saved to Firestore:', {
+      deviceId: deviceRef.id,
+      device_name: deviceName,
+      ip_address: newIP
     });
 
     res.json({
