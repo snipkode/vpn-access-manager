@@ -1,6 +1,16 @@
 {
   "indexes": [
     {
+      "collectionGroup": "subscription_plans",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "order",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "bank_accounts",
       "queryScope": "COLLECTION",
       "fields": [
