@@ -2,6 +2,24 @@ import axios from 'axios';
 import { db } from '../config/firebase.js';
 
 /**
+ * Log notification to database
+ */
+async function logNotification(type, status, phone, message, error = null) {
+  try {
+    await db.collection('notification_logs').add({
+      type,
+      status,
+      phone,
+      message,
+      error,
+      created_at: new Date().toISOString(),
+    });
+  } catch (logError) {
+    console.error('[WAHA] Failed to log notification:', logError.message);
+  }
+}
+
+/**
  * Send WhatsApp message via WAHA (WhatsApp HTTP API)
  * @param {string} phone - Phone number (e.g., "628123456789")
  * @param {string} message - Message text
@@ -11,16 +29,16 @@ export async function sendWhatsApp(phone, message) {
   try {
     // Get WAHA settings from database
     const settingsDoc = await db.collection('settings').doc('whatsapp').get();
-    
+
     if (!settingsDoc.exists) {
-      console.log('[WAHA] Settings not configured in database');
+      console.warn('[WAHA] Settings not configured in database - skipping WhatsApp notification');
       return false;
     }
 
     const settings = settingsDoc.data();
-    
+
     if (!settings.enabled || !settings.api_url || !settings.session_id) {
-      console.log('[WAHA] WAHA not properly configured');
+      console.warn('[WAHA] WAHA not properly configured - skipping WhatsApp notification');
       return false;
     }
 
@@ -29,8 +47,13 @@ export async function sendWhatsApp(phone, message) {
     // Format phone number (remove +, 0, or spaces)
     const formattedPhone = formatPhoneNumber(phone);
 
+    if (!formattedPhone) {
+      console.error('[WAHA] Invalid phone number:', phone);
+      return false;
+    }
+
     const url = `${api_url}/api/sendText`;
-    
+
     const response = await axios.post(url, {
       chatId: `${formattedPhone}@c.us`,
       body: message,
@@ -45,7 +68,7 @@ export async function sendWhatsApp(phone, message) {
 
     if (response.data && response.data.sent) {
       console.log(`[WAHA] Message sent to ${formattedPhone}`);
-      
+
       // Log notification
       await logNotification('whatsapp', 'sent', formattedPhone, message);
       return true;
@@ -160,40 +183,22 @@ export async function sendWhatsAppWithImage(phone, message, imageUrl) {
  */
 function formatPhoneNumber(phone) {
   if (!phone) return '';
-  
+
   // Remove all non-numeric characters except +
   let cleaned = phone.replace(/[^\d+]/g, '');
-  
+
   // Remove leading +
   cleaned = cleaned.replace(/^\+/, '');
-  
+
   // Remove leading 0
   cleaned = cleaned.replace(/^0/, '');
-  
+
   // Add Indonesia country code if missing
   if (!cleaned.startsWith('62')) {
     cleaned = '62' + cleaned;
   }
-  
-  return cleaned;
-}
 
-/**
- * Log notification to database
- */
-async function logNotification(type, status, recipient, message, error = null) {
-  try {
-    await db.collection('notifications').add({
-      type,
-      status,
-      recipient,
-      message: message?.substring(0, 500) || '',
-      error: error ? String(error).substring(0, 500) : null,
-      created_at: new Date().toISOString(),
-    });
-  } catch (err) {
-    console.error('[Notification] Log error:', err.message);
-  }
+  return cleaned;
 }
 
 /**
