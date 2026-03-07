@@ -271,7 +271,7 @@ const colors = {
 export default function LoginPage() {
   const router = useRouter();
   const { showNotification } = useUIStore();
-  const [lang, setLang] = useState('en');
+  const [lang, setLang] = useState('id'); // Default to Indonesian
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [loggingIn, setLoggingIn] = useState(false);
