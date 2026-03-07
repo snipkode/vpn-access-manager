@@ -1,10 +1,25 @@
 import { useState, useEffect } from 'react';
 
-export default function Login({ onLogin }) {
+export default function Login({ onLogin, appName }) {
   const [mounted, setMounted] = useState(false);
+  const [settings, setSettings] = useState({
+    app_name: appName || 'VPN Access Manager',
+  });
 
   useEffect(() => {
     setMounted(true);
+    
+    // Fetch app name from settings
+    fetch('/api/settings/public/general')
+      .then(res => res.json())
+      .then(data => {
+        if (data.settings) {
+          setSettings({
+            app_name: data.settings.app_name || 'VPN Access Manager',
+          });
+        }
+      })
+      .catch(err => console.log('Failed to fetch settings:', err));
   }, []);
 
   return (
@@ -69,7 +84,7 @@ export default function Login({ onLogin }) {
 
             {/* Title */}
             <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2 text-center tracking-tight">
-              VPN Access
+              {settings.app_name}
             </h1>
             <p className="text-gray-400 text-sm sm:text-base text-center leading-relaxed">
               Secure WireGuard VPN Management
