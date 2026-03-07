@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useUIStore, useBillingStore } from '../store';
 import { billingAPI, formatCurrency } from '../lib/api';
 import PaymentForm, { BankAccountsDisplay, PaymentHistory } from './PaymentForm';
+import Tabs from './ui/Tabs';
+import Icon from './ui/Icon';
 
 const PLANS = {
   monthly: { price: 50000, duration: 30, label: 'Monthly' },
@@ -119,32 +121,16 @@ export default function Payment({ token }) {
   return (
     <div className="max-w-[900px] mx-auto space-y-6">
       {/* Tabs */}
-      <div className="bg-white rounded-xl p-1.5 shadow-sm border border-gray-100">
-        <div className="flex gap-1">
-          <button
-            onClick={() => setActiveTab('submit')}
-            className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'submit'
-                ? 'bg-primary text-white shadow-md'
-                : 'text-gray-500 hover:bg-gray-100'
-            }`}
-          >
-            <i className="fas fa-upload mr-2" />
-            Submit Payment
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'history'
-                ? 'bg-primary text-white shadow-md'
-                : 'text-gray-500 hover:bg-gray-100'
-            }`}
-          >
-            <i className="fas fa-history mr-2" />
-            History
-          </button>
-        </div>
-      </div>
+      <Tabs
+        items={[
+          { id: 'submit', label: 'Submit', icon: <Icon name="upload_file" size="small" /> },
+          { id: 'history', label: 'History', icon: <Icon name="history" size="small" /> },
+        ]}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+        variant="default"
+        size="small"
+      />
 
       {activeTab === 'submit' && (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useUIStore, useBillingStore } from '../store';
 import { creditAPI, billingAPI, formatCurrency } from '../lib/api';
 import PaymentForm, { BankAccountsDisplay, PaymentHistory } from './PaymentForm';
+import Tabs from './ui/Tabs';
+import Icon from './ui/Icon';
 
 export default function Wallet({ token }) {
   const { showNotification } = useUIStore();
@@ -93,50 +95,24 @@ export default function Wallet({ token }) {
       )}
 
       {/* Balance Card */}
-      <div className="bg-gradient-to-br from-primary to-blue-600 rounded-2xl p-6 shadow-lg shadow-primary/30">
-        <div className="text-sm text-white/80 mb-2">Available Balance</div>
-        <div className="text-4xl font-bold text-white mb-1">{formatCurrency(balance)}</div>
-        <div className="text-sm text-white/80">Credit available for subscription</div>
+      <div className="bg-gradient-to-br from-[#007AFF] to-blue-600 rounded-2xl p-5 sm:p-6 shadow-lg shadow-[#007AFF]/30">
+        <div className="text-[13px] sm:text-sm text-white/80 mb-2">Available Balance</div>
+        <div className="text-3xl sm:text-4xl font-bold text-white mb-1 tracking-tight">{formatCurrency(balance)}</div>
+        <div className="text-[13px] sm:text-sm text-white/80 font-medium">Credit available for subscription</div>
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-xl p-1.5 shadow-sm border border-gray-100">
-        <div className="flex gap-1">
-          <button
-            onClick={() => setActiveTab('topup')}
-            className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'topup'
-                ? 'bg-primary text-white shadow-md'
-                : 'text-gray-500 hover:bg-gray-100'
-            }`}
-          >
-            <i className="fas fa-plus-circle mr-2" />
-            Top Up
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'history'
-                ? 'bg-primary text-white shadow-md'
-                : 'text-gray-500 hover:bg-gray-100'
-            }`}
-          >
-            <i className="fas fa-history mr-2" />
-            Topup History
-          </button>
-          <button
-            onClick={() => setActiveTab('transactions')}
-            className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'transactions'
-                ? 'bg-primary text-white shadow-md'
-                : 'text-gray-500 hover:bg-gray-100'
-            }`}
-          >
-            <i className="fas fa-list mr-2" />
-            Transactions
-          </button>
-        </div>
-      </div>
+      <Tabs
+        items={[
+          { id: 'topup', label: 'Top Up', icon: <Icon name="add_card" size="small" /> },
+          { id: 'history', label: 'History', icon: <Icon name="history" size="small" /> },
+          { id: 'transactions', label: 'Transactions', icon: <Icon name="receipt_long" size="small" /> },
+        ]}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+        variant="default"
+        size="small"
+      />
 
       {/* Top Up Form */}
       {activeTab === 'topup' && (
