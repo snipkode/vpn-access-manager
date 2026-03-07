@@ -332,14 +332,6 @@ export const billingAPI = {
   },
 
   /**
-   * Get billing configuration (for users)
-   * GET /api/billing/config
-   */
-  getConfig: async () => {
-    return apiFetch('/billing/config');
-  },
-
-  /**
    * Get user subscription
    * GET /api/billing/subscription
    */
