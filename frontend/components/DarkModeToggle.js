@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import Icon from './ui/Icon';
 
 export default function DarkModeToggle() {
   const [isDark, setIsDark] = useState(false);
@@ -46,13 +47,9 @@ export default function DarkModeToggle() {
       aria-label="Toggle dark mode"
     >
       {isDark ? (
-        <span className="text-yellow-500 text-lg sm:text-xl transition-transform duration-300 rotate-0">
-          <i className="fas fa-sun" />
-        </span>
+        <Icon name="light_mode" variant="round" size="large" color="#FFC107" className="transition-transform duration-300" />
       ) : (
-        <span className="text-gray-600 dark:text-gray-300 text-lg sm:text-xl transition-transform duration-300 rotate-0">
-          <i className="fas fa-moon" />
-        </span>
+        <Icon name="dark_mode" variant="round" size="large" className="text-gray-600 dark:text-gray-300 transition-transform duration-300" />
       )}
     </button>
   );

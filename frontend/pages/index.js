@@ -24,20 +24,20 @@ import Unauthorized from '../components/Unauthorized';
 
 // Menu configuration
 const MENU_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'home' },
-  { id: 'wallet', label: 'Wallet', icon: 'wallet' },
-  { id: 'payment', label: 'Payment', icon: 'credit-card' },
-  { id: 'referral', label: 'Referral', icon: 'gift' },
-  { id: 'profile', label: 'Profile', icon: 'user' },
+  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+  { id: 'wallet', label: 'Wallet', icon: 'account_balance_wallet' },
+  { id: 'payment', label: 'Payment', icon: 'payment' },
+  { id: 'referral', label: 'Referral', icon: 'people' },
+  { id: 'profile', label: 'Profile', icon: 'person' },
 ];
 
 const ADMIN_ITEMS = [
-  { id: 'admin-dashboard', label: 'Overview', icon: 'chart-line' },
-  { id: 'admin-billing', label: 'Billing', icon: 'file-invoice-dollar' },
-  { id: 'admin-credit', label: 'Credit', icon: 'coins' },
-  { id: 'admin-referral', label: 'Referrals', icon: 'users' },
-  { id: 'payment-settings', label: 'Payment Settings', icon: 'cog' },
-  { id: 'admin-settings', label: 'Settings', icon: 'sliders-h' },
+  { id: 'admin-dashboard', label: 'Overview', icon: 'insights' },
+  { id: 'admin-billing', label: 'Billing', icon: 'receipt_long' },
+  { id: 'admin-credit', label: 'Credit', icon: 'monetization_on' },
+  { id: 'admin-referral', label: 'Referrals', icon: 'group' },
+  { id: 'payment-settings', label: 'Payment Settings', icon: 'settings' },
+  { id: 'admin-settings', label: 'Settings', icon: 'tune' },
 ];
 
 // Page components mapping

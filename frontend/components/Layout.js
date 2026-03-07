@@ -3,6 +3,7 @@ import { useUIStore } from '../store';
 import RequestBlockingOverlay from './RequestBlockingOverlay';
 import Toast from './Toast';
 import DarkModeToggle from './DarkModeToggle';
+import Icon from './ui/Icon';
 
 export default function Layout({
   children,
@@ -49,14 +50,14 @@ export default function Layout({
     primaryText: 'text-purple-600',
     shadow: 'shadow-purple-500/30',
     gradient: 'from-purple-600 to-indigo-700',
-    icon: '🛡️'
+    icon: 'security'
   } : {
     primary: 'bg-primary',
     primaryLight: 'bg-blue-50',
     primaryText: 'text-primary',
     shadow: 'shadow-primary/30',
     gradient: 'from-primary to-blue-600',
-    icon: '📊'
+    icon: 'dashboard'
   };
 
   return (
@@ -78,7 +79,7 @@ export default function Layout({
           <div className="p-5 border-b border-gray-100 dark:border-[#38383A] flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 bg-gradient-to-br ${theme.gradient} rounded-xl flex items-center justify-center`}>
-                <span className="text-white text-xl">{theme.icon}</span>
+                <Icon name={theme.icon} variant="round" size="large" color="white" />
               </div>
               <span className="text-xl font-bold text-dark">
                 {isAdmin ? 'Admin Panel' : 'VPN Access'}
@@ -107,10 +108,10 @@ export default function Layout({
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-all ${
                     activePage === item.id
                       ? `${theme.primary} text-white shadow-lg ${theme.shadow}`
-                      : 'text-gray-600 hover:bg-gray-100'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#2C2C2E]'
                   }`}
                 >
-                  <i className={`fas fa-${item.icon} w-5 text-center`} />
+                  <Icon name={item.icon || 'circle'} variant="round" size="medium" className="w-5 text-center" />
                   <span className="flex-1 text-left">{item.label}</span>
                 </button>
               ))}
@@ -160,9 +161,9 @@ export default function Layout({
             </div>
             <button
               onClick={onLogout}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 text-red-500 rounded-xl text-sm font-medium hover:bg-red-100 transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400 rounded-xl text-sm font-medium hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
             >
-              <i className="fas fa-sign-out-alt" />
+              <Icon name="logout" variant="round" size="medium" />
               <span>Sign Out</span>
             </button>
           </div>
@@ -177,9 +178,7 @@ export default function Layout({
             className="lg:hidden flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-dark dark:hover:text-white p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#2C2C2E] transition-all"
             onClick={() => setSidebarOpen(true)}
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            <Icon name="menu" variant="round" size="large" />
           </button>
 
           <h1 className="text-xl font-bold text-dark dark:text-white flex-1">
@@ -188,7 +187,7 @@ export default function Layout({
 
           {isCurrentPageAdmin && (
             <span className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 ${theme.primaryLight} dark:bg-purple-500/20 ${theme.primaryText} dark:text-purple-400 rounded-full text-xs font-semibold border ${isAdmin ? 'border-purple-200 dark:border-purple-800' : 'border-purple-200 dark:border-purple-800'}`}>
-              <i className="fas fa-shield-alt text-xs" />
+              <Icon name="security" variant="round" size="small" />
               Admin
             </span>
           )}
