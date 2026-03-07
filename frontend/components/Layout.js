@@ -78,8 +78,24 @@ export default function Layout({
           {/* Logo */}
           <div className="p-5 border-b border-gray-100 dark:border-[#38383A] flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-10 h-10 bg-gradient-to-br ${theme.gradient} rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg`}>
-                <Icon name={theme.icon} variant="round" size="large" color="white" />
+              {/* Custom SVG Logo */}
+              <div className={`w-10 h-10 bg-gradient-to-br ${theme.gradient} rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg overflow-hidden`}>
+                <svg viewBox="0 0 40 40" className="w-7 h-7" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* Shield Base */}
+                  <path d="M20 4L6 10V18C6 27 12 34 20 36C28 34 34 27 34 18V10L20 4Z" fill="white" fillOpacity="0.9"/>
+                  {/* Lock Icon */}
+                  <path d="M20 14C18.5 14 17.2 14.5 16.2 15.5C15.2 16.5 14.7 17.8 14.7 19.3V21H16.7V19.3C16.7 18.3 17 17.5 17.7 16.8C18.4 16.1 19.2 15.7 20.3 15.7C21.3 15.7 22.1 16 22.7 16.6C23.3 17.2 23.6 18 23.6 19V21H25.6V18.8C25.6 17.3 25.1 16.1 24.1 15.1C23.1 14.2 21.7 13.7 20 13.7V14Z" fill="url(#logoGradient)"/>
+                  <rect x="15.5" y="21" width="9" width="7" height="5" rx="1" fill="url(#logoGradient)"/>
+                  {/* Checkmark */}
+                  <path d="M18.5 23.5L20.5 25.5L23.5 22" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  {/* Gradient Definition */}
+                  <defs>
+                    <linearGradient id="logoGradient" x1="14" y1="14" x2="26" y2="26" gradientUnits="userSpaceOnUse">
+                      <stop stopColor="#3B82F6"/>
+                      <stop offset="1" stopColor="#06B6D4"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
               </div>
               <span className="text-lg sm:text-xl font-bold text-dark dark:text-white truncate whitespace-nowrap hidden sm:block">
                 {isAdmin ? 'Admin Panel' : 'VPN Access'}
