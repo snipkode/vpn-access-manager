@@ -77,11 +77,11 @@ export default function Layout({
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="p-5 border-b border-gray-100 dark:border-[#38383A] flex items-center justify-between flex-shrink-0">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <div className={`w-10 h-10 bg-gradient-to-br ${theme.gradient} rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg`}>
                 <Icon name={theme.icon} variant="round" size="large" color="white" />
               </div>
-              <span className="text-lg sm:text-xl font-bold text-dark dark:text-white truncate">
+              <span className="text-lg sm:text-xl font-bold text-dark dark:text-white truncate whitespace-nowrap">
                 {isAdmin ? 'Admin Panel' : 'VPN Access'}
               </span>
             </div>
@@ -103,14 +103,14 @@ export default function Layout({
                 <button
                   key={item.id}
                   onClick={() => onPageChange(item.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-all ${
+                  className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-medium transition-all whitespace-nowrap ${
                     activePage === item.id
                       ? `${theme.primary} text-white shadow-lg ${theme.shadow}`
                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#2C2C2E]'
                   }`}
                 >
                   <Icon name={item.icon || 'circle'} variant="round" size="small" className="w-5 flex-shrink-0" />
-                  <span className="flex-1 text-left">{item.label}</span>
+                  <span className="flex-1 text-left truncate">{item.label}</span>
                 </button>
               ))}
             </div>
@@ -152,18 +152,18 @@ export default function Layout({
                 </div>
               )}
               <div className="flex-1 min-w-0 text-left">
-                <div className="text-sm font-medium text-dark dark:text-white truncate">
+                <div className="text-sm font-medium text-dark dark:text-white truncate whitespace-nowrap">
                   {userData?.name || user?.email?.split('@')[0] || 'User'}
                 </div>
                 {isAdmin && (
-                  <div className={`text-xs ${theme.primaryText} font-medium`}>Administrator</div>
+                  <div className={`text-xs ${theme.primaryText} font-medium truncate whitespace-nowrap`}>Administrator</div>
                 )}
               </div>
               <Icon name="chevron_right" variant="round" size="medium" className="text-gray-400 dark:text-gray-500 flex-shrink-0" />
             </button>
             <button
               onClick={onLogout}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400 rounded-xl text-sm font-medium hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400 rounded-xl text-sm font-medium hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors whitespace-nowrap"
             >
               <Icon name="logout" variant="round" size="medium" />
               <span>Sign Out</span>
