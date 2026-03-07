@@ -480,7 +480,7 @@ export default function Dashboard({ token, userData }) {
 }
 
 // Device Modal Component - iOS Style
-function DeviceModal({ device, onClose, onRevoke, onDownload, fetchingConfig }) {
+function DeviceModal({ device, onClose, onRevoke, onDisable, onReactivate, onDownload, fetchingConfig }) {
   const [activeTab, setActiveTab] = useState('qrcode');
   const deletingDevice = useRequestPending('delete_vpn_device');
   const disablingDevice = useRequestPending('disable_vpn_device');
