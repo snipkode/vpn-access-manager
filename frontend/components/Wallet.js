@@ -214,7 +214,7 @@ export default function Wallet({ token }) {
         </div>
       </div>
 
-      {/* Tabs - iOS Style */}
+      {/* Tabs - iOS Style with Horizontal Scroll */}
       <Tabs
         items={[
           { id: 'topup', label: 'Top Up', icon: <Icon name="add_card" size="small" /> },
@@ -226,7 +226,8 @@ export default function Wallet({ token }) {
         activeTab={activeTab}
         onChange={setActiveTab}
         variant="default"
-        size="small"
+        size="medium"
+        scrollable={true}
       />
 
       {/* Top Up Form - iOS Style */}
