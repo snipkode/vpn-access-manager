@@ -443,8 +443,9 @@ router.get('/config', async (req, res) => {
       }));
     } catch (indexError) {
       // Fallback: query without orderBy if index is missing
-      console.warn('⚠️ Firestore index missing for bank_accounts.order, using fallback query');
-      console.warn('Error:', indexError.message);
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ Firestore index missing for bank_accounts.order, using fallback');
+      }
       
       const banksSnapshot = await db.collection('bank_accounts')
         .where('active', '==', true)
