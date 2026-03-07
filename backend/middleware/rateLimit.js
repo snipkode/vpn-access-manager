@@ -24,8 +24,8 @@ function createRateLimiter({ windowMs, max, message, keyGenerator }) {
       message: message || 'Please try again later',
       retryAfter: Math.ceil(windowMs / 1000),
     },
-    standardHeaders: true,
-    legacyHeaders: false,
+    standardHeaders: true, // Send RateLimit header
+    legacyHeaders: true,   // Send X-RateLimit-* headers
     keyGenerator: keyGenerator || ((req) => {
       // Use IP or user UID if authenticated
       const authHeader = req.headers.authorization;
@@ -45,7 +45,19 @@ function createRateLimiter({ windowMs, max, message, keyGenerator }) {
       return req.ip;
     }),
     handler: (req, res, next, options) => {
-      res.status(429).json(options.message);
+      const retryAfter = Math.ceil(options.windowMs / 1000);
+      
+      // Set standard Retry-After header
+      res.set('Retry-After', retryAfter.toString());
+      
+      // Send 429 with proper response
+      res.status(429).json({
+        error: 'Too many requests',
+        message: options.message.message || 'Please try again later',
+        code: 'RATE_LIMIT',
+        status: 429,
+        retryAfter: retryAfter,
+      });
     },
   });
 }
