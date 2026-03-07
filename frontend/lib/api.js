@@ -9,6 +9,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 /**
  * Base API fetch with authentication and request locking
+ * Handles standardized API response format
  */
 export const apiFetch = async (endpoint, options = {}, requestKey = null) => {
   const token = useAuthStore.getState().token;
@@ -37,26 +38,36 @@ export const apiFetch = async (endpoint, options = {}, requestKey = null) => {
       headers,
     });
 
+    // Parse response
+    const responseData = await res.json().catch(() => ({ success: false, error: 'Request failed' }));
+
     if (!res.ok) {
-      const error = await res.json().catch(() => ({ error: 'Request failed' }));
-      
       // Handle rate limit errors with user-friendly message
       if (res.status === 429) {
-        const retryAfter = res.headers.get('Retry-After');
-        const waitSeconds = retryAfter ? parseInt(retryAfter) : 30;
+        const retryAfter = res.headers.get('Retry-After') || responseData.retryAfter || 30;
         const rateLimitError = new Error(
-          `Too many requests. Please wait ${waitSeconds} seconds before trying again.`
+          `Too many requests. Please wait ${retryAfter} seconds before trying again.`
         );
         rateLimitError.code = 'RATE_LIMIT';
         rateLimitError.status = 429;
-        rateLimitError.retryAfter = waitSeconds;
+        rateLimitError.retryAfter = parseInt(retryAfter);
         throw rateLimitError;
       }
       
-      throw new Error(error.error || error.message || 'Request failed');
+      // Use standardized error message from response
+      throw new Error(responseData.message || responseData.error || 'Request failed');
     }
 
-    return res.json();
+    // Return data from standardized response
+    // If response has { success: true, data: {...} }, return data
+    // Otherwise return the whole response for backward compatibility
+    return responseData.data || responseData;
+  } catch (error) {
+    // Re-throw rate limit errors with special handling
+    if (error.code === 'RATE_LIMIT' || error.status === 429) {
+      throw error;
+    }
+    throw error;
   } finally {
     // Remove request from pending list
     if (requestKey) {
