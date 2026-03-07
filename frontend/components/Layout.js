@@ -173,31 +173,33 @@ export default function Layout({
       {/* Main Content */}
       <div className={`transition-all duration-300 ease-in-out ${isDesktop ? 'ml-72' : ''}`}>
         {/* Top Bar */}
-        <header className={`sticky top-0 z-30 bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border-b ${isAdmin ? 'border-purple-200 dark:border-purple-900' : 'border-gray-200 dark:border-[#38383A]'} px-5 py-4 flex items-center gap-4`}>
+        <header className={`sticky top-0 z-30 bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border-b ${isAdmin ? 'border-purple-200 dark:border-purple-900' : 'border-gray-200 dark:border-[#38383A]'} px-4 sm:px-5 py-3 sm:py-4 flex items-center gap-3 sm:gap-4`}>
           <button
-            className="lg:hidden flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-dark dark:hover:text-white p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#2C2C2E] transition-all"
+            className="lg:hidden flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-dark dark:hover:text-white p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#2C2C2E] transition-all flex-shrink-0"
             onClick={() => setSidebarOpen(true)}
           >
             <Icon name="menu" variant="round" size="medium" />
           </button>
 
-          <h1 className="text-xl font-bold text-dark dark:text-white flex-1">
+          <h1 className="text-lg sm:text-xl font-bold text-dark dark:text-white flex-1 min-w-0 truncate">
             {currentPage?.label || 'Dashboard'}
           </h1>
 
           {isCurrentPageAdmin && (
-            <span className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 ${theme.primaryLight} dark:bg-purple-500/20 ${theme.primaryText} dark:text-purple-400 rounded-full text-xs font-semibold border ${isAdmin ? 'border-purple-200 dark:border-purple-800' : 'border-purple-200 dark:border-purple-800'}`}>
+            <span className={`hidden sm:inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 ${theme.primaryLight} dark:bg-purple-500/20 ${theme.primaryText} dark:text-purple-400 rounded-full text-[10px] sm:text-xs font-semibold border ${isAdmin ? 'border-purple-200 dark:border-purple-800' : 'border-purple-200 dark:border-purple-800'} flex-shrink-0`}>
               <Icon name="security" variant="round" size="small" />
-              Admin
+              <span className="hidden xs:inline">Admin</span>
             </span>
           )}
 
           {/* Dark Mode Toggle */}
-          <DarkModeToggle />
+          <div className="flex-shrink-0">
+            <DarkModeToggle />
+          </div>
         </header>
 
         {/* Page Content */}
-        <main className="p-5 pb-10">
+        <main className="p-4 sm:p-5 pb-8 sm:pb-10">
           {children}
         </main>
       </div>
