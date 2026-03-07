@@ -965,10 +965,10 @@ export const adminSettingsAPI = {
 export const adminDashboardAPI = {
   /**
    * Get dashboard statistics
-   * GET /api/admin/dashboard/stats
+   * GET /api/admin/stats
    */
   getStats: async () => {
-    return apiFetch('/admin/dashboard/stats');
+    return apiFetch('/admin/stats');
   },
 
   /**
@@ -998,42 +998,42 @@ export const adminDevicesAPI = {
 
   /**
    * Get device details
-   * GET /api/admin/devices/:id
+   * GET /api/admin/device/:id
    */
   getDevice: async (deviceId) => {
-    return apiFetch(`/admin/devices/${deviceId}`, {}, 'get_admin_device');
+    return apiFetch(`/admin/device/${deviceId}`, {}, 'get_admin_device');
   },
 
   /**
    * Delete device
-   * DELETE /api/admin/devices/:id
+   * DELETE /api/admin/device/:id
    */
   deleteDevice: async (deviceId) => {
-    return apiFetch(`/admin/devices/${deviceId}`, { method: 'DELETE' }, 'delete_admin_device');
+    return apiFetch(`/admin/device/${deviceId}`, { method: 'DELETE' }, 'delete_admin_device');
   },
 
   /**
    * Reset device IP
-   * POST /api/admin/devices/:id/reset-ip
+   * POST /api/admin/device/:id/reset-ip
    */
   resetDeviceIP: async (deviceId) => {
-    return apiFetch(`/admin/devices/${deviceId}/reset-ip`, { method: 'POST' }, 'reset_device_ip');
+    return apiFetch(`/admin/device/${deviceId}/reset-ip`, { method: 'POST' }, 'reset_device_ip');
   },
 
   /**
    * Disable device
-   * POST /api/admin/devices/:id/disable
+   * POST /api/admin/device/:id/disable
    */
   disableDevice: async (deviceId) => {
-    return apiFetch(`/admin/devices/${deviceId}/disable`, { method: 'POST' }, 'disable_admin_device');
+    return apiFetch(`/admin/device/${deviceId}/disable`, { method: 'POST' }, 'disable_admin_device');
   },
 
   /**
    * Reactivate device
-   * POST /api/admin/devices/:id/reactivate
+   * POST /api/admin/device/:id/reactivate
    */
   reactivateDevice: async (deviceId) => {
-    return apiFetch(`/admin/devices/${deviceId}/reactivate`, { method: 'POST' }, 'reactivate_admin_device');
+    return apiFetch(`/admin/device/${deviceId}/reactivate`, { method: 'POST' }, 'reactivate_admin_device');
   },
 };
 

@@ -1,12 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useUIStore } from '../store';
 import { adminPaymentsAPI, formatCurrency } from '../lib/api';
+import { Tabs, DataTable, StatCard } from './admin';
+import StatusBadge from './ui/StatusBadge.js';
 
-const tabs = [
+const TABS = [
   { id: 'pending', label: 'Pending', color: 'text-amber-500' },
   { id: 'approved', label: 'Approved', color: 'text-success' },
   { id: 'rejected', label: 'Rejected', color: 'text-red-500' },
   { id: 'all', label: 'All', color: 'text-gray-400' },
+];
+
+const STATS_CONFIG = [
+  { id: 'total', key: 'total_payments', label: 'Total Payments', color: 'text-gray-500', bg: 'bg-gray-50' },
+  { id: 'pending', key: 'pending', label: 'Pending', color: 'text-amber-500', bg: 'bg-amber-50', highlight: true },
+  { id: 'approved', key: 'approved', label: 'Approved', color: 'text-success', bg: 'bg-green-50' },
+  { id: 'rejected', key: 'rejected', label: 'Rejected', color: 'text-red-500', bg: 'bg-red-50' },
+  { id: 'revenue', key: 'total_revenue', label: 'Total Revenue', color: 'text-primary', bg: 'bg-primary/10', isCurrency: true },
 ];
 
 export default function AdminBilling({ token }) {
@@ -102,149 +112,29 @@ export default function AdminBilling({ token }) {
       {/* Stats */}
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <StatCard
-            label="Total Payments"
-            value={stats.total_payments || 0}
-            color="text-gray-500"
-            bg="bg-gray-50"
-          />
-          <StatCard
-            label="Pending"
-            value={stats.pending || 0}
-            color="text-amber-500"
-            bg="bg-amber-50"
-            highlight={activeTab === 'pending'}
-          />
-          <StatCard
-            label="Approved"
-            value={stats.approved || 0}
-            color="text-success"
-            bg="bg-green-50"
-          />
-          <StatCard
-            label="Rejected"
-            value={stats.rejected || 0}
-            color="text-red-500"
-            bg="bg-red-50"
-          />
-          <StatCard
-            label="Total Revenue"
-            value={formatCurrency(stats.total_revenue || 0)}
-            color="text-primary"
-            bg="bg-primary/10"
-          />
+          {STATS_CONFIG.map((config) => (
+            <StatCard
+              key={config.id}
+              label={config.label}
+              value={config.isCurrency ? formatCurrency(stats[config.key] || 0) : stats[config.key] || 0}
+              color={config.color}
+              bg={config.bg}
+              highlight={config.highlight && activeTab === config.id}
+            />
+          ))}
         </div>
       )}
 
       {/* Tabs */}
-      <div className="bg-white rounded-xl p-1.5 shadow-sm border border-gray-100">
-        <div className="flex gap-1 overflow-x-auto">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 min-w-[100px] px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                activeTab === tab.id
-                  ? 'bg-primary text-white dark:bg-primary-600 shadow-md'
-                  : 'text-gray-500 hover:bg-gray-100'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <Tabs tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* Payments List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">User</th>
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Amount</th>
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Plan</th>
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Bank</th>
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Date</th>
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-                <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {payments.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center">
-                    <div className="text-gray-400">
-                      <span className="text-4xl mb-2 block">📭</span>
-                      No payments found
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                payments.map((payment) => (
-                  <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="py-4 px-4">
-                      <div>
-                        <div className="text-sm font-medium text-dark">{payment.user_email}</div>
-                        <div className="text-xs text-gray-400">{payment.bank_from}</div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="text-sm font-bold text-primary">
-                        {formatCurrency(payment.amount)}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="text-sm text-dark">{payment.plan_label || payment.plan}</div>
-                      <div className="text-xs text-gray-400">{payment.duration_days} days</div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="text-sm text-gray-500">{payment.bank_from}</div>
-                      <div className="text-xs text-gray-400">
-                        {new Date(payment.transfer_date).toLocaleDateString()}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="text-sm text-gray-500">
-                        {new Date(payment.created_at).toLocaleDateString()}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <StatusBadge status={payment.status} />
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setSelectedPayment(payment)}
-                          className="px-3 py-1.5 bg-blue-50 text-blue-500 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors"
-                        >
-                          View
-                        </button>
-                        {payment.status === 'pending' && (
-                          <>
-                            <button
-                              onClick={() => openApproveModal(payment)}
-                              className="px-3 py-1.5 bg-green-50 text-success rounded-lg text-xs font-medium hover:bg-green-100 transition-colors"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => openRejectModal(payment)}
-                              className="px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors"
-                            >
-                              Reject
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* Payments Table */}
+      <PaymentsTable
+        payments={payments}
+        onApprove={openApproveModal}
+        onReject={openRejectModal}
+        onView={setSelectedPayment}
+      />
 
       {/* View Payment Modal */}
       {selectedPayment && !showApproveModal && !showRejectModal && (
@@ -347,32 +237,6 @@ export default function AdminBilling({ token }) {
   );
 }
 
-function StatCard({ label, value, color, bg, highlight }) {
-  return (
-    <div className={`bg-white rounded-2xl p-4 shadow-sm border-2 ${highlight ? 'border-[#007AFF]' : 'border-gray-100'}`}>
-      <div className={`${bg} w-11 h-11 rounded-2xl flex items-center justify-center mb-3`}>
-        <div className={`text-lg font-bold ${color}`}>#</div>
-      </div>
-      <div className={`text-2xl font-bold ${color} mb-1 tracking-tight`}>{value}</div>
-      <div className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">{label}</div>
-    </div>
-  );
-}
-
-function StatusBadge({ status }) {
-  const styles = {
-    pending: 'bg-[#FF9500]/10 text-[#FF9500]',
-    approved: 'bg-[#34C759]/10 text-[#34C759]',
-    rejected: 'bg-[#FF3B30]/10 text-[#FF3B30]',
-    blocked: 'bg-[#AF52DE]/10 text-[#AF52DE]',
-  };
-  return (
-    <span className={`px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${styles[status] || 'bg-gray-100 text-gray-600'}`}>
-      {status}
-    </span>
-  );
-}
-
 function PaymentDetailModal({ payment, onClose, onApprove, onReject }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -468,5 +332,151 @@ function InfoRow({ label, value }) {
       <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</div>
       <div className="text-[15px] font-medium text-dark">{value}</div>
     </div>
+  );
+}
+
+function PaymentsTable({ payments, onApprove, onReject, onView }) {
+  const columns = useMemo(() => [
+    {
+      key: 'user',
+      label: 'User',
+      sortable: true,
+      render: (payment) => (
+        <div>
+          <div className="text-sm font-medium text-dark">{payment.user_email}</div>
+          <div className="text-xs text-gray-400">{payment.bank_from}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'amount',
+      label: 'Amount',
+      sortable: true,
+      render: (payment) => (
+        <div className="text-sm font-bold text-primary">
+          {formatCurrency(payment.amount)}
+        </div>
+      ),
+    },
+    {
+      key: 'plan',
+      label: 'Plan',
+      sortable: true,
+      render: (payment) => (
+        <div>
+          <div className="text-sm text-dark">{payment.plan_label || payment.plan}</div>
+          <div className="text-xs text-gray-400">{payment.duration_days} days</div>
+        </div>
+      ),
+    },
+    {
+      key: 'bank',
+      label: 'Bank',
+      sortable: false,
+      render: (payment) => (
+        <div>
+          <div className="text-sm text-gray-500">{payment.bank_from}</div>
+          <div className="text-xs text-gray-400">
+            {new Date(payment.transfer_date).toLocaleDateString()}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'date',
+      label: 'Date',
+      sortable: true,
+      render: (payment) => (
+        <div className="text-sm text-gray-500">
+          {new Date(payment.created_at).toLocaleDateString()}
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      sortable: true,
+      render: (payment) => <StatusBadge status={payment.status} />,
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      sortable: false,
+      render: (payment) => (
+        <div className="flex gap-2">
+          <button
+            onClick={() => onView(payment)}
+            className="px-3 py-1.5 bg-blue-50 text-blue-500 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors whitespace-nowrap"
+          >
+            View
+          </button>
+          {payment.status === 'pending' && (
+            <>
+              <button
+                onClick={() => onApprove(payment)}
+                className="px-3 py-1.5 bg-green-50 text-success rounded-lg text-xs font-medium hover:bg-green-100 transition-colors whitespace-nowrap"
+              >
+                Approve
+              </button>
+              <button
+                onClick={() => onReject(payment)}
+                className="px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors whitespace-nowrap"
+              >
+                Reject
+              </button>
+            </>
+          )}
+        </div>
+      ),
+    },
+  ], [onApprove, onReject, onView]);
+
+  return (
+    <DataTable
+      columns={columns}
+      data={payments}
+      itemsPerPage={10}
+      emptyMessage="No payments found"
+      searchable={true}
+      searchKeys={['user_email', 'bank_from', 'plan_label']}
+      sortable={true}
+      mobileCardView={true}
+      renderCard={(payment) => (
+        <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <div className="font-bold text-dark">{formatCurrency(payment.amount)}</div>
+              <div className="text-xs text-gray-400">{payment.plan_label || payment.plan}</div>
+              <div className="text-xs text-gray-500 mt-1">{payment.user_email}</div>
+            </div>
+            <StatusBadge status={payment.status} />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onView(payment)}
+              className="flex-1 px-3 py-2 bg-blue-50 text-blue-500 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors"
+            >
+              View Details
+            </button>
+            {payment.status === 'pending' && (
+              <>
+                <button
+                  onClick={() => onApprove(payment)}
+                  className="flex-1 px-3 py-2 bg-green-50 text-success rounded-lg text-xs font-medium hover:bg-green-100 transition-colors"
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={() => onReject(payment)}
+                  className="flex-1 px-3 py-2 bg-red-50 text-red-500 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors"
+                >
+                  Reject
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    />
   );
 }

@@ -1,11 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useUIStore } from '../store';
 import { adminUsersAPI, adminDevicesAPI, adminDashboardAPI } from '../lib/api';
+import { Tabs, DataTable, StatusBadge } from './admin';
 
-const tabs = [
+const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'users', label: 'Users' },
   { id: 'devices', label: 'Devices' },
+];
+
+const STAT_CONFIG = [
+  { key: 'total_users', label: 'Total Users', color: 'text-primary', bg: 'bg-blue-50' },
+  { key: 'vpn_enabled_users', label: 'VPN Enabled', color: 'text-success', bg: 'bg-green-50' },
+  { key: 'vpn_disabled_users', label: 'VPN Disabled', color: 'text-gray-400', bg: 'bg-gray-50' },
+  { key: 'active_devices', label: 'Active Devices', color: 'text-amber-500', bg: 'bg-amber-50' },
 ];
 
 export default function AdminDashboard({ token, userData }) {
@@ -28,7 +36,6 @@ export default function AdminDashboard({ token, userData }) {
         adminDevicesAPI.getDevices(),
       ]);
       setStats(statsData);
-      // Filter out admin users - only show regular users
       const allUsers = usersData.users || [];
       const regularUsers = allUsers.filter(user => user.role !== 'admin');
       setUsers(regularUsers);
@@ -71,26 +78,8 @@ export default function AdminDashboard({ token, userData }) {
 
   return (
     <div className="max-w-[1100px] mx-auto space-y-6">
-      {/* Tabs */}
-      <div className="bg-white rounded-xl p-1.5 shadow-sm border border-gray-100">
-        <div className="flex gap-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                activeTab === tab.id 
-                  ? 'bg-primary text-white dark:bg-primary-600 shadow-md' 
-                  : 'text-gray-500 hover:bg-gray-100'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <Tabs tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* Content */}
       {activeTab === 'overview' && <Overview stats={stats} />}
       {activeTab === 'users' && <UsersTable users={users} onToggle={toggleVpnAccess} />}
       {activeTab === 'devices' && <DevicesTable devices={devices} onRevoke={revokeDevice} />}
@@ -99,22 +88,15 @@ export default function AdminDashboard({ token, userData }) {
 }
 
 function Overview({ stats }) {
-  const statCards = [
-    { label: 'Total Users', value: stats?.total_users || 0, color: 'text-primary', bg: 'bg-blue-50' },
-    { label: 'VPN Enabled', value: stats?.vpn_enabled_users || 0, color: 'text-success', bg: 'bg-green-50' },
-    { label: 'VPN Disabled', value: stats?.vpn_disabled_users || 0, color: 'text-gray-400', bg: 'bg-gray-50' },
-    { label: 'Active Devices', value: stats?.active_devices || 0, color: 'text-amber-500', bg: 'bg-amber-50' },
-  ];
-
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {statCards.map((stat) => (
-        <div key={stat.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-          <div className={`${stat.bg} w-10 h-10 rounded-lg flex items-center justify-center mb-3`}>
-            <div className={`text-xl font-bold ${stat.color}`}>#</div>
+      {STAT_CONFIG.map((config) => (
+        <div key={config.key} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+          <div className={`${config.bg} w-10 h-10 rounded-lg flex items-center justify-center mb-3`}>
+            <div className={`text-xl font-bold ${config.color}`}>#</div>
           </div>
-          <div className={`text-2xl font-bold ${stat.color} mb-1`}>{stat.value}</div>
-          <div className="text-xs text-gray-400 font-medium">{stat.label}</div>
+          <div className={`text-2xl font-bold ${config.color} mb-1`}>{stats?.[config.key] || 0}</div>
+          <div className="text-xs text-gray-400 font-medium">{config.label}</div>
         </div>
       ))}
     </div>
@@ -122,104 +104,192 @@ function Overview({ stats }) {
 }
 
 function UsersTable({ users, onToggle }) {
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      {/* Info Box */}
-      <div className="bg-blue-50 border-b border-blue-100 px-6 py-3">
-        <div className="flex items-center gap-2 text-sm text-blue-700">
-          <span className="text-lg">ℹ️</span>
-          <span>Showing <strong>{users.length}</strong> regular user(s). Admin users are hidden from this list.</span>
-        </div>
-      </div>
+  const columns = useMemo(() => [
+    {
+      key: 'email',
+      label: 'Email',
+      sortable: true,
+      render: (user) => (
+        <span className="text-sm text-dark font-medium">{user.email}</span>
+      ),
+    },
+    {
+      key: 'vpn_enabled',
+      label: 'VPN Access',
+      sortable: true,
+      render: (user) => (
+        <StatusBadge
+          status={user.vpn_enabled ? 'active' : 'disabled'}
+          customStyles={{
+            active: 'bg-green-50 text-success',
+            disabled: 'bg-gray-50 text-gray-400',
+          }}
+        />
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      sortable: false,
+      render: (user) => (
+        <button
+          onClick={() => onToggle(user.id, user.vpn_enabled)}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+            user.vpn_enabled
+              ? 'bg-red-50 text-red-500 hover:bg-red-100'
+              : 'bg-green-50 text-success hover:bg-green-100'
+          }`}
+        >
+          {user.vpn_enabled ? 'Disable' : 'Enable'}
+        </button>
+      ),
+    },
+  ], [onToggle]);
 
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-100">
-              <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Email</th>
-              <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">VPN Access</th>
-              <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {users.length === 0 ? (
-              <tr>
-                <td colSpan={3} className="py-12 text-center">
-                  <div className="text-gray-400">
-                    <span className="text-4xl mb-2 block">📭</span>
-                    <div className="text-sm font-medium">No regular users found</div>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="py-4 px-4 text-sm text-dark font-medium">{user.email}</td>
-                  <td className="py-4 px-4">
-                    <span className={`text-sm font-medium ${user.vpn_enabled ? 'text-success' : 'text-gray-400'}`}>
-                      {user.vpn_enabled ? 'Enabled' : 'Disabled'}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4">
-                    <button
-                      onClick={() => onToggle(user.id, user.vpn_enabled)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                        user.vpn_enabled
-                          ? 'bg-red-50 text-red-500 hover:bg-red-100'
-                          : 'bg-green-50 text-success hover:bg-green-100'
-                      }`}
-                    >
-                      {user.vpn_enabled ? 'Disable' : 'Enable'}
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+  const headerContent = (
+    <div className="bg-blue-50 border-b border-blue-100 px-6 py-3">
+      <div className="flex items-center gap-2 text-sm text-blue-700">
+        <span className="text-lg">ℹ️</span>
+        <span>
+          Showing <strong>{users.length}</strong> regular user(s). Admin users are hidden from this list.
+        </span>
       </div>
     </div>
+  );
+
+  return (
+    <DataTable
+      columns={columns}
+      data={users}
+      itemsPerPage={10}
+      emptyMessage="No regular users found"
+      headerContent={headerContent}
+      searchable={true}
+      searchKeys={['email']}
+      sortable={true}
+      mobileCardView={true}
+      renderCard={(user) => (
+        <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <div className="font-medium text-dark">{user.email}</div>
+              <div className="text-xs text-gray-400">User ID: {user.id}</div>
+            </div>
+            <StatusBadge
+              status={user.vpn_enabled ? 'active' : 'disabled'}
+              customStyles={{
+                active: 'bg-green-50 text-success',
+                disabled: 'bg-gray-50 text-gray-400',
+              }}
+            />
+          </div>
+          <button
+            onClick={() => onToggle(user.id, user.vpn_enabled)}
+            className={`w-full px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+              user.vpn_enabled
+                ? 'bg-red-50 text-red-500 hover:bg-red-100'
+                : 'bg-green-50 text-success hover:bg-green-100'
+            }`}
+          >
+            {user.vpn_enabled ? 'Disable VPN Access' : 'Enable VPN Access'}
+          </button>
+        </div>
+      )}
+    />
   );
 }
 
 function DevicesTable({ devices, onRevoke }) {
+  const columns = useMemo(() => [
+    {
+      key: 'device_name',
+      label: 'Device',
+      sortable: true,
+      render: (device) => (
+        <span className="text-sm text-dark font-medium">{device.device_name}</span>
+      ),
+    },
+    {
+      key: 'user_id',
+      label: 'User',
+      sortable: true,
+      render: (device) => (
+        <span className="text-sm text-gray-500">{device.user_id}</span>
+      ),
+    },
+    {
+      key: 'ip_address',
+      label: 'IP Address',
+      sortable: true,
+      render: (device) => (
+        <span className="text-sm font-mono text-gray-400">{device.ip_address}</span>
+      ),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      sortable: true,
+      render: (device) => (
+        <StatusBadge
+          status={device.status}
+          customStyles={{
+            active: 'bg-green-50 text-success',
+            disabled: 'bg-gray-50 text-gray-400',
+            revoked: 'bg-red-50 text-red-500',
+          }}
+        />
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      sortable: false,
+      render: (device) => (
+        <button
+          onClick={() => onRevoke(device.id)}
+          className="px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors whitespace-nowrap"
+        >
+          Revoke
+        </button>
+      ),
+    },
+  ], [onRevoke]);
+
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-100">
-              <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Device</th>
-              <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">User</th>
-              <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">IP</th>
-              <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-              <th className="text-left py-4 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {devices.map((device) => (
-              <tr key={device.id} className="hover:bg-gray-50 transition-colors">
-                <td className="py-4 px-4 text-sm text-dark font-medium">{device.device_name}</td>
-                <td className="py-4 px-4 text-sm text-gray-500">{device.user_id}</td>
-                <td className="py-4 px-4 text-sm font-mono text-gray-400">{device.ip_address}</td>
-                <td className="py-4 px-4">
-                  <span className={`text-sm font-medium ${device.status === 'active' ? 'text-success' : 'text-gray-400'}`}>
-                    {device.status}
-                  </span>
-                </td>
-                <td className="py-4 px-4">
-                  <button 
-                    onClick={() => onRevoke(device.id)} 
-                    className="px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors"
-                  >
-                    Revoke
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <DataTable
+      columns={columns}
+      data={devices}
+      itemsPerPage={10}
+      emptyMessage="No devices found"
+      searchable={true}
+      searchKeys={['device_name', 'ip_address', 'user_id']}
+      sortable={true}
+      mobileCardView={true}
+      renderCard={(device) => (
+        <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <div className="font-bold text-dark">{device.device_name}</div>
+              <div className="text-xs text-gray-400 font-mono">{device.ip_address}</div>
+              <div className="text-xs text-gray-500 mt-1">User: {device.user_id}</div>
+            </div>
+            <StatusBadge
+              status={device.status}
+              customStyles={{
+                active: 'bg-green-50 text-success',
+                disabled: 'bg-gray-50 text-gray-400',
+                revoked: 'bg-red-50 text-red-500',
+              }}
+            />
+          </div>
+          <button
+            onClick={() => onRevoke(device.id)}
+            className="w-full px-3 py-2 bg-red-50 text-red-500 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors"
+          >
+            Revoke Device
+          </button>
+        </div>
+      )}
+    />
   );
 }

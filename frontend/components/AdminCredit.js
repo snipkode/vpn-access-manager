@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useUIStore } from '../store';
 import { adminCreditAPI, formatCurrency } from '../lib/api';
+import { Tabs, DataTable, StatCard } from './admin';
 
-const tabs = [
+const TABS = [
   { id: 'all', label: 'All Transactions' },
   { id: 'transfers', label: 'Transfers' },
   { id: 'blocked', label: 'Blocked' },
@@ -98,23 +99,7 @@ export default function AdminCredit({ token }) {
       )}
 
       {/* Tabs */}
-      <div className="bg-white rounded-xl p-1.5 shadow-sm border border-gray-100">
-        <div className="flex gap-1 overflow-x-auto">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 min-w-[120px] px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                activeTab === tab.id
-                  ? 'bg-primary text-white dark:bg-primary-600 shadow-md'
-                  : 'text-gray-500 hover:bg-gray-100'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <Tabs tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />
 
       {/* Transactions List */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -195,18 +180,6 @@ export default function AdminCredit({ token }) {
           onReview={handleReviewTransaction}
         />
       )}
-    </div>
-  );
-}
-
-function StatCard({ label, value, color, bg, highlight }) {
-  return (
-    <div className={`bg-white rounded-xl p-4 shadow-sm border-2 ${highlight ? 'border-primary' : 'border-gray-100'}`}>
-      <div className={`${bg} w-10 h-10 rounded-lg flex items-center justify-center mb-3`}>
-        <div className={`text-lg font-bold ${color}`}>#</div>
-      </div>
-      <div className={`text-xl font-bold ${color} mb-1`}>{value}</div>
-      <div className="text-xs text-gray-400 font-medium">{label}</div>
     </div>
   );
 }

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useUIStore } from '../store';
 import { adminSettingsAPI } from '../lib/api';
+import { Tabs } from './admin';
 
-const categories = [
+const CATEGORIES = [
   { id: 'whatsapp', label: 'WhatsApp', icon: 'fab fa-whatsapp' },
   { id: 'email', label: 'Email', icon: 'fas fa-envelope' },
   { id: 'billing', label: 'Billing', icon: 'fas fa-credit-card' },
@@ -146,24 +147,17 @@ export default function AdminSettings({ token }) {
   return (
     <div className="max-w-[900px] mx-auto space-y-6">
       {/* Tabs */}
-      <div className="bg-white rounded-xl p-1.5 shadow-sm border border-gray-100">
-        <div className="flex gap-1 overflow-x-auto">
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveTab(cat.id)}
-              className={`flex-1 min-w-[100px] px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                activeTab === cat.id
-                  ? 'bg-primary text-white shadow-md'
-                  : 'text-gray-500 hover:bg-gray-100'
-              }`}
-            >
-              <i className={`${cat.icon} mr-2`} />
-              {cat.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <Tabs 
+        tabs={CATEGORIES} 
+        activeTab={activeTab} 
+        onTabChange={setActiveTab}
+        renderTab={(tab) => (
+          <>
+            <i className={`${tab.icon} mr-2`} />
+            {tab.label}
+          </>
+        )}
+      />
 
       {/* Settings Content */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
