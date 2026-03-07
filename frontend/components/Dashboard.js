@@ -242,14 +242,10 @@ export default function Dashboard({ token, userData }) {
                 {subscription.plan_label || subscription.plan || 'No Plan'}
               </div>
               <div className="text-xs sm:text-sm">
-                {subscription.active ? (
-                  <span className="text-success flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-success" />
-                    Active
-                  </span>
-                ) : (
-                  <span className="text-gray-400 dark:text-gray-500">Inactive</span>
-                )}
+                <span className="text-success flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-success" />
+                  Active
+                </span>
               </div>
             </div>
             <div className="text-right">
