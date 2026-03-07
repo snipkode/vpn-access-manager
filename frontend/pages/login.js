@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { signInWithPopup } from 'firebase/auth';
+import { signInWithPopup, onAuthStateChanged } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { useUIStore } from '../store';
 
@@ -286,12 +285,23 @@ export default function LoginPage() {
       console.log('💾 Referral code saved from login page:', router.query.ref);
     }
 
+    // Check if user is already logged in - redirect to home
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log('✅ User already logged in, redirecting to home...');
+        window.location.href = '/';
+      }
+    });
+
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };
 
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      unsubscribe();
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, [router.isReady, router.query.ref]);
 
   const t = translations[lang];
@@ -306,11 +316,19 @@ export default function LoginPage() {
   const handleLogin = async () => {
     try {
       setLoggingIn(true);
+      console.log('🔐 Initiating Google sign-in popup...');
+      
       await signInWithPopup(auth, googleProvider);
+      console.log('✅ Google sign-in successful');
+      
       showNotification('Login successful! Redirecting...');
-      // Redirect will happen via auth state change in index.js
-      router.push('/');
+      
+      // Use window.location.href for hard reload to ensure auth state is picked up
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
     } catch (error) {
+      console.error('❌ Login error:', error);
       showNotification('Login failed: ' + error.message, 'error');
       setLoggingIn(false);
     }
