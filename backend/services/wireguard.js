@@ -58,8 +58,8 @@ export function addPeer(publicKey, ipAddress) {
       timeout: 5000
     });
 
-    // Save current config (including new peer) to config file using wg showconf
-    execSync(`wg showconf ${WG_INTERFACE} > /etc/wireguard/${WG_INTERFACE}.conf`, {
+    // Save current config (including new peer) to config file using bash
+    execSync(`bash -c "wg showconf ${WG_INTERFACE} > /etc/wireguard/${WG_INTERFACE}.conf"`, {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 5000
     });
@@ -86,8 +86,8 @@ export function removePeer(publicKey) {
       timeout: 5000
     });
 
-    // Save current config (without removed peer) to config file
-    execSync(`wg showconf ${WG_INTERFACE} > /etc/wireguard/${WG_INTERFACE}.conf`, {
+    // Save current config (without removed peer) to config file using bash
+    execSync(`bash -c "wg showconf ${WG_INTERFACE} > /etc/wireguard/${WG_INTERFACE}.conf"`, {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 5000
     });
@@ -136,8 +136,8 @@ export function reactivatePeer(publicKey, ipAddress) {
       timeout: 5000
     });
 
-    // Save current config (including reactivated peer) to config file
-    execSync(`wg showconf ${WG_INTERFACE} > /etc/wireguard/${WG_INTERFACE}.conf`, {
+    // Save current config (including reactivated peer) to config file using bash
+    execSync(`bash -c "wg showconf ${WG_INTERFACE} > /etc/wireguard/${WG_INTERFACE}.conf"`, {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 5000
     });
