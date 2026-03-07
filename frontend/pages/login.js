@@ -384,7 +384,7 @@ export default function LoginPage() {
               {/* CTA Button */}
               <button
                 onClick={handleLogin}
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-xl text-sm font-semibold transition-all transform hover:scale-105 shadow-lg shadow-blue-500/25"
+                className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-xl text-sm font-semibold transition-all transform hover:scale-105 shadow-lg shadow-blue-500/25"
               >
                 {t.ctaPrimary}
               </button>
