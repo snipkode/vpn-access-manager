@@ -417,28 +417,32 @@ router.get('/config', async (req, res) => {
     const settingsDoc = await db.collection('payment_settings').doc('config').get();
     const settings = settingsDoc.exists ? settingsDoc.data() : {};
 
-    // Get active bank accounts count (without exposing details if disabled)
-    let bank_accounts_count = 0;
-    let has_bank_accounts = false;
-    
-    if (settings.billing_enabled) {
-      const banksSnapshot = await db.collection('bank_accounts')
-        .where('active', '==', true)
-        .get();
-      
-      bank_accounts_count = banksSnapshot.size;
-      has_bank_accounts = banksSnapshot.size > 0;
-    }
+    // Get active bank accounts
+    const banksSnapshot = await db.collection('bank_accounts')
+      .where('active', '==', true)
+      .orderBy('order', 'asc')
+      .get();
+
+    const bank_accounts = banksSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
 
     res.json({
       billing_enabled: settings.billing_enabled || false,
       currency: settings.currency || 'IDR',
-      has_bank_accounts,
-      bank_accounts_count,
-      can_submit_payment: settings.billing_enabled && has_bank_accounts,
-      message: !settings.billing_enabled 
+      plans: settings.plans || [
+        { id: 'monthly', label: 'Monthly', price: 50000, duration: 30 },
+        { id: 'quarterly', label: 'Quarterly', price: 135000, duration: 90 },
+        { id: 'yearly', label: 'Yearly', price: 480000, duration: 365 },
+      ],
+      bank_accounts,
+      has_bank_accounts: bank_accounts.length > 0,
+      bank_accounts_count: bank_accounts.length,
+      can_submit_payment: settings.billing_enabled && bank_accounts.length > 0,
+      message: !settings.billing_enabled
         ? 'Billing is currently disabled. Please contact admin for payment information.'
-        : !has_bank_accounts
+        : !bank_accounts.length
         ? 'No bank accounts configured. Please contact admin.'
         : null,
     });
