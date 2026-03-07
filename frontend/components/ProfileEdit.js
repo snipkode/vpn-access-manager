@@ -432,25 +432,25 @@ export default function ProfileEdit({ token }) {
 
 function ToggleRow({ label, description, enabled, onChange, icon }) {
   return (
-    <div className="flex justify-between items-center py-4 px-4 bg-gray-50 dark:bg-[#2C2C2E] rounded-xl border border-gray-100 dark:border-[#38383A]">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
+    <div className="flex justify-between items-center py-3 sm:py-4 px-3 sm:px-4 bg-gray-50 dark:bg-[#2C2C2E] rounded-xl border border-gray-100 dark:border-[#38383A]">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center text-lg sm:text-xl flex-shrink-0 shadow-sm">
           {icon}
         </div>
-        <div>
-          <div className="text-sm font-semibold text-dark dark:text-white">{label}</div>
-          <div className="text-xs text-gray-400 dark:text-gray-500">{description}</div>
+        <div className="min-w-0 flex-1">
+          <div className="text-sm sm:text-base font-semibold text-dark dark:text-white truncate">{label}</div>
+          <div className="text-xs text-gray-400 dark:text-gray-500 truncate hidden sm:block">{description}</div>
         </div>
       </div>
       <button
         onClick={() => onChange(!enabled)}
-        className={`relative w-12 h-7 rounded-full transition-all ${
+        className={`relative w-11 h-6 sm:w-12 sm:h-7 rounded-full transition-all flex-shrink-0 ml-2 sm:ml-0 ${
           enabled ? 'bg-[#34C759]' : 'bg-gray-300 dark:bg-gray-600'
         }`}
       >
         <div
-          className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${
-            enabled ? 'translate-x-6' : 'translate-x-0.5'
+          className={`absolute top-0.5 w-5 h-5 sm:w-6 sm:h-6 bg-white rounded-full shadow-md transition-transform ${
+            enabled ? 'translate-x-5 sm:translate-x-6' : 'translate-x-0.5'
           }`}
         />
       </button>

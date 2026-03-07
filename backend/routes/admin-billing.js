@@ -295,37 +295,97 @@ router.post('/payments/:id/reject', verifyAdmin, rateLimiters.adminBillingWrite,
 router.get('/stats', verifyAdmin, rateLimiters.adminBillingView, async (req, res) => {
   try {
     const allPayments = await db.collection('payments').get();
+    const bankAccountsSnapshot = await db.collection('bank_accounts').get();
 
     const stats = {
       total_payments: allPayments.size,
       pending: 0,
       approved: 0,
       rejected: 0,
+      blocked: 0,
       total_revenue: 0,
       this_month_revenue: 0,
+      last_month_revenue: 0,
+      average_payment: 0,
+      payment_by_plan: {},
+      payment_by_bank: {},
+      // Order status counts
+      total_orders: 0,
+      approved_orders: 0,
+      pending_orders: 0,
+      rejected_orders: 0,
+      blocked_orders: 0,
     };
 
     const now = new Date();
     const thisMonth = now.getMonth();
     const thisYear = now.getFullYear();
 
+    const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+    const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
+
+    const approvedAmounts = [];
+
     allPayments.forEach(doc => {
       const data = doc.data();
+      const amount = data.amount || 0;
+      const planLabel = data.plan_label || data.plan || 'unknown';
+      const bankFrom = data.bank_from || 'unknown';
 
-      if (data.status === 'pending') stats.pending++;
+      stats.total_orders++;
+
+      if (data.status === 'pending') {
+        stats.pending++;
+        stats.pending_orders++;
+      }
       else if (data.status === 'approved') {
         stats.approved++;
-        stats.total_revenue += data.amount;
+        stats.approved_orders++;
+        stats.total_revenue += amount;
+        approvedAmounts.push(amount);
 
+        // Track by plan
+        if (!stats.payment_by_plan[planLabel]) {
+          stats.payment_by_plan[planLabel] = { count: 0, total: 0 };
+        }
+        stats.payment_by_plan[planLabel].count++;
+        stats.payment_by_plan[planLabel].total += amount;
+
+        // Track by bank
+        if (!stats.payment_by_bank[bankFrom]) {
+          stats.payment_by_bank[bankFrom] = { count: 0, total: 0 };
+        }
+        stats.payment_by_bank[bankFrom].count++;
+        stats.payment_by_bank[bankFrom].total += amount;
+
+        // Monthly revenue
         const createdAt = new Date(data.created_at);
         if (createdAt.getMonth() === thisMonth && createdAt.getFullYear() === thisYear) {
-          stats.this_month_revenue += data.amount;
+          stats.this_month_revenue += amount;
+        }
+        if (createdAt.getMonth() === lastMonth && createdAt.getFullYear() === lastMonthYear) {
+          stats.last_month_revenue += amount;
         }
       }
-      else if (data.status === 'rejected') stats.rejected++;
+      else if (data.status === 'rejected') {
+        stats.rejected++;
+        stats.rejected_orders++;
+      }
+      else if (data.status === 'blocked') {
+        stats.blocked++;
+        stats.blocked_orders++;
+      }
     });
 
-    res.json({ stats });
+    // Calculate average
+    stats.average_payment = approvedAmounts.length > 0
+      ? Math.round(approvedAmounts.reduce((a, b) => a + b, 0) / approvedAmounts.length)
+      : 0;
+
+    res.json({
+      stats,
+      bank_accounts_count: bankAccountsSnapshot.size,
+    });
   } catch (error) {
     console.error('Get billing stats error:', error.message);
     res.status(500).json({

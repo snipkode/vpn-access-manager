@@ -19,6 +19,20 @@ const STATS_CONFIG = [
   { id: 'revenue', key: 'total_revenue', label: 'Total Revenue', color: 'text-primary', bg: 'bg-primary/10', isCurrency: true },
 ];
 
+const REVENUE_STATS_CONFIG = [
+  { key: 'this_month_revenue', label: 'This Month', color: 'text-blue-600', bg: 'bg-blue-50', format: 'currency' },
+  { key: 'last_month_revenue', label: 'Last Month', color: 'text-purple-600', bg: 'bg-purple-50', format: 'currency' },
+  { key: 'average_payment', label: 'Avg Payment', color: 'text-amber-600', bg: 'bg-amber-50', format: 'currency' },
+];
+
+const ORDER_STATUS_CONFIG = [
+  { key: 'total_orders', label: 'Total Orders', color: 'text-blue-600', bg: 'bg-blue-50' },
+  { key: 'approved_orders', label: 'Approved', color: 'text-green-600', bg: 'bg-green-50' },
+  { key: 'pending_orders', label: 'Pending', color: 'text-amber-600', bg: 'bg-amber-50' },
+  { key: 'rejected_orders', label: 'Rejected', color: 'text-red-600', bg: 'bg-red-50' },
+  { key: 'blocked_orders', label: 'Blocked', color: 'text-gray-600', bg: 'bg-gray-50' },
+];
+
 export default function AdminBilling({ token }) {
   const { showNotification } = useUIStore();
   const [activeTab, setActiveTab] = useState('pending');
@@ -43,7 +57,27 @@ export default function AdminBilling({ token }) {
         adminPaymentsAPI.getStats(),
         adminPaymentsAPI.getPayments({ status: activeTab === 'all' ? '' : activeTab, limit: 50 }),
       ]);
-      setStats(statsData.stats || null);
+      // Merge stats from billing endpoint with detailed stats
+      const billingStats = statsData.stats || {};
+      setStats({
+        ...billingStats,
+        // Ensure all fields are present
+        total_payments: billingStats.total_payments || 0,
+        pending: billingStats.pending || 0,
+        approved: billingStats.approved || 0,
+        rejected: billingStats.rejected || 0,
+        total_revenue: billingStats.total_revenue || 0,
+        this_month_revenue: billingStats.this_month_revenue || 0,
+        last_month_revenue: billingStats.last_month_revenue || 0,
+        average_payment: billingStats.average_payment || 0,
+        total_orders: billingStats.total_orders || 0,
+        approved_orders: billingStats.approved_orders || 0,
+        pending_orders: billingStats.pending_orders || 0,
+        rejected_orders: billingStats.rejected_orders || 0,
+        blocked_orders: billingStats.blocked_orders || 0,
+        payment_by_plan: billingStats.payment_by_plan || {},
+        payment_by_bank: billingStats.payment_by_bank || {},
+      });
       setPayments(paymentsData.payments || []);
     } catch (error) {
       console.error('Failed to load billing data:', error);
@@ -109,20 +143,111 @@ export default function AdminBilling({ token }) {
 
   return (
     <div className="max-w-[1200px] mx-auto space-y-6">
-      {/* Stats */}
+      {/* Stats - Basic */}
       {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          {STATS_CONFIG.map((config) => (
-            <StatCard
-              key={config.id}
-              label={config.label}
-              value={config.isCurrency ? formatCurrency(stats[config.key] || 0) : stats[config.key] || 0}
-              color={config.color}
-              bg={config.bg}
-              highlight={config.highlight && activeTab === config.id}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+            {STATS_CONFIG.map((config) => (
+              <StatCard
+                key={config.id}
+                label={config.label}
+                value={config.isCurrency ? formatCurrency(stats[config.key] || 0) : stats[config.key] || 0}
+                color={config.color}
+                bg={config.bg}
+                highlight={config.highlight && activeTab === config.id}
+              />
+            ))}
+          </div>
+
+          {/* Revenue Stats */}
+          <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-700 mb-4">Revenue Statistics</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+              {REVENUE_STATS_CONFIG.map((config) => {
+                const value = stats[config.key] || 0;
+                const displayValue = config.format === 'currency' ? formatCurrency(value) : value;
+                return (
+                  <div key={config.key} className={`${config.bg} rounded-lg p-2 sm:p-4`}>
+                    <div className="flex items-center gap-2">
+                      <div className={`text-lg sm:text-xl font-bold ${config.color} flex-shrink-0`}>
+                        {config.key === 'total_revenue' ? 'Rp' : config.key === 'average_payment' ? 'Avg' : '📊'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className={`text-base sm:text-lg font-bold ${config.color} truncate`}>{displayValue}</div>
+                        <div className="text-[10px] sm:text-xs text-gray-500 font-medium truncate">{config.label}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Order Status */}
+          <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-700 mb-4">Order Status Breakdown</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
+              {ORDER_STATUS_CONFIG.map((config) => {
+                const value = stats[config.key] || 0;
+                return (
+                  <div key={config.key} className={`${config.bg} rounded-lg p-2 sm:p-4`}>
+                    <div className="flex items-center gap-2">
+                      <div className={`text-lg sm:text-2xl font-bold ${config.color} flex-shrink-0`}>
+                        {config.key.includes('approved') ? '✓' : config.key.includes('pending') ? '⏳' : config.key.includes('rejected') ? '✗' : config.key.includes('blocked') ? '🚫' : '📦'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className={`text-lg sm:text-2xl font-bold ${config.color} truncate`}>{value}</div>
+                        <div className="text-[10px] sm:text-xs text-gray-500 font-medium truncate">{config.label}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Payment by Plan */}
+          {stats.payment_by_plan && Object.keys(stats.payment_by_plan).length > 0 && (
+            <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">Payment by Plan</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+                {Object.entries(stats.payment_by_plan).map(([plan, data]) => (
+                  <div key={plan} className="bg-blue-50 rounded-lg p-2 sm:p-4">
+                    <div className="flex items-center gap-2">
+                      <div className="text-lg sm:text-xl font-bold text-blue-600 flex-shrink-0">📋</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[10px] sm:text-xs text-gray-500 mb-0.5 capitalize truncate">{plan}</div>
+                        <div className="text-sm sm:text-lg font-bold text-blue-600 truncate">{data.count} orders</div>
+                        <div className="text-xs sm:text-sm text-blue-500 truncate">{formatCurrency(data.total)}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Payment by Bank */}
+          {stats.payment_by_bank && Object.keys(stats.payment_by_bank).length > 0 && (
+            <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">Payment by Bank</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+                {Object.entries(stats.payment_by_bank).map(([bank, data]) => (
+                  <div key={bank} className="bg-purple-50 rounded-lg p-2 sm:p-4">
+                    <div className="flex items-center gap-2">
+                      <div className="text-lg sm:text-xl font-bold text-purple-600 flex-shrink-0">🏦</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[10px] sm:text-xs text-gray-500 mb-0.5 capitalize truncate">{bank}</div>
+                        <div className="text-sm sm:text-lg font-bold text-purple-600 truncate">{data.count} orders</div>
+                        <div className="text-xs sm:text-sm text-purple-500 truncate">{formatCurrency(data.total)}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Tabs */}

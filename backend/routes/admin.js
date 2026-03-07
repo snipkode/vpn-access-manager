@@ -414,16 +414,86 @@ router.get('/stats', verifyAdmin, async (req, res) => {
   try {
     const usersSnapshot = await db.collection('users').get();
     const devicesSnapshot = await db.collection('devices').where('status', '==', 'active').get();
+    const paymentsSnapshot = await db.collection('payments').get();
 
     const users = usersSnapshot.docs.map(doc => doc.data());
-    
+
     // Count by role
     const adminUsers = users.filter(u => u.role === 'admin').length;
     const regularUsers = users.filter(u => !u.role || u.role === 'user').length;
-    
+
     // Count by VPN status
     const enabledUsers = users.filter(u => u.vpn_enabled === true).length;
     const disabledUsers = users.filter(u => u.vpn_enabled === false || u.vpn_enabled === undefined).length;
+
+    // Calculate billing stats from payments
+    let totalOrders = 0;
+    let totalRevenue = 0;
+    let pendingOrders = 0;
+    let approvedOrders = 0;
+    let rejectedOrders = 0;
+    let blockedOrders = 0;
+    
+    const now = new Date();
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+    const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+    const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
+    
+    let thisMonthRevenue = 0;
+    let lastMonthRevenue = 0;
+    const paymentByPlan = {};
+    const paymentByBank = {};
+    const approvedAmounts = [];
+
+    paymentsSnapshot.forEach(doc => {
+      const data = doc.data();
+      const amount = data.amount || 0;
+      const planLabel = data.plan_label || data.plan || 'unknown';
+      const bankFrom = data.bank_from || 'unknown';
+      
+      totalOrders++;
+
+      if (data.status === 'approved') {
+        approvedOrders++;
+        totalRevenue += amount;
+        approvedAmounts.push(amount);
+        
+        // Track by plan
+        if (!paymentByPlan[planLabel]) {
+          paymentByPlan[planLabel] = { count: 0, total: 0 };
+        }
+        paymentByPlan[planLabel].count++;
+        paymentByPlan[planLabel].total += amount;
+        
+        // Track by bank
+        if (!paymentByBank[bankFrom]) {
+          paymentByBank[bankFrom] = { count: 0, total: 0 };
+        }
+        paymentByBank[bankFrom].count++;
+        paymentByBank[bankFrom].total += amount;
+        
+        // Monthly revenue
+        const createdAt = new Date(data.created_at);
+        if (createdAt.getMonth() === thisMonth && createdAt.getFullYear() === thisYear) {
+          thisMonthRevenue += amount;
+        }
+        if (createdAt.getMonth() === lastMonth && createdAt.getFullYear() === lastMonthYear) {
+          lastMonthRevenue += amount;
+        }
+      } else if (data.status === 'pending') {
+        pendingOrders++;
+      } else if (data.status === 'rejected') {
+        rejectedOrders++;
+      } else if (data.status === 'blocked') {
+        blockedOrders++;
+      }
+    });
+
+    // Calculate average
+    const averagePayment = approvedAmounts.length > 0
+      ? Math.round(approvedAmounts.reduce((a, b) => a + b, 0) / approvedAmounts.length)
+      : 0;
 
     res.json({
       total_users: users.length,
@@ -438,6 +508,20 @@ router.get('/stats', verifyAdmin, async (req, res) => {
       users_by_vpn_status: {
         enabled: enabledUsers,
         disabled: disabledUsers,
+      },
+      // Billing stats
+      billing: {
+        total_orders: totalOrders,
+        total_revenue: totalRevenue,
+        pending_orders: pendingOrders,
+        approved_orders: approvedOrders,
+        rejected_orders: rejectedOrders,
+        blocked_orders: blockedOrders,
+        this_month_revenue: thisMonthRevenue,
+        last_month_revenue: lastMonthRevenue,
+        average_payment: averagePayment,
+        payment_by_plan: paymentByPlan,
+        payment_by_bank: paymentByBank,
       },
     });
   } catch (error) {

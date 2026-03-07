@@ -364,30 +364,96 @@ router.get('/stats', verifyAdmin, async (req, res) => {
       today_transactions: 0,
       pending_reviews: 0,
       blocked_transactions: 0,
+      total_transactions: allTransactions.size,
+      transfer_count: 0,
+      topup_count: 0,
+      fraud_alerts: 0,
+      low_balance_users: 0,
+      credit_by_type: {},
+      // Additional stats for dashboard
+      total_volume: 0,
+      completed_count: 0,
+      failed_count: 0,
+      this_month_volume: 0,
+      last_month_volume: 0,
+      average_transaction: 0,
     };
 
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+    const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+    const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
+
+    const completedAmounts = [];
 
     allCredits.forEach(doc => {
       const data = doc.data();
       stats.total_users_with_credit++;
-      stats.total_credit_in_circulation += data.balance;
+      stats.total_credit_in_circulation += data.balance || 0;
+
+      // Count low balance users (< 10000)
+      if ((data.balance || 0) < 10000) {
+        stats.low_balance_users++;
+      }
     });
 
     allTransactions.forEach(doc => {
       const data = doc.data();
-      
+      const type = data.type || 'unknown';
+      const amount = data.amount || 0;
+      const createdAt = new Date(data.created_at);
+
+      // Track by type
+      if (!stats.credit_by_type[type]) {
+        stats.credit_by_type[type] = { count: 0, total: 0 };
+      }
+      stats.credit_by_type[type].count++;
+      if (type === 'transfer' || type === 'topup') {
+        stats.credit_by_type[type].total += amount;
+      }
+
+      // Today stats
       if (data.created_at >= startOfDay.toISOString()) {
         stats.today_transactions++;
         if (data.type === 'transfer') {
-          stats.today_volume += data.amount;
+          stats.today_volume += amount;
         }
       }
 
+      // Monthly volume
+      if (data.status === 'completed') {
+        stats.completed_count++;
+        stats.total_volume += amount;
+        completedAmounts.push(amount);
+        
+        if (createdAt.getMonth() === thisMonth && createdAt.getFullYear() === thisYear) {
+          stats.this_month_volume += amount;
+        }
+        if (createdAt.getMonth() === lastMonth && createdAt.getFullYear() === lastMonthYear) {
+          stats.last_month_volume += amount;
+        }
+      }
+      
+      if (data.status === 'failed') stats.failed_count++;
       if (data.status === 'pending_review') stats.pending_reviews++;
       if (data.status === 'blocked') stats.blocked_transactions++;
+
+      // Count fraud alerts
+      if (data.fraud_check && data.fraud_check.is_suspicious) {
+        stats.fraud_alerts++;
+      }
+
+      // Count by type
+      if (data.type === 'transfer') stats.transfer_count++;
+      if (data.type === 'topup') stats.topup_count++;
     });
+
+    // Calculate average
+    stats.average_transaction = completedAmounts.length > 0
+      ? Math.round(completedAmounts.reduce((a, b) => a + b, 0) / completedAmounts.length)
+      : 0;
 
     res.json({
       stats: {

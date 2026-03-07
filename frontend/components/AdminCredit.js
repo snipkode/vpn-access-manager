@@ -10,6 +10,34 @@ const TABS = [
   { id: 'pending_review', label: 'Needs Review' },
 ];
 
+const BASIC_STATS_CONFIG = [
+  { key: 'total_transactions', label: 'Total Transactions', color: 'text-gray-500', bg: 'bg-gray-50' },
+  { key: 'total_volume', label: 'Total Volume', color: 'text-primary', bg: 'bg-primary/10', isCurrency: true },
+  { key: 'today_volume', label: "Today's Volume", color: 'text-blue-500', bg: 'bg-blue-50', isCurrency: true },
+  { key: 'blocked_count', label: 'Blocked', color: 'text-red-500', bg: 'bg-red-50', altKey: 'blocked_transactions' },
+  { key: 'pending_review_count', label: 'Needs Review', color: 'text-amber-500', bg: 'bg-amber-50', altKey: 'pending_reviews', highlight: true },
+];
+
+const VOLUME_STATS_CONFIG = [
+  { key: 'total_credit_in_circulation', label: 'In Circulation', color: 'text-green-600', bg: 'bg-green-50', format: 'currency' },
+  { key: 'this_month_volume', label: 'This Month', color: 'text-blue-600', bg: 'bg-blue-50', format: 'currency' },
+  { key: 'last_month_volume', label: 'Last Month', color: 'text-purple-600', bg: 'bg-purple-50', format: 'currency' },
+  { key: 'average_transaction', label: 'Avg Transaction', color: 'text-amber-600', bg: 'bg-amber-50', format: 'currency' },
+];
+
+const TRANSACTION_STATUS_CONFIG = [
+  { key: 'completed_count', label: 'Completed', color: 'text-green-600', bg: 'bg-green-50' },
+  { key: 'pending_reviews', label: 'Pending', color: 'text-amber-600', bg: 'bg-amber-50' },
+  { key: 'blocked_transactions', label: 'Blocked', color: 'text-red-600', bg: 'bg-red-50' },
+  { key: 'failed_count', label: 'Failed', color: 'text-gray-600', bg: 'bg-gray-50' },
+];
+
+const USER_STATS_CONFIG = [
+  { key: 'total_users_with_credit', label: 'Users with Credit', color: 'text-blue-600', bg: 'bg-blue-50' },
+  { key: 'low_balance_users', label: 'Low Balance', color: 'text-red-600', bg: 'bg-red-50' },
+  { key: 'fraud_alerts', label: 'Fraud Alerts', color: 'text-purple-600', bg: 'bg-purple-50' },
+];
+
 export default function AdminCredit({ token }) {
   const { showNotification } = useUIStore();
   const [activeTab, setActiveTab] = useState('all');
@@ -63,39 +91,118 @@ export default function AdminCredit({ token }) {
     <div className="max-w-[1200px] mx-auto space-y-6">
       {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <StatCard
-            label="Total Transactions"
-            value={stats.total_transactions || 0}
-            color="text-gray-500"
-            bg="bg-gray-50"
-          />
-          <StatCard
-            label="Total Volume"
-            value={formatCurrency(stats.total_volume || 0)}
-            color="text-primary"
-            bg="bg-primary/10"
-          />
-          <StatCard
-            label="Transfers Today"
-            value={stats.transfers_today || 0}
-            color="text-blue-500"
-            bg="bg-blue-50"
-          />
-          <StatCard
-            label="Blocked"
-            value={stats.blocked_count || 0}
-            color="text-red-500"
-            bg="bg-red-50"
-          />
-          <StatCard
-            label="Needs Review"
-            value={stats.pending_review_count || 0}
-            color="text-amber-500"
-            bg="bg-amber-50"
-            highlight={activeTab === 'pending_review'}
-          />
-        </div>
+        <>
+          {/* Basic Stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+            {BASIC_STATS_CONFIG.map((config) => {
+              const key = config.altKey || config.key;
+              const value = config.isCurrency ? formatCurrency(stats[config.key] || stats[key] || 0) : stats[config.key] || stats[key] || 0;
+              return (
+                <StatCard
+                  key={config.key}
+                  label={config.label}
+                  value={value}
+                  color={config.color}
+                  bg={config.bg}
+                  highlight={config.highlight && activeTab === 'pending_review'}
+                />
+              );
+            })}
+          </div>
+
+          {/* Volume Stats */}
+          <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-700 mb-4">Credit Volume Statistics</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+              {VOLUME_STATS_CONFIG.map((config) => {
+                const value = stats[config.key] || 0;
+                const displayValue = config.format === 'currency' ? formatCurrency(value) : value;
+                return (
+                  <div key={config.key} className={`${config.bg} rounded-lg p-2 sm:p-4`}>
+                    <div className="flex items-center gap-2">
+                      <div className={`text-lg sm:text-xl font-bold ${config.color} flex-shrink-0`}>
+                        {config.key === 'total_credit_in_circulation' ? 'Rp' : config.key === 'average_transaction' ? 'Avg' : '📊'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className={`text-base sm:text-lg font-bold ${config.color} truncate`}>{displayValue}</div>
+                        <div className="text-[10px] sm:text-xs text-gray-500 font-medium truncate">{config.label}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Transaction Status */}
+          <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-700 mb-4">Transaction Status Breakdown</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+              {TRANSACTION_STATUS_CONFIG.map((config) => {
+                const value = stats[config.key] || 0;
+                return (
+                  <div key={config.key} className={`${config.bg} rounded-lg p-2 sm:p-4`}>
+                    <div className="flex items-center gap-2">
+                      <div className={`text-lg sm:text-2xl font-bold ${config.color} flex-shrink-0`}>
+                        {config.key.includes('completed') ? '✓' : config.key.includes('pending') ? '⏳' : config.key.includes('blocked') ? '🚫' : '✗'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className={`text-lg sm:text-2xl font-bold ${config.color} truncate`}>{value}</div>
+                        <div className="text-[10px] sm:text-xs text-gray-500 font-medium truncate">{config.label}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* User Stats */}
+          <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-700 mb-4">User Statistics</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+              {USER_STATS_CONFIG.map((config) => {
+                const value = stats[config.key] || 0;
+                return (
+                  <div key={config.key} className={`${config.bg} rounded-lg p-2 sm:p-4`}>
+                    <div className="flex items-center gap-2">
+                      <div className={`text-lg sm:text-2xl font-bold ${config.color} flex-shrink-0`}>
+                        {config.key === 'total_users_with_credit' ? '👥' : config.key === 'low_balance_users' ? '⚠️' : '🚨'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className={`text-lg sm:text-2xl font-bold ${config.color} truncate`}>{value}</div>
+                        <div className="text-[10px] sm:text-xs text-gray-500 font-medium truncate">{config.label}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Credit by Type */}
+          {stats.credit_by_type && Object.keys(stats.credit_by_type).length > 0 && (
+            <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">Credit by Type</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+                {Object.entries(stats.credit_by_type).map(([type, data]) => (
+                  <div key={type} className="bg-blue-50 rounded-lg p-2 sm:p-4">
+                    <div className="flex items-center gap-2">
+                      <div className="text-lg sm:text-xl font-bold text-blue-600 flex-shrink-0">
+                        {type === 'transfer' ? '💸' : type === 'topup' ? '💰' : type === 'deduction' ? '📉' : '📝'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[10px] sm:text-xs text-gray-500 mb-0.5 capitalize truncate">{type}</div>
+                        <div className="text-sm sm:text-lg font-bold text-blue-600 truncate">{data.count} tx</div>
+                        <div className="text-xs sm:text-sm text-blue-500 truncate">{formatCurrency(data.total)}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Tabs */}

@@ -16,6 +16,31 @@ const STAT_CONFIG = [
   { key: 'active_devices', label: 'Active Devices', color: 'text-amber-500', bg: 'bg-amber-50' },
 ];
 
+const BREAKDOWN_CONFIG = [
+  { key: 'admin', label: 'Admin Users', color: 'text-purple-600', bg: 'bg-purple-50' },
+  { key: 'user', label: 'Regular Users', color: 'text-blue-600', bg: 'bg-blue-50' },
+];
+
+const VPN_STATUS_CONFIG = [
+  { key: 'enabled', label: 'VPN Enabled', color: 'text-green-600', bg: 'bg-green-50' },
+  { key: 'disabled', label: 'VPN Disabled', color: 'text-red-600', bg: 'bg-red-50' },
+];
+
+const BILLING_CONFIG = [
+  { key: 'total_revenue', label: 'Total Revenue', color: 'text-green-600', bg: 'bg-green-50', format: 'currency' },
+  { key: 'this_month_revenue', label: 'This Month', color: 'text-blue-600', bg: 'bg-blue-50', format: 'currency' },
+  { key: 'last_month_revenue', label: 'Last Month', color: 'text-purple-600', bg: 'bg-purple-50', format: 'currency' },
+  { key: 'average_payment', label: 'Avg Payment', color: 'text-amber-600', bg: 'bg-amber-50', format: 'currency' },
+];
+
+const ORDER_STATUS_CONFIG = [
+  { key: 'total_orders', label: 'Total Orders', color: 'text-blue-600', bg: 'bg-blue-50' },
+  { key: 'approved_orders', label: 'Approved', color: 'text-green-600', bg: 'bg-green-50' },
+  { key: 'pending_orders', label: 'Pending', color: 'text-amber-600', bg: 'bg-amber-50' },
+  { key: 'rejected_orders', label: 'Rejected', color: 'text-red-600', bg: 'bg-red-50' },
+  { key: 'blocked_orders', label: 'Blocked', color: 'text-gray-600', bg: 'bg-gray-50' },
+];
+
 export default function AdminDashboard({ token, userData }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [users, setUsers] = useState([]);
@@ -107,17 +132,166 @@ export default function AdminDashboard({ token, userData }) {
 }
 
 function Overview({ stats }) {
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+    }).format(value);
+  };
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {STAT_CONFIG.map((config) => (
-        <div key={config.key} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-          <div className={`${config.bg} w-10 h-10 rounded-lg flex items-center justify-center mb-3`}>
-            <div className={`text-xl font-bold ${config.color}`}>#</div>
+    <div className="space-y-6">
+      {/* Main Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {STAT_CONFIG.map((config) => (
+          <div key={config.key} className="bg-white rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100">
+            <div className={`${config.bg} w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center mb-2 sm:mb-3`}>
+              <div className={`text-lg sm:text-xl font-bold ${config.color}`}>#</div>
+            </div>
+            <div className={`text-xl sm:text-2xl font-bold ${config.color} mb-1`}>{stats?.[config.key] || 0}</div>
+            <div className="text-[10px] sm:text-xs text-gray-400 font-medium">{config.label}</div>
           </div>
-          <div className={`text-2xl font-bold ${config.color} mb-1`}>{stats?.[config.key] || 0}</div>
-          <div className="text-xs text-gray-400 font-medium">{config.label}</div>
+        ))}
+      </div>
+
+      {/* Revenue Stats */}
+      <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100">
+        <h3 className="text-sm font-semibold text-gray-700 mb-4">Revenue Statistics</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+          {BILLING_CONFIG.map((config) => {
+            const value = stats?.billing?.[config.key] || 0;
+            const displayValue = config.format === 'currency' ? formatCurrency(value) : value;
+            return (
+              <div key={config.key} className={`${config.bg} rounded-lg p-2 sm:p-4`}>
+                <div className="flex items-center gap-2">
+                  <div className={`text-lg sm:text-xl font-bold ${config.color} flex-shrink-0`}>
+                    {config.key === 'total_revenue' ? 'Rp' : config.key === 'average_payment' ? 'Avg' : '📊'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-base sm:text-lg font-bold ${config.color} truncate`}>{displayValue}</div>
+                    <div className="text-[10px] sm:text-xs text-gray-500 font-medium truncate">{config.label}</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      ))}
+      </div>
+
+      {/* Order Status */}
+      <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100">
+        <h3 className="text-sm font-semibold text-gray-700 mb-4">Order Status Breakdown</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
+          {ORDER_STATUS_CONFIG.map((config) => {
+            const value = stats?.billing?.[config.key] || 0;
+            return (
+              <div key={config.key} className={`${config.bg} rounded-lg p-2 sm:p-4`}>
+                <div className="flex items-center gap-2">
+                  <div className={`text-lg sm:text-2xl font-bold ${config.color} flex-shrink-0`}>
+                    {config.key.includes('approved') ? '✓' : config.key.includes('pending') ? '⏳' : config.key.includes('rejected') ? '✗' : config.key.includes('blocked') ? '🚫' : '📦'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-lg sm:text-2xl font-bold ${config.color} truncate`}>{value}</div>
+                    <div className="text-[10px] sm:text-xs text-gray-500 font-medium truncate">{config.label}</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Payment by Plan */}
+      {stats?.billing?.payment_by_plan && Object.keys(stats.billing.payment_by_plan).length > 0 && (
+        <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">Payment by Plan</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+            {Object.entries(stats.billing.payment_by_plan).map(([plan, data]) => (
+              <div key={plan} className="bg-blue-50 rounded-lg p-2 sm:p-4">
+                <div className="flex items-center gap-2">
+                  <div className="text-lg sm:text-xl font-bold text-blue-600 flex-shrink-0">📋</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] sm:text-xs text-gray-500 mb-0.5 capitalize truncate">{plan}</div>
+                    <div className="text-sm sm:text-lg font-bold text-blue-600 truncate">{data.count} orders</div>
+                    <div className="text-xs sm:text-sm text-blue-500 truncate">{formatCurrency(data.total)}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Payment by Bank */}
+      {stats?.billing?.payment_by_bank && Object.keys(stats.billing.payment_by_bank).length > 0 && (
+        <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">Payment by Bank</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+            {Object.entries(stats.billing.payment_by_bank).map(([bank, data]) => (
+              <div key={bank} className="bg-purple-50 rounded-lg p-2 sm:p-4">
+                <div className="flex items-center gap-2">
+                  <div className="text-lg sm:text-xl font-bold text-purple-600 flex-shrink-0">🏦</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] sm:text-xs text-gray-500 mb-0.5 capitalize truncate">{bank}</div>
+                    <div className="text-sm sm:text-lg font-bold text-purple-600 truncate">{data.count} orders</div>
+                    <div className="text-xs sm:text-sm text-purple-500 truncate">{formatCurrency(data.total)}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Breakdown Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Users by Role */}
+        <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">Users by Role</h3>
+          <div className="space-y-2 sm:space-y-3">
+            {BREAKDOWN_CONFIG.map((config) => {
+              const value = stats?.users_by_role?.[config.key] || 0;
+              return (
+                <div key={config.key} className={`${config.bg} rounded-lg p-2 sm:p-4`}>
+                  <div className="flex items-center gap-2">
+                    <div className={`text-lg sm:text-2xl font-bold ${config.color} flex-shrink-0`}>
+                      {config.key === 'admin' ? '👤' : '👥'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-lg sm:text-2xl font-bold ${config.color} truncate`}>{value}</div>
+                      <div className="text-[10px] sm:text-xs text-gray-500 font-medium truncate">{config.label}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Users by VPN Status */}
+        <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">Users by VPN Status</h3>
+          <div className="space-y-2 sm:space-y-3">
+            {VPN_STATUS_CONFIG.map((config) => {
+              const value = stats?.users_by_vpn_status?.[config.key] || 0;
+              return (
+                <div key={config.key} className={`${config.bg} rounded-lg p-2 sm:p-4`}>
+                  <div className="flex items-center gap-2">
+                    <div className={`text-lg sm:text-2xl font-bold ${config.color} flex-shrink-0`}>
+                      {config.key === 'enabled' ? '✅' : '❌'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-lg sm:text-2xl font-bold ${config.color} truncate`}>{value}</div>
+                      <div className="text-[10px] sm:text-xs text-gray-500 font-medium truncate">{config.label}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
