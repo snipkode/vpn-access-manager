@@ -179,13 +179,25 @@ export default function Dashboard({ token, userData }) {
 
   const downloadConfig = (config, name) => {
     const safeName = name?.replace(/\s+/g, '-').toLowerCase() || 'vpn-config';
+    const filename = `${safeName}.conf`;
+    
+    // Create blob with proper MIME type for WireGuard config
     const blob = new Blob([config], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
+    
+    // Create download link
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${safeName}.conf`;
+    a.download = filename;
+    a.setAttribute('download', filename); // Force attribute
+    
+    // Append to body, click, and cleanup
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    
+    console.log('🟢 Downloaded config as:', filename);
   };
 
   if (loading) {
