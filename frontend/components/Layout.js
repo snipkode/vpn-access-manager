@@ -134,20 +134,44 @@ export default function Layout({
               ))}
             </div>
 
-            {/* Quick Stats - Only for user menu */}
-            {!isAdmin && (
+            {/* Subscription Status - Only for user menu */}
+            {!isAdmin && userData?.subscription_end_at && (
               <div className="mt-6 pt-6 border-t border-gray-100 dark:border-[#38383A]">
                 <div className="px-4 py-2 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
-                  Quick Stats
+                  Subscription
                 </div>
-                <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-[#1C1C1E] dark:to-[#2C2C2E] rounded-xl p-3 mx-2">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">Devices</span>
-                    <span className="text-xs font-semibold text-dark dark:text-white">3/3</span>
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-500/10 dark:to-emerald-500/10 border border-green-200 dark:border-green-500/20 rounded-xl p-3 mx-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                    <span className="text-xs font-semibold text-green-700 dark:text-green-400">Active</span>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-[#38383A] rounded-full h-1.5">
-                    <div className={`bg-gradient-to-r ${theme.gradient} h-1.5 rounded-full`} style={{ width: '100%' }}></div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                    Expires: {new Date(userData.subscription_end_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </div>
+                  <div className="text-[10px] text-gray-500 dark:text-gray-500">
+                    {userData.role === 'user' ? 'Standard Plan' : 'Premium Plan'}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Upgrade Prompt - For users without subscription */}
+            {!isAdmin && !userData?.subscription_end_at && (
+              <div className="mt-6 pt-6 border-t border-gray-100 dark:border-[#38383A]">
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-500/10 dark:to-orange-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl p-4 mx-2 text-center">
+                  <div className="text-2xl mb-2">🚀</div>
+                  <div className="text-xs font-semibold text-amber-800 dark:text-amber-400 mb-1">
+                    Upgrade to Premium
+                  </div>
+                  <div className="text-[10px] text-amber-600 dark:text-amber-500 mb-3">
+                    Get full VPN access now!
+                  </div>
+                  <button
+                    onClick={() => onPageChange('payment')}
+                    className="w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-lg transition-colors"
+                  >
+                    View Plans
+                  </button>
                 </div>
               </div>
             )}
