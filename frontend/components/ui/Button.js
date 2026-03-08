@@ -2,33 +2,38 @@ import PropTypes from 'prop-types';
 
 /**
  * Button - Interactive button component
- * 
+ *
  * @param {node} children - Button content
  * @param {function} onClick - Click handler
  * @param {string} variant - Variant style (primary, secondary, danger, ghost, outline)
  * @param {string} size - Size (small, medium, large)
  * @param {boolean} disabled - Disabled state
  * @param {boolean} loading - Loading state
+ * @param {boolean} rateLimited - Rate limited state (shows countdown)
+ * @param {number} countdown - Countdown seconds to display when rate limited
  * @param {node} icon - Icon component
  * @param {boolean} fullWidth - Full width button
  * @param {string} className - Additional classes
- * 
+ *
  * @example
  * <Button onClick={handleClick}>Click Me</Button>
  * <Button variant="danger" loading>Loading</Button>
  * <Button icon={<FaHome />}>With Icon</Button>
+ * <Button rateLimited countdown={30}>Rate Limited</Button>
  */
-export default function Button({ 
-  children, 
+export default function Button({
+  children,
   onClick,
   variant = 'primary',
   size = 'medium',
   disabled = false,
   loading = false,
+  rateLimited = false,
+  countdown = 0,
   icon,
   fullWidth = false,
   className = '',
-  ...props 
+  ...props
 }) {
   // Variant configurations
   const variantConfig = {
@@ -47,15 +52,19 @@ export default function Button({
     large: 'px-6 py-[14px] sm:py-[18px] text-[17px] rounded-2xl gap-2.5',
   };
 
+  // Rate limited state overrides
+  const isRateLimited = rateLimited && countdown > 0;
+  const isDisabled = disabled || loading || isRateLimited;
+
   return (
     <button
-      onClick={onClick}
-      disabled={disabled || loading}
+      onClick={isDisabled ? undefined : onClick}
+      disabled={isDisabled}
       className={`
         inline-flex items-center justify-center font-semibold
         transition-all duration-200
         disabled:opacity-50 disabled:cursor-not-allowed
-        ${variantConfig[variant]}
+        ${isRateLimited ? 'bg-gray-100 dark:bg-[#2C2C2E] text-gray-400 dark:text-gray-500' : variantConfig[variant]}
         ${sizeConfig[size]}
         ${fullWidth ? 'w-full' : ''}
         ${className}
@@ -66,16 +75,24 @@ export default function Button({
       {loading && (
         <span className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
       )}
-      
+
+      {/* Rate Limited Countdown */}
+      {isRateLimited && (
+        <span className="flex items-center justify-center gap-2">
+          <span className="w-4 h-4 border-2 border-gray-400/30 border-t-gray-400 rounded-full animate-spin" />
+          <span className="tabular-nums font-mono">{countdown}s</span>
+        </span>
+      )}
+
       {/* Icon */}
-      {icon && !loading && (
+      {icon && !loading && !isRateLimited && (
         <span className={children ? '' : ''}>
           {icon}
         </span>
       )}
-      
+
       {/* Children */}
-      {children}
+      {children && !isRateLimited && children}
     </button>
   );
 }
@@ -87,6 +104,8 @@ Button.propTypes = {
   size: PropTypes.oneOf(['small', 'medium', 'large']),
   disabled: PropTypes.bool,
   loading: PropTypes.bool,
+  rateLimited: PropTypes.bool,
+  countdown: PropTypes.number,
   icon: PropTypes.node,
   fullWidth: PropTypes.bool,
   className: PropTypes.string,

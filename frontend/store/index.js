@@ -121,10 +121,19 @@ export const useUIStore = create((set) => ({
   activePage: 'dashboard',
   sidebarOpen: false,
   notification: null,
-  
+
   // Request blocking/loading state
   pendingRequests: [], // Array of pending request keys e.g. ['generate_vpn', 'disable_peer']
-  
+
+  // Rate limit state
+  rateLimitState: {
+    isRateLimited: false,
+    retryAfter: 0, // seconds until retry
+    countdown: 0, // current countdown value
+    progress: 0, // progress bar percentage
+    requestKey: null, // which request triggered rate limit
+  },
+
   setActivePage: (page) => set({ activePage: page }),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
@@ -132,25 +141,59 @@ export const useUIStore = create((set) => ({
     set({ notification: { message, type } });
     setTimeout(() => set({ notification: null }), 3000);
   },
-  
+
   // Add pending request
   addPendingRequest: (requestKey) => set((state) => ({
     pendingRequests: [...state.pendingRequests, requestKey]
   })),
-  
+
   // Remove pending request
   removePendingRequest: (requestKey) => set((state) => ({
     pendingRequests: state.pendingRequests.filter(key => key !== requestKey)
   })),
-  
+
   // Check if request is pending
   isRequestPending: (requestKey) => {
     const state = useUIStore.getState();
     return state.pendingRequests.includes(requestKey);
   },
-  
+
   // Clear all pending requests
   clearPendingRequests: () => set({ pendingRequests: [] }),
+
+  // Rate limit actions
+  setRateLimited: (retryAfter, requestKey = null) => set({
+    rateLimitState: {
+      isRateLimited: true,
+      retryAfter,
+      countdown: retryAfter,
+      progress: 0,
+      requestKey,
+    }
+  }),
+
+  updateRateLimitCountdown: (countdown, progress) => set((state) => ({
+    rateLimitState: {
+      ...state.rateLimitState,
+      countdown,
+      progress,
+    }
+  })),
+
+  clearRateLimit: () => set({
+    rateLimitState: {
+      isRateLimited: false,
+      retryAfter: 0,
+      countdown: 0,
+      progress: 0,
+      requestKey: null,
+    }
+  }),
+
+  isRateLimitedForRequest: (requestKey) => {
+    const state = useUIStore.getState();
+    return state.rateLimitState.isRateLimited && state.rateLimitState.requestKey === requestKey;
+  },
 }));
 
 // Billing/Payment Store

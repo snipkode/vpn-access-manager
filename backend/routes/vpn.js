@@ -1,8 +1,10 @@
 import express from 'express';
 import QRCode from 'qrcode';
+import { execSync } from 'child_process';
 import { auth, db } from '../config/firebase.js';
-import { generateKeypair, addPeer, generateConfig, getNextAvailableIP, isWireGuardHealthy, disablePeer, reactivatePeer } from '../services/wireguard.js';
+import { generateKeypair, addPeer, generateConfig, getNextAvailableIP, isWireGuardHealthy, disablePeer, reactivatePeer, getUsedIPsFromWireGuard } from '../services/wireguard.js';
 import { rateLimiters } from '../middleware/rateLimit.js';
+import { cleanupExpiredLeases, extendLease, renewLeaseFromSubscription } from '../scripts/cleanup-expired-leases.js';
 import {
   successResponse,
   errorResponse,
@@ -172,67 +174,177 @@ router.post('/generate', verifyAuth, async (req, res) => {
       });
     }
 
-    // Check device limit with transaction to prevent race condition
-    const devicesRef = db.collection('devices').where('user_id', '==', uid);
-    const devicesSnapshot = await devicesRef.get();
+    // Check device limit and allocate IP atomically with transaction
+    const { deviceRef, newIP, privateKey, publicKey } = await db.runTransaction(async (transaction) => {
+      const devicesRef = db.collection('devices').where('user_id', '==', uid);
+      const devicesSnapshot = await transaction.get(devicesRef);
 
-    if (devicesSnapshot.size >= MAX_DEVICES) {
-      return res.status(400).json({
-        error: 'Device limit reached',
-        message: `Maximum ${MAX_DEVICES} devices per user`,
+      if (devicesSnapshot.size >= MAX_DEVICES) {
+        const error = new Error('Device limit reached');
+        error.code = 'DEVICE_LIMIT_REACHED';
+        throw error;
+      }
+
+      // Get used IPs from both Firestore and WireGuard
+      const firestoreIPs = devicesSnapshot.docs.map(doc => doc.data().ip_address);
+      const wgIPs = getUsedIPsFromWireGuard();
+      const allUsedIPs = [...new Set([...firestoreIPs, ...wgIPs])];
+
+      console.log('📊 Transaction IP Check:', {
+        firestoreIPs: firestoreIPs.length,
+        wireguardIPs: wgIPs.length,
+        totalUsed: allUsedIPs.length
       });
+
+      // Allocate IP
+      const newIP = getNextAvailableIP(allUsedIPs);
+
+      // Generate keys
+      const { privateKey, publicKey } = generateKeypair();
+
+      // Create device reference and reserve in transaction
+      const deviceRef = db.collection('devices').doc();
+      transaction.set(deviceRef, {
+        user_id: uid,
+        device_name: deviceName,
+        public_key: publicKey,
+        private_key: privateKey,
+        ip_address: newIP,
+        status: 'pending', // Set to pending until WireGuard peer is added
+        created_at: new Date().toISOString(),
+        lease_expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+      });
+
+      console.log('🔒 IP reserved in transaction:', {
+        deviceId: deviceRef.id,
+        ip_address: newIP,
+        public_key: publicKey.substring(0, 20) + '...'
+      });
+
+      return { deviceRef, newIP, privateKey, publicKey };
+    });
+
+    // Add peer to WireGuard with conflict detection (outside transaction)
+    try {
+      addPeer(publicKey, newIP);
+    } catch (wgError) {
+      // Handle specific WireGuard errors
+      console.error('WireGuard addPeer failed:', wgError.message);
+
+      // Rollback: Delete the pending device from Firestore
+      try {
+        await deviceRef.delete();
+        console.log('🔄 Rollback: Deleted pending device from Firestore');
+      } catch (rollbackError) {
+        console.error('❌ Rollback failed:', rollbackError.message);
+      }
+
+      // Check for IP conflict error
+      if (wgError.message.includes('already in use')) {
+        return res.status(409).json({
+          error: 'IP address conflict',
+          message: 'The assigned IP is already in use. Please try again.',
+          details: wgError.message
+        });
+      }
+
+      // Check for duplicate key error
+      if (wgError.message.includes('already exists')) {
+        return res.status(409).json({
+          error: 'Duplicate key',
+          message: 'Generated key already exists. Please try again.',
+          details: wgError.message
+        });
+      }
+
+      // Generic WireGuard error
+      throw wgError;
     }
 
-    // Generate VPN config
-    const usedIPs = devicesSnapshot.docs.map((doc) => doc.data().ip_address);
-    const newIP = getNextAvailableIP(usedIPs);
-    const { privateKey, publicKey } = generateKeypair();
-
-    // Add peer to WireGuard
-    addPeer(publicKey, newIP);
     const config = generateConfig(privateKey, newIP, deviceName);
     // Generate QR code as PNG base64 with high quality for scanning
     const qrCodeData = await QRCode.toDataURL(config, {
       width: 400,
       height: 400,
       margin: 3,
-      errorCorrectionLevel: 'H', // High error correction for better scanning
+      errorCorrectionLevel: 'H',
       color: {
         dark: '#000000',
         light: '#ffffff'
       }
     });
 
-    const deviceRef = db.collection('devices').doc();
-    await deviceRef.set({
-      user_id: uid,
-      device_name: deviceName,
-      public_key: publicKey,
-      private_key: privateKey,
-      ip_address: newIP,
-      status: 'active',
-      created_at: new Date().toISOString(),
-    });
-    
-    console.log('🟢 Device saved to Firestore:', {
-      deviceId: deviceRef.id,
-      device_name: deviceName,
-      ip_address: newIP
-    });
+    // Update status from 'pending' to 'active' and create audit log
+    try {
+      await deviceRef.update({
+        status: 'active',
+        activated_at: new Date().toISOString(),
+      });
 
-    res.json({
-      device_id: deviceRef.id,
-      device_name: deviceName,
-      ip_address: newIP,
-      public_key: publicKey,
-      config,
-      qr: qrCodeData,
-      created_at: new Date().toISOString(),
-      subscription_end: userData.subscription_end,
-      days_remaining: Math.floor((subscriptionEnd - now) / (1000 * 60 * 60 * 24)),
-    });
+      // Create audit log for IP allocation
+      await db.collection('audit_logs').doc().set({
+        action: 'device_created',
+        user_id: uid,
+        device_id: deviceRef.id,
+        device_name: deviceName,
+        device_public_key: publicKey,
+        device_ip: newIP,
+        ip_allocation_source: 'auto',
+        timestamp: new Date().toISOString(),
+        ip_address: req.ip,
+        user_agent: req.headers['user-agent']?.substring(0, 200) || 'unknown'
+      });
+
+      console.log('🟢 Device activated and audit log created:', {
+        deviceId: deviceRef.id,
+        device_name: deviceName,
+        ip_address: newIP
+      });
+
+      res.json({
+        device_id: deviceRef.id,
+        device_name: deviceName,
+        ip_address: newIP,
+        public_key: publicKey,
+        config,
+        qr: qrCodeData,
+        created_at: new Date().toISOString(),
+        subscription_end: userData.subscription_end,
+        days_remaining: Math.floor((subscriptionEnd - now) / (1000 * 60 * 60 * 24)),
+      });
+    } catch (firestoreError) {
+      // ROLLBACK: Remove peer from WireGuard if Firestore update fails
+      console.error('Firestore update failed, rolling back WireGuard peer...');
+
+      try {
+        const { removePeer } = await import('../services/wireguard.js');
+        removePeer(publicKey);
+        console.log('✅ Rollback successful: WireGuard peer removed');
+      } catch (rollbackError) {
+        console.error('❌ Rollback failed:', rollbackError.message);
+      }
+
+      throw firestoreError;
+    }
   } catch (error) {
     console.error('Generate VPN config error:', error.message);
+
+    // Handle device limit error from transaction
+    if (error.code === 'DEVICE_LIMIT_REACHED') {
+      return res.status(400).json({
+        error: 'Device limit reached',
+        message: `Maximum ${MAX_DEVICES} devices per user`,
+      });
+    }
+
+    // Handle specific error types
+    if (error.message.includes('IP address conflict') || error.message.includes('Duplicate key')) {
+      return res.status(409).json({
+        error: error.message.includes('IP address conflict') ? 'IP address conflict' : 'Duplicate key',
+        message: error.message,
+      });
+    }
+
     res.status(500).json({ error: 'Failed to generate VPN config', details: error.message });
   }
 });
@@ -750,6 +862,411 @@ router.post('/device/:id/reactivate', verifyAuth, async (req, res) => {
       details: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
+  }
+});
+
+/**
+ * @swagger
+ * /api/vpn/health:
+ *   get:
+ *     summary: Get WireGuard health status and sync state
+ *     tags: [VPN]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Health status
+ */
+router.get('/health', verifyAuth, async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
+
+    // Verify admin
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists || userDoc.data().role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const wgHealthy = isWireGuardHealthy();
+    
+    // Get all active devices from Firestore
+    const firestoreDevices = await db.collection('devices')
+      .where('status', '==', 'active')
+      .get();
+    
+    const firestoreIPs = firestoreDevices.docs.map(d => d.data().ip_address);
+    const wgIPs = getUsedIPsFromWireGuard();
+    
+    // Detect orphaned peers (in WG but not in Firestore)
+    const orphanedIPs = wgIPs.filter(ip => !firestoreIPs.includes(ip));
+    
+    // Detect stale records (in Firestore but not in WG)
+    const staleIPs = firestoreIPs.filter(ip => !wgIPs.includes(ip));
+    
+    // Calculate IP utilization
+    const totalIPs = 252; // /24 subnet minus gateway and broadcast
+    const usedIPs = wgIPs.length;
+    
+    res.json({
+      wireguard_healthy: wgHealthy,
+      total_devices: firestoreDevices.size,
+      active_peers: wgIPs.length,
+      ip_utilization: `${usedIPs}/${totalIPs}`,
+      ip_utilization_percent: Math.round((usedIPs / totalIPs) * 100),
+      orphaned_peers: orphanedIPs.length,
+      orphaned_ips: orphanedIPs,
+      stale_records: staleIPs.length,
+      stale_ips: staleIPs,
+      sync_status: orphanedIPs.length === 0 && staleIPs.length === 0 ? 'synced' : 'out_of_sync',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Health check error:', error.message);
+    res.status(500).json({ error: 'Failed to get health status', details: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/vpn/ip-pool:
+ *   get:
+ *     summary: Get IP pool status (admin only)
+ *     tags: [VPN]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: IP pool status
+ */
+router.get('/ip-pool', verifyAuth, async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
+
+    // Verify admin
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists || userDoc.data().role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const devices = await db.collection('devices').get();
+    const wgOutput = execSync(`wg show ${WG_INTERFACE} allowed-ips`, {
+      stdio: ['pipe', 'pipe', 'pipe']
+    }).toString();
+    
+    // Parse WG IPs
+    const wgIPs = [];
+    wgOutput.split('\n').forEach(line => {
+      const matches = line.match(/(\d+\.\d+\.\d+\.\d+)\/32/g);
+      if (matches) {
+        matches.forEach(match => wgIPs.push(match.replace('/32', '')));
+      }
+    });
+    
+    // Build IP pool status
+    const pool = [];
+    const baseIP = '10.0.0';
+    
+    for (let i = 1; i <= 254; i++) {
+      const ip = `${baseIP}.${i}`;
+      const device = devices.docs.find(d => d.data().ip_address === ip);
+      const inWG = wgIPs.includes(ip);
+      
+      let status = 'available';
+      if (i === 1) {
+        status = 'gateway';
+      } else if (device) {
+        status = inWG ? 'active' : 'stale';
+      } else if (inWG) {
+        status = 'orphaned';
+      }
+      
+      if (status !== 'available') {
+        pool.push({
+          ip,
+          status,
+          user_id: device?.data().user_id || null,
+          device_id: device?.id || null,
+          device_name: device?.data().device_name || null,
+          device_status: device?.data().status || null,
+          lease_expires: device?.data().lease_expires || null
+        });
+      }
+    }
+    
+    // Summary statistics
+    const summary = {
+      total: pool.length,
+      active: pool.filter(p => p.status === 'active').length,
+      stale: pool.filter(p => p.status === 'stale').length,
+      orphaned: pool.filter(p => p.status === 'orphaned').length,
+      gateway: pool.filter(p => p.status === 'gateway').length,
+      available: 252 - pool.length
+    };
+    
+    res.json({
+      pool,
+      summary,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('IP pool status error:', error.message);
+    res.status(500).json({ error: 'Failed to get IP pool status', details: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/vpn/sync:
+ *   post:
+ *     summary: Sync WireGuard with Firestore (admin only)
+ *     tags: [VPN]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Sync completed
+ */
+router.post('/sync', verifyAuth, async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
+
+    // Verify admin
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists || userDoc.data().role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const actions = [];
+    
+    // Get all active devices from Firestore
+    const firestoreDevices = await db.collection('devices')
+      .where('status', 'in', ['active', 'pending'])
+      .get();
+    
+    const wgOutput = execSync(`wg show ${WG_INTERFACE} allowed-ips`, {
+      stdio: ['pipe', 'pipe', 'pipe']
+    }).toString();
+    
+    // Parse WG IPs to map IP -> public key
+    const wgIPMap = new Map();
+    wgOutput.split('\n').forEach(line => {
+      const parts = line.trim().split(/\s+/);
+      if (parts.length >= 3) {
+        const publicKey = parts[0];
+        const ipMatch = line.match(/(\d+\.\d+\.\d+\.\d+)\/32/);
+        if (ipMatch) {
+          wgIPMap.set(ipMatch[1], publicKey);
+        }
+      }
+    });
+    
+    // Check each Firestore device
+    for (const device of firestoreDevices.docs) {
+      const data = device.data();
+      const inWG = wgIPMap.has(data.ip_address);
+      
+      if (!inWG) {
+        // Device in Firestore but not in WG - re-add it
+        try {
+          addPeer(data.public_key, data.ip_address);
+          actions.push({ 
+            action: 'readded', 
+            device_id: device.id, 
+            ip: data.ip_address,
+            device_name: data.device_name
+          });
+          console.log(`🔄 Re-added peer: ${device.id} (${data.ip_address})`);
+        } catch (error) {
+          actions.push({ 
+            action: 'readd_failed', 
+            device_id: device.id, 
+            ip: data.ip_address,
+            error: error.message
+          });
+          console.error(`❌ Failed to re-add peer: ${device.id}`, error.message);
+        }
+      }
+    }
+    
+    // Check for orphaned peers in WG
+    for (const [ip, publicKey] of wgIPMap.entries()) {
+      const device = firestoreDevices.docs.find(d => d.data().ip_address === ip);
+      if (!device) {
+        // Peer in WG but not in Firestore - remove it
+        try {
+          execSync(`wg set ${WG_INTERFACE} peer '${publicKey}' remove`, {
+            stdio: ['pipe', 'pipe', 'pipe']
+          });
+          actions.push({ 
+            action: 'removed_orphan', 
+            ip, 
+            public_key: publicKey.substring(0, 20) + '...'
+          });
+          console.log(`🗑️ Removed orphan peer: ${ip}`);
+        } catch (error) {
+          actions.push({ 
+            action: 'remove_failed', 
+            ip, 
+            error: error.message
+          });
+        }
+      }
+    }
+    
+    // Update config file
+    try {
+      execSync(`bash -c "wg showconf ${WG_INTERFACE} > /etc/wireguard/${WG_INTERFACE}.conf"`, {
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+      actions.push({ action: 'config_updated' });
+    } catch (error) {
+      actions.push({ action: 'config_update_failed', error: error.message });
+    }
+    
+    res.json({
+      sync_completed: true,
+      actions,
+      total_actions: actions.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Sync error:', error.message);
+    res.status(500).json({ error: 'Failed to sync', details: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/vpn/admin/leases/cleanup:
+ *   post:
+ *     summary: Run expired lease cleanup (admin only)
+ *     tags: [VPN]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Cleanup completed
+ */
+router.post('/admin/leases/cleanup', verifyAuth, async (req, res) => {
+  try {
+    const { uid } = req.user;
+    
+    // Verify admin
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists || userDoc.data().role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const results = await cleanupExpiredLeases();
+    
+    res.json({
+      cleanup_completed: true,
+      ...results,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Cleanup error:', error.message);
+    res.status(500).json({ error: 'Failed to cleanup leases', details: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/vpn/admin/device/{id}/extend-lease:
+ *   post:
+ *     summary: Extend device lease (admin only)
+ *     tags: [VPN]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Device ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               days:
+ *                 type: number
+ *                 example: 30
+ *     responses:
+ *       200:
+ *         description: Lease extended
+ */
+router.post('/admin/device/:id/extend-lease', verifyAuth, async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { id } = req.params;
+    const { days = 30 } = req.body;
+    
+    // Verify admin
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists || userDoc.data().role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const result = await extendLease(id, days);
+    
+    res.json({
+      success: true,
+      ...result,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Extend lease error:', error.message);
+    res.status(500).json({ error: 'Failed to extend lease', details: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/vpn/admin/device/{id}/renew-lease:
+ *   post:
+ *     summary: Renew device lease from user subscription (admin only)
+ *     tags: [VPN]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Device ID
+ *     responses:
+ *       200:
+ *         description: Lease renewed
+ */
+router.post('/admin/device/:id/renew-lease', verifyAuth, async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { id } = req.params;
+    
+    // Verify admin
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists || userDoc.data().role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const result = await renewLeaseFromSubscription(id);
+    
+    res.json({
+      success: true,
+      ...result,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Renew lease error:', error.message);
+    res.status(500).json({ error: 'Failed to renew lease', details: error.message });
   }
 });
 

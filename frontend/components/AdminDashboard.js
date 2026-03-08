@@ -1,12 +1,14 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useUIStore, useAuthStore } from '../store';
-import { adminUsersAPI, adminDevicesAPI, adminDashboardAPI } from '../lib/api';
+import { adminUsersAPI, adminDevicesAPI, adminDashboardAPI, adminVpnAPI } from '../lib/api';
 import { Tabs, DataTable, StatusBadge } from './admin';
+import AdminVPN from './AdminVPN';
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'users', label: 'Users' },
   { id: 'devices', label: 'Devices' },
+  { id: 'vpn', label: 'VPN' },
 ];
 
 const STAT_CONFIG = [
@@ -127,6 +129,7 @@ export default function AdminDashboard({ token, userData }) {
       {activeTab === 'overview' && <Overview stats={stats} />}
       {activeTab === 'users' && <UsersTable users={users} onToggle={toggleVpnAccess} onDelete={deleteUser} />}
       {activeTab === 'devices' && <DevicesTable devices={devices} onRevoke={revokeDevice} />}
+      {activeTab === 'vpn' && <AdminVPN token={token} />}
     </div>
   );
 }

@@ -10,18 +10,121 @@ const WG_SERVER_ENDPOINT = process.env.WG_SERVER_ENDPOINT;
 const WG_DNS = process.env.WG_DNS || '1.1.1.1';
 const WG_SUBNET = process.env.WG_SUBNET || '10.0.0.0/24';
 
-// Get next available IP in subnet
+/**
+ * Get all IP addresses currently in use from WireGuard interface
+ * This provides real-time data to prevent IP conflicts
+ * @returns {string[]} Array of IP addresses (without /32 suffix)
+ */
+export function getUsedIPsFromWireGuard() {
+  try {
+    const output = execSync(`wg show ${WG_INTERFACE} allowed-ips`, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 2000
+    }).toString();
+    
+    // Parse output to extract IP addresses
+    // Format: "peer_key\tallowed-ips: 10.0.0.2/32, 10.0.0.3/32"
+    const ips = [];
+    output.split('\n').forEach(line => {
+      const matches = line.match(/(\d+\.\d+\.\d+\.\d+)\/32/g);
+      if (matches) {
+        matches.forEach(match => {
+          ips.push(match.replace('/32', ''));
+        });
+      }
+    });
+    
+    console.log(`🔍 WireGuard active IPs: ${ips.length} found`);
+    return ips;
+  } catch (error) {
+    console.error('⚠️ Failed to get IPs from WireGuard:', error.message);
+    return [];
+  }
+}
+
+/**
+ * Get all public keys currently in WireGuard interface
+ * Used to prevent duplicate key conflicts
+ * @returns {string[]} Array of public keys
+ */
+export function getPublicKeysFromWireGuard() {
+  try {
+    const output = execSync(`wg show ${WG_INTERFACE}`, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 2000
+    }).toString();
+    
+    // Parse output to extract public keys
+    // Format: "peer_key\t..."
+    const keys = [];
+    output.split('\n').forEach(line => {
+      // First column is the public key
+      const parts = line.trim().split(/\s+/);
+      if (parts.length > 0 && parts[0].length === 44) {
+        keys.push(parts[0]);
+      }
+    });
+    
+    console.log(`🔑 WireGuard active keys: ${keys.length} found`);
+    return keys;
+  } catch (error) {
+    console.error('⚠️ Failed to get public keys from WireGuard:', error.message);
+    return [];
+  }
+}
+
+/**
+ * Check if an IP address is currently in use in WireGuard
+ * @param {string} ipAddress - IP address to check
+ * @returns {boolean} True if IP is in use
+ */
+export function isIPInUse(ipAddress) {
+  const usedIPs = getUsedIPsFromWireGuard();
+  return usedIPs.includes(ipAddress);
+}
+
+/**
+ * Check if a public key already exists in WireGuard
+ * @param {string} publicKey - Public key to check
+ * @returns {boolean} True if key exists
+ */
+export function isKeyInUse(publicKey) {
+  const usedKeys = getPublicKeysFromWireGuard();
+  return usedKeys.includes(publicKey);
+}
+
+/**
+ * Get next available IP in subnet
+ * Checks both Firestore database AND active WireGuard interface
+ * to prevent IP conflicts and race conditions
+ * @param {string[]} usedIPs - IPs from Firestore database
+ * @returns {string} Next available IP address
+ * @throws {Error} When no IP addresses are available
+ */
 export function getNextAvailableIP(usedIPs) {
   const baseIP = WG_SUBNET.split('.')[2];
   const subnetBase = WG_SUBNET.split('/')[0].split('.').slice(0, 2).join('.');
   
+  // Get real-time IPs from WireGuard interface
+  const wgUsedIPs = getUsedIPsFromWireGuard();
+  
+  // Combine both sources and remove duplicates
+  const allUsedIPs = [...new Set([...usedIPs, ...wgUsedIPs])];
+  
+  console.log(`📊 IP Allocation Check:`, {
+    firestoreIPs: usedIPs.length,
+    wireguardIPs: wgUsedIPs.length,
+    totalUsed: allUsedIPs.length
+  });
+
   for (let i = 2; i < 254; i++) {
     const ip = `${subnetBase}.${baseIP}.${i}`;
-    if (!usedIPs.includes(ip)) {
+    if (!allUsedIPs.includes(ip)) {
+      console.log(`✅ IP allocated: ${ip}`);
       return ip;
     }
   }
-  throw new Error('No available IP addresses');
+  throw new Error('No available IP addresses in subnet');
 }
 
 // Generate WireGuard keypair with error handling
@@ -46,22 +149,47 @@ export function generateKeypair() {
   }
 }
 
-// Add peer to WireGuard with error handling
+/**
+ * Add peer to WireGuard with comprehensive conflict detection and rollback
+ * @param {string} publicKey - WireGuard public key
+ * @param {string} ipAddress - IP address to assign
+ * @returns {boolean} True if peer added successfully
+ * @throws {Error} When IP conflict, duplicate key, or other errors occur
+ */
 export function addPeer(publicKey, ipAddress) {
+  const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
+  const CONFIG_PATH = `/etc/wireguard/${WG_INTERFACE}.conf`;
+  
+  let peerAddedToInterface = false;
+
   try {
-    const WG_INTERFACE = process.env.WG_INTERFACE || 'wg0';
-    const CONFIG_PATH = `/etc/wireguard/${WG_INTERFACE}.conf`;
+    console.log(`🔐 Adding WireGuard peer: ${publicKey.substring(0, 20)}... with IP: ${ipAddress}`);
 
-    console.log(`Adding WireGuard peer: ${publicKey} with IP: ${ipAddress}`);
+    // ===== VALIDATION STEP: Check for IP conflicts =====
+    if (isIPInUse(ipAddress)) {
+      const errorMsg = `IP address ${ipAddress} is already in use by another peer`;
+      console.error(`❌ ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
+    console.log(`✅ IP conflict check passed: ${ipAddress} is available`);
 
-    // Step 1: Add peer to running interface
-    execSync(`wg set ${WG_INTERFACE} peer ${publicKey} allowed-ips ${ipAddress}/32`, {
+    // ===== VALIDATION STEP: Check for duplicate public key =====
+    if (isKeyInUse(publicKey)) {
+      const errorMsg = `Public key already exists in WireGuard interface`;
+      console.error(`❌ ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
+    console.log(`✅ Duplicate key check passed: public key is unique`);
+
+    // ===== STEP 1: Add peer to running interface =====
+    execSync(`wg set ${WG_INTERFACE} peer '${publicKey}' allowed-ips ${ipAddress}/32`, {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 5000
     });
+    peerAddedToInterface = true;
+    console.log(`✅ Peer added to running interface`);
 
-    // Step 2: Manually append peer to config file
-    // Read existing config
+    // ===== STEP 2: Update config file =====
     let configContent = '';
     try {
       configContent = fs.readFileSync(CONFIG_PATH, 'utf8');
@@ -82,21 +210,45 @@ export function addPeer(publicKey, ipAddress) {
 
       // Write updated config
       fs.writeFileSync(CONFIG_PATH, configContent);
-      console.log(`Peer appended to config file: ${CONFIG_PATH}`);
+      console.log(`✅ Peer appended to config file: ${CONFIG_PATH}`);
     } else {
-      console.log(`Peer already exists in config: ${publicKey}`);
+      console.log(`ℹ️ Peer already exists in config: ${publicKey.substring(0, 20)}...`);
     }
 
-    // Step 3: Verify peer was added
+    // ===== STEP 3: Verify peer was added =====
     const currentConfig = fs.readFileSync(CONFIG_PATH, 'utf8');
-    if (currentConfig.includes(`PublicKey = ${publicKey}`)) {
-      console.log('✅ WireGuard peer added successfully');
-      return true;
-    } else {
+    if (!currentConfig.includes(`PublicKey = ${publicKey}`)) {
       throw new Error('Peer not found in config after adding');
     }
 
+    // ===== STEP 4: Final verification in WireGuard interface =====
+    const wgPeers = execSync(`wg show ${WG_INTERFACE} allowed-ips`, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 2000
+    }).toString();
+    
+    if (!wgPeers.includes(`${ipAddress}/32`)) {
+      throw new Error('IP not found in WireGuard allowed-ips after adding');
+    }
+
+    console.log('✅ WireGuard peer added and verified successfully');
+    return true;
+
   } catch (error) {
+    // ===== ROLLBACK: Remove peer from interface if partially added =====
+    if (peerAddedToInterface) {
+      console.log(`🔄 Rolling back: removing peer from interface due to error`);
+      try {
+        execSync(`wg set ${WG_INTERFACE} peer '${publicKey}' remove`, {
+          stdio: ['pipe', 'pipe', 'pipe'],
+          timeout: 2000
+        });
+        console.log(`✅ Rollback successful: peer removed from interface`);
+      } catch (rollbackError) {
+        console.error(`❌ Rollback failed: ${rollbackError.message}`);
+      }
+    }
+
     const errorMsg = `Failed to add WireGuard peer: ${error.message}`;
     console.error(errorMsg);
     throw new Error(errorMsg);

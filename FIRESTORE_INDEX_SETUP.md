@@ -1,201 +1,223 @@
-# Firestore Index Setup Guide - Credit Transactions
+# Firestore Index Setup for Lease Management
 
-## 🐛 Problem
+## 🔍 Problem
 
-**Error:** `FAILED_PRECONDITION: The query requires an index`
+```
+9 FAILED_PRECONDITION: The query requires an index.
+```
 
-Query di `/api/admin/credit/transactions` menggunakan multiple filters (`type`, `status`, `userId`) dengan `orderBy('created_at')` yang membutuhkan **composite index**.
+Query ini membutuhkan composite index:
+```javascript
+db.collection('devices')
+  .where('lease_expires', '<', nowISO)
+  .where('status', 'in', ['active', 'pending'])
+```
 
 ---
 
-## ✅ Solution
+## ✅ Solution: Create Firestore Index
 
-### **Option 1: Deploy via Firebase CLI (Recommended)**
+### Option 1: Click Link dari Error Log
+
+Firebase sudah menyediakan link langsung untuk create index:
+
+```
+https://console.firebase.google.com/v1/r/project/YOUR_PROJECT/firestore/indexes?create_composite=INDEX_CONFIG
+```
+
+Click link tersebut dan Firebase akan otomatis configure index.
+
+---
+
+### Option 2: Manual Create via Firebase Console
+
+1. **Go to Firebase Console**
+   ```
+   https://console.firebase.google.com/
+   ```
+
+2. **Select Your Project**
+   - Click project: `e-landing` (atau project Anda)
+
+3. **Navigate to Firestore**
+   - Left menu: **Firestore Database**
+   - Tab: **Indexes**
+
+4. **Create Composite Index**
+   - Click **"Add Index"** or **"Create Index"**
+   
+5. **Configure Index**
+   ```
+   Collection ID: devices
+   
+   Fields to index:
+   ┌─────────────────┬──────────────┐
+   │ Field Path      │ Order        │
+   ├─────────────────┼──────────────┤
+   │ status          │ Ascending    │
+   │ lease_expires   │ Descending   │
+   └─────────────────┴──────────────┘
+   
+   Query scope: Collection
+   ```
+
+6. **Save**
+   - Click **Save** atau **Create**
+   - Wait 1-5 minutes for index to build
+
+---
+
+### Option 3: Using Firebase CLI
 
 ```bash
-# 1. Install Firebase CLI (if not installed)
+# Install Firebase CLI if not already
 npm install -g firebase-tools
 
-# 2. Login to Firebase
+# Login
 firebase login
 
-# 3. Navigate to backend directory
-cd backend
+# Create index.json file
+cat > index.json << 'EOF'
+{
+  "indexes": [
+    {
+      "collectionGroup": "devices",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lease_expires",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ]
+}
+EOF
 
-# 4. Deploy indexes
-firebase deploy --only firestore:indexes
-```
-
-### **Option 2: Create via Firebase Console (Manual)**
-
-1. **Open Firebase Console**
-   - Go to: https://console.firebase.google.com
-   - Select your project: `e-landing`
-
-2. **Navigate to Firestore Indexes**
-   - Firestore Database → Indexes tab
-
-3. **Add Composite Indexes**
-
-#### **Index 1: type + status + created_at**
-```
-Collection: credit_transactions
-Fields:
-  - type (Ascending)
-  - status (Ascending)
-  - created_at (Descending)
-Query Scope: Collection
-```
-
-#### **Index 2: user_id + type + status + created_at**
-```
-Collection: credit_transactions
-Fields:
-  - user_id (Ascending)
-  - type (Ascending)
-  - status (Ascending)
-  - created_at (Descending)
-Query Scope: Collection
-```
-
-### **Option 3: Create via gcloud CLI**
-
-```bash
-# Index 1: type + status + created_at
-gcloud alpha firestore indexes create \
-  --collection=credit_transactions \
-  --field=type,ASCENDING \
-  --field=status,ASCENDING \
-  --field=created_at,DESCENDING
-
-# Index 2: user_id + type + status + created_at
-gcloud alpha firestore indexes create \
-  --collection=credit_transactions \
-  --field=user_id,ASCENDING \
-  --field=type,ASCENDING \
-  --field=status,ASCENDING \
-  --field=created_at,DESCENDING
+# Deploy index
+firebase firestore:indexes --deploy index.json
 ```
 
 ---
 
-## 📋 All Required Indexes for Credit Transactions
+## 📋 Index Configuration
 
-| Fields | Query Scope | Purpose |
-|--------|-------------|---------|
-| `type` ↑, `status` ↑, `created_at` ↓ | Collection | Admin filtering by type & status |
-| `user_id` ↑, `type` ↑, `status` ↑, `created_at` ↓ | Collection | User-specific filtering |
-| `type` ↑, `created_at` ↓ | Collection | Filter by type only |
-| `status` ↑, `created_at` ↓ | Collection | Filter by status only |
-| `from_user_id` ↑, `created_at` ↓ | Collection | Sender transactions |
-| `to_user_id` ↑, `created_at` ↓ | Collection | Receiver transactions |
+### Required Index
+
+| Property | Value |
+|----------|-------|
+| **Collection** | `devices` |
+| **Fields** | `status` (ASC), `lease_expires` (DESC) |
+| **Query Scope** | Collection |
+
+### Why This Index?
+
+Query yang digunakan:
+```javascript
+.where('status', 'in', ['active', 'pending'])  // Filter 1
+.where('lease_expires', '<', nowISO)           // Filter 2 (range)
+```
+
+- `status` filter dengan `in` operator → butuh index
+- `lease_expires` filter dengan range (`<`) → butuh index
+- Combination → butuh **composite index**
 
 ---
 
-## 🔧 Fallback Handling
+## ⚠️ Fallback Mode (Already Implemented)
 
-Code sudah ditambahkan dengan **fallback handling**:
+Jika index tidak dibuat, code akan otomatis fallback ke manual filtering:
 
 ```javascript
 try {
-  transactionsSnapshot = await query.get();
+  // Try indexed query (fast)
+  expiredDevices = await db.collection('devices')
+    .where('lease_expires', '<', nowISO)
+    .where('status', 'in', ['active', 'pending'])
+    .get();
 } catch (indexError) {
-  // Fallback: Get all transactions and filter in-memory
-  console.warn('⚠️ Firestore index missing, fetching without filters');
-  
-  const allQuery = db.collection('credit_transactions')
-    .orderBy('created_at', 'desc')
-    .limit(200);
-  
-  transactionsSnapshot = await allQuery.get();
+  // Fallback: Get all and filter manually (slower)
+  const allDevices = await db.collection('devices').get();
+  const filtered = allDevices.docs.filter(doc => {
+    const data = doc.data();
+    return (data.status === 'active' || data.status === 'pending') &&
+           data.lease_expires && 
+           data.lease_expires < nowISO;
+  });
 }
 ```
 
-**Benefits:**
-- ✅ API tetap bekerja meskipun index belum dibuat
-- ✅ Filter dilakukan in-memory sebagai fallback
-- ✅ Console warning untuk reminder deploy index
+**Trade-offs:**
+- ✅ Works without index
+- ⚠️ Slower for large datasets (>1000 devices)
+- ⚠️ Reads all documents (higher cost)
 
 ---
 
-## 🚀 Deploy Steps
+## 🧪 Verify Index is Ready
 
-### **Step 1: Check Current Indexes**
+### Test Query Performance
 
-```bash
-# List all indexes
-firebase firestore:indexes
+```javascript
+// In browser console or Node.js
+const start = Date.now();
+const snapshot = await db.collection('devices')
+  .where('status', 'in', ['active', 'pending'])
+  .where('lease_expires', '<', new Date().toISOString())
+  .get();
+const end = Date.now();
+
+console.log(`Query took: ${end - start}ms`);
+console.log(`Found: ${snapshot.size} devices`);
 ```
 
-### **Step 2: Deploy Indexes**
-
-```bash
-# From backend directory
-firebase deploy --only firestore:indexes
-```
-
-### **Step 3: Verify Deployment**
-
-```bash
-# Check indexes status
-firebase firestore:indexes
-```
-
-### **Step 4: Test API**
-
-```bash
-# Test with filters
-curl "http://localhost:3000/api/admin/credit/transactions?type=transfer&status=completed" \
-  -H "Authorization: Bearer ADMIN_TOKEN"
-
-# Should return 200 OK with filtered transactions
-```
+**With Index:** < 100ms
+**Without Index (Fallback):** > 500ms (depends on dataset size)
 
 ---
 
-## 📁 Files Modified
+## 📊 Monitor Index Usage
 
-| File | Changes |
-|------|---------|
-| `backend/config/firestoreIndexes.js` | ✅ Added new composite indexes |
-| `backend/routes/admin-credit.js` | ✅ Added fallback handling |
-| `backend/firestore.indexes.json` | ✅ Generated for deployment |
+Firebase Console → Firestore → Indexes
 
----
-
-## ⚠️ Important Notes
-
-1. **Index Creation Time:** 5-30 minutes depending on data size
-2. **Cost:** Free tier includes 500K reads/day
-3. **Limit:** Max 200 composite indexes per project
-4. **Status:** Check in Firebase Console → Firestore → Indexes
+Look for:
+- **Status**: Should be "Enabled" or "Ready"
+- **Query Count**: Shows how often index is used
+- **Size**: Index size in KB
 
 ---
 
-## 🐛 Troubleshooting
+## 🎯 Recommendation
 
-### **Error: "Index creation failed"**
-- Check if you have quota remaining
-- Verify field names match exactly
+**For Production:**
+- ✅ Create the index (better performance, lower cost)
+- ✅ Monitor index usage
+- ✅ Set up alerts for slow queries
 
-### **Error: "Too many indexes"**
-- Remove unused indexes in Firebase Console
-- Consider merging similar indexes
-
-### **API still returns error**
-- Wait for index to finish building (check status in Console)
-- Restart backend server
-- Clear browser cache
+**For Development/Testing:**
+- ⚠️ Fallback mode is OK for small datasets
+- 📝 Plan to create index before going live
 
 ---
 
-## 📚 Resources
+## 📝 Summary
 
-- [Firestore Index Documentation](https://firebase.google.com/docs/firestore/query-data/indexing)
-- [Firebase CLI Reference](https://firebase.google.com/docs/cli)
-- [Query Limitations](https://firebase.google.com/docs/firestore/query-data/queries#query_limitations)
+**Quick Fix:**
+1. Click link dari error log (easiest)
+2. Wait 1-5 minutes
+3. Restart backend
+4. Test cleanup endpoint
 
----
+**Manual Fix:**
+1. Firebase Console → Firestore → Indexes
+2. Create composite index: `status` (ASC) + `lease_expires` (DESC)
+3. Wait for index to build
+4. Test again
 
-**Status:** ✅ Fallback added - API works with or without indexes
-**Recommendation:** Deploy indexes for better performance
+**No Fix Needed:**
+- Fallback mode already implemented
+- Will work without index (just slower)

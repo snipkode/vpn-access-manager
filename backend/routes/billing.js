@@ -95,6 +95,95 @@ const PLANS = {
 
 /**
  * @swagger
+ * /api/billing/trial:
+ *   post:
+ *     summary: Activate 7-day free trial
+ *     tags: [Billing]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Trial activated successfully
+ *       400:
+ *         description: User already used trial or has active subscription
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/trial', verifyAuth, async (req, res) => {
+  try {
+    const { uid } = req.user;
+
+    // Get user document
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const userData = userDoc.data();
+
+    // Check if user already has active subscription
+    if (userData.subscription_end_at) {
+      const subscriptionEnd = new Date(userData.subscription_end_at);
+      if (subscriptionEnd > new Date()) {
+        return res.status(400).json({ 
+          error: 'Active subscription exists',
+          message: 'You already have an active subscription'
+        });
+      }
+    }
+
+    // Check if user already used trial
+    if (userData.trial_used === true) {
+      return res.status(400).json({ 
+        error: 'Trial already used',
+        message: 'You have already used your free trial'
+      });
+    }
+
+    // Calculate trial end date (7 days from now)
+    const trialEnd = new Date();
+    trialEnd.setDate(trialEnd.getDate() + 7);
+
+    // Update user document
+    await db.collection('users').doc(uid).update({
+      subscription_start_at: new Date().toISOString(),
+      subscription_end_at: trialEnd.toISOString(),
+      trial_used: true,
+      trial_activated_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    // Create payment record for trial
+    const paymentRef = await db.collection('payments').add({
+      user_id: uid,
+      type: 'trial',
+      amount: 0,
+      status: 'completed',
+      plan: 'trial',
+      duration_days: 7,
+      subscription_start: new Date().toISOString(),
+      subscription_end: trialEnd.toISOString(),
+      created_at: new Date().toISOString(),
+      notes: '7-day free trial',
+    });
+
+    res.json({
+      success: true,
+      message: '7-day free trial activated successfully!',
+      trial_end: trialEnd.toISOString(),
+      payment_id: paymentRef.id,
+    });
+  } catch (error) {
+    console.error('Trial activation error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to activate trial',
+      details: error.message 
+    });
+  }
+});
+
+/**
+ * @swagger
  * /api/billing/submit:
  *   post:
  *     summary: Submit payment proof for subscription

@@ -170,18 +170,6 @@ export const apiFetch = async (endpoint, options = {}, requestKey = null) => {
         throw rateLimitError;
       }
 
-      // Handle rate limit errors with user-friendly message
-      if (res.status === 429) {
-        const retryAfter = res.headers.get('Retry-After') || responseData.retryAfter || 30;
-        const rateLimitError = new Error(
-          `Too many requests. Please wait ${retryAfter} seconds before trying again.`
-        );
-        rateLimitError.code = 'RATE_LIMIT';
-        rateLimitError.status = 429;
-        rateLimitError.retryAfter = parseInt(retryAfter);
-        throw rateLimitError;
-      }
-
       // Use standardized error message from response
       throw new Error(responseData.message || responseData.error || `HTTP ${res.status}: ${res.statusText}`);
     }
@@ -349,6 +337,14 @@ export const billingAPI = {
    */
   getSubscription: async () => {
     return apiFetch('/billing/subscription');
+  },
+
+  /**
+   * Activate 7-day free trial
+   * POST /api/billing/trial
+   */
+  activateTrial: async () => {
+    return apiFetch('/billing/trial', { method: 'POST' }, 'activate_trial');
   },
 
   /**
@@ -1071,6 +1067,62 @@ export const adminDevicesAPI = {
 };
 
 /**
+ * Admin VPN API - WireGuard management (Admin only)
+ */
+export const adminVpnAPI = {
+  /**
+   * Get WireGuard health status
+   * GET /api/vpn/health
+   */
+  getHealth: async () => {
+    return apiFetch('/vpn/health', {}, 'get_vpn_health');
+  },
+
+  /**
+   * Get IP pool status
+   * GET /api/vpn/ip-pool
+   */
+  getIpPool: async () => {
+    return apiFetch('/vpn/ip-pool', {}, 'get_vpn_ip_pool');
+  },
+
+  /**
+   * Sync WireGuard with Firestore
+   * POST /api/vpn/sync
+   */
+  sync: async () => {
+    return apiFetch('/vpn/sync', { method: 'POST' }, 'sync_vpn');
+  },
+
+  /**
+   * Run expired lease cleanup
+   * POST /api/vpn/admin/leases/cleanup
+   */
+  cleanupLeases: async () => {
+    return apiFetch('/vpn/admin/leases/cleanup', { method: 'POST' }, 'cleanup_vpn_leases');
+  },
+
+  /**
+   * Extend device lease
+   * POST /api/vpn/admin/device/:id/extend-lease
+   */
+  extendLease: async (deviceId, days = 30) => {
+    return apiFetch(`/vpn/admin/device/${deviceId}/extend-lease`, {
+      method: 'POST',
+      body: JSON.stringify({ days }),
+    }, 'extend_vpn_lease');
+  },
+
+  /**
+   * Renew device lease from subscription
+   * POST /api/vpn/admin/device/:id/renew-lease
+   */
+  renewLease: async (deviceId) => {
+    return apiFetch(`/vpn/admin/device/${deviceId}/renew-lease`, { method: 'POST' }, 'renew_vpn_lease');
+  },
+};
+
+/**
  * Export all API modules
  */
 export default {
@@ -1090,6 +1142,7 @@ export default {
     settings: adminSettingsAPI,
     dashboard: adminDashboardAPI,
     devices: adminDevicesAPI,
+    vpn: adminVpnAPI,
   },
 };
 
