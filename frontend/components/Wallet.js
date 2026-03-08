@@ -24,8 +24,16 @@ export default function Wallet({ token }) {
   const [selectedPlanDetails, setSelectedPlanDetails] = useState(null);
   const [localBalance, setLocalBalance] = useState(0);
 
-  // Get balance from global Zustand state
+  // Get balance from global Zustand state with fallback to local state
   const balance = userData?.credit_balance ?? localBalance;
+
+  // Subscribe to balance changes from Zustand
+  useEffect(() => {
+    // Initial sync from userData
+    if (userData?.credit_balance !== undefined) {
+      setLocalBalance(userData.credit_balance);
+    }
+  }, [userData?.credit_balance]);
 
   // Real-time Firestore listener for credit_balance
   useEffect(() => {
