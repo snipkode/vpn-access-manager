@@ -22,9 +22,10 @@ export default function Wallet({ token }) {
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [showPlanDetails, setShowPlanDetails] = useState(false);
   const [selectedPlanDetails, setSelectedPlanDetails] = useState(null);
+  const [localBalance, setLocalBalance] = useState(0);
 
-  // Get balance directly from global Zustand state
-  const balance = userData?.credit_balance || 0;
+  // Get balance from global Zustand state
+  const balance = userData?.credit_balance ?? localBalance;
 
   // Real-time Firestore listener for credit_balance
   useEffect(() => {
@@ -95,6 +96,7 @@ export default function Wallet({ token }) {
 
       // Sync balance to global Zustand state
       updateUserData({ credit_balance: balanceData.balance || 0 });
+      setLocalBalance(balanceData.balance || 0);
       setLastUpdated(new Date());
 
       setTransactions(transactionsData.transactions || []);
@@ -121,7 +123,9 @@ export default function Wallet({ token }) {
 
       // If balance changed, update state immediately
       if (syncResult?.synced && syncResult?.new_balance !== undefined) {
+        // Update both Zustand and local state
         updateUserData({ credit_balance: syncResult.new_balance });
+        setLocalBalance(syncResult.new_balance);
         setLastUpdated(new Date());
         showNotification('Balance synced successfully', 'success');
       } else {
@@ -139,15 +143,16 @@ export default function Wallet({ token }) {
     try {
       // Sync balance after successful topup
       const syncResult = await creditAPI.syncBalance();
-      
+
       // Update state immediately if sync succeeded
       if (syncResult?.synced && syncResult?.new_balance !== undefined) {
         updateUserData({ credit_balance: syncResult.new_balance });
+        setLocalBalance(syncResult.new_balance);
         setLastUpdated(new Date());
       } else {
         await fetchData();
       }
-      
+
       setActiveTab('history');
       showNotification('Payment submitted successfully', 'success');
     } catch (error) {
