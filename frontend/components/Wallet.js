@@ -218,7 +218,7 @@ export default function Wallet({ token }) {
           </div>
 
           {/* Live Status Indicator */}
-          <div className="flex items-center gap-3 pt-5 pb-3 border-t border-white/25">
+          <div className="flex items-center gap-3 pt-5 border-t border-white/25">
             <div className="relative">
               <div className="w-3 h-3 rounded-full bg-green-400 shadow-lg shadow-green-400/50">
                 <div className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-75" />
@@ -228,22 +228,6 @@ export default function Wallet({ token }) {
             <div className="flex-1" />
             <div className="text-[11px] sm:text-[12px] text-white/60 font-medium">
               Updated: {lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-            </div>
-          </div>
-
-          {/* Quick Stats Grid */}
-          <div className="grid grid-cols-3 gap-3 mt-4 pt-5 border-t border-white/20">
-            <div className="text-center">
-              <div className="text-[10px] sm:text-[11px] text-white/60 uppercase tracking-wider mb-1">Balance</div>
-              <div className="text-sm sm:text-base font-bold text-white">{formatCurrency(balance)}</div>
-            </div>
-            <div className="text-center border-l border-white/20">
-              <div className="text-[10px] sm:text-[11px] text-white/60 uppercase tracking-wider mb-1">Status</div>
-              <div className="text-sm sm:text-base font-bold text-white">Active</div>
-            </div>
-            <div className="text-center border-l border-white/20">
-              <div className="text-[10px] sm:text-[11px] text-white/60 uppercase tracking-wider mb-1">Credit</div>
-              <div className="text-sm sm:text-base font-bold text-white">Available</div>
             </div>
           </div>
         </div>
