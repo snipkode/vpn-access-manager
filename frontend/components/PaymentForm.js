@@ -460,11 +460,6 @@ export default function PaymentForm({
               <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 mt-1">
                 Transfer exactly this amount to speed up verification
               </p>
-              {TAX_RATE > 0 && (
-                <p className="text-[9px] sm:text-[10px] text-gray-400 dark:text-gray-500 mt-1.5 pt-1.5 border-t border-gray-100 dark:border-[#38383A]">
-                  💡 Price includes 11% PPN (Pajak Pertambahan Nilai) per UU HPP No. 7 Tahun 2021
-                </p>
-              )}
             </div>
           </div>
         </div>
