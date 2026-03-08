@@ -10,7 +10,7 @@ export default function AdminVPN({ token }) {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [cleaningLeases, setCleaningLeases] = useState(false);
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
@@ -134,7 +134,7 @@ export default function AdminVPN({ token }) {
               </>
             ) : (
               <>
-                <span>🗑️</span>
+                <Icon name="trash" className="w-5 h-5" />
                 <span>Cleanup Leases</span>
               </>
             )}
@@ -155,7 +155,7 @@ export default function AdminVPN({ token }) {
               </>
             ) : (
               <>
-                <span>🔄</span>
+                <Icon name="refresh" className="w-5 h-5" />
                 <span>Sync</span>
               </>
             )}
@@ -181,12 +181,12 @@ export default function AdminVPN({ token }) {
                   {health.wireguard_healthy ? 'Healthy' : 'Down'}
                 </p>
               </div>
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl ${
-                health.wireguard_healthy 
-                  ? 'bg-green-50 dark:bg-green-500/10' 
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                health.wireguard_healthy
+                  ? 'bg-green-50 dark:bg-green-500/10'
                   : 'bg-red-50 dark:bg-red-500/10'
               }`}>
-                {health.wireguard_healthy ? '✅' : '❌'}
+                <Icon name={health.wireguard_healthy ? 'checkCircle' : 'xCircle'} className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
             </div>
             <div className="mt-3 flex items-center gap-2">
@@ -214,8 +214,8 @@ export default function AdminVPN({ token }) {
                   {health.active_peers || 0}
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-2xl">
-                📱
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
+                <Icon name="deviceMobile" className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
             </div>
             <div className="mt-3 flex items-center gap-2">
@@ -237,8 +237,8 @@ export default function AdminVPN({ token }) {
                   {health.ip_utilization || '0/252'}
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center text-2xl">
-                📊
+              <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center">
+                <Icon name="chartBar" className="w-6 h-6 text-purple-600 dark:text-purple-400" />
               </div>
             </div>
             <div className="mt-3">
@@ -269,12 +269,12 @@ export default function AdminVPN({ token }) {
                   {health.sync_status === 'synced' ? 'Synced' : 'Out of Sync'}
                 </p>
               </div>
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl ${
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
                 health.sync_status === 'synced'
-                  ? 'bg-green-50 dark:bg-green-500/10' 
+                  ? 'bg-green-50 dark:bg-green-500/10'
                   : 'bg-amber-50 dark:bg-amber-500/10'
               }`}>
-                {health.sync_status === 'synced' ? '✅' : '⚠️'}
+                <Icon name={health.sync_status === 'synced' ? 'checkCircle' : 'exclamationTriangle'} className="w-6 h-6" />
               </div>
             </div>
             <div className="mt-3 flex items-center gap-2">
@@ -297,8 +297,8 @@ export default function AdminVPN({ token }) {
       {(health?.orphaned_peers > 0 || health?.stale_records > 0) && (
         <div className="bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-500/10 dark:to-orange-500/10 border border-red-200 dark:border-red-500/20 rounded-2xl p-5">
           <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-500/20 flex items-center justify-center text-xl flex-shrink-0">
-              ⚠️
+            <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-500/20 flex items-center justify-center flex-shrink-0">
+              <Icon name="exclamationTriangle" className="w-6 h-6 text-red-600 dark:text-red-400" />
             </div>
             <div className="flex-1">
               <h3 className="text-sm font-semibold text-red-900 dark:text-red-400">
@@ -405,8 +405,9 @@ export default function AdminVPN({ token }) {
               <span>IPs</span>
             </div>
           </div>
-          
-          <div className="overflow-x-auto">
+
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm">
                 <tr>
@@ -429,8 +430,8 @@ export default function AdminVPN({ token }) {
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {getCurrentPageItems().map((item, index) => (
-                  <tr 
-                    key={item.ip || index} 
+                  <tr
+                    key={item.ip || index}
                     className="hover:bg-gray-50/80 dark:hover:bg-gray-800/50 transition-colors"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -440,18 +441,18 @@ export default function AdminVPN({ token }) {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                        item.status === 'active' 
-                          ? 'bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400' 
-                          : item.status === 'stale' 
-                          ? 'bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400' 
-                          : item.status === 'orphaned' 
-                          ? 'bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400' 
+                        item.status === 'active'
+                          ? 'bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400'
+                          : item.status === 'stale'
+                          ? 'bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                          : item.status === 'orphaned'
+                          ? 'bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400'
                           : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
                       }`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${
-                          item.status === 'active' ? 'bg-green-500' 
-                          : item.status === 'stale' ? 'bg-amber-500' 
-                          : item.status === 'orphaned' ? 'bg-red-500' 
+                          item.status === 'active' ? 'bg-green-500'
+                          : item.status === 'stale' ? 'bg-amber-500'
+                          : item.status === 'orphaned' ? 'bg-red-500'
                           : 'bg-gray-500'
                         }`} />
                         {item.status}
@@ -484,6 +485,69 @@ export default function AdminVPN({ token }) {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+            {getCurrentPageItems().map((item, index) => (
+              <div
+                key={item.ip || index}
+                className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm font-mono font-semibold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-lg">
+                        {item.ip}
+                      </span>
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                        item.status === 'active'
+                          ? 'bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400'
+                          : item.status === 'stale'
+                          ? 'bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                          : item.status === 'orphaned'
+                          ? 'bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          item.status === 'active' ? 'bg-green-500'
+                          : item.status === 'stale' ? 'bg-amber-500'
+                          : item.status === 'orphaned' ? 'bg-red-500'
+                          : 'bg-gray-500'
+                        }`} />
+                        {item.status}
+                      </span>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Icon name="deviceMobile" className="w-4 h-4 text-gray-400" />
+                        <span className="text-gray-600 dark:text-gray-400">
+                          {item.device_name || '-'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Icon name="user" className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm font-mono text-gray-500 dark:text-gray-500">
+                          {item.user_id ? `${item.user_id.substring(0, 8)}...` : '-'}
+                        </span>
+                      </div>
+                      {item.lease_expires && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Icon name="clock" className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-600 dark:text-gray-400">
+                            {new Date(item.lease_expires).toLocaleDateString('id-ID', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Pagination */}
@@ -539,8 +603,8 @@ export default function AdminVPN({ token }) {
       {/* Info Card */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-500/10 dark:to-indigo-500/10 border border-blue-200 dark:border-blue-500/20 rounded-2xl p-5">
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center text-xl flex-shrink-0">
-            ℹ️
+          <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+            <Icon name="informationCircle" className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-400">
