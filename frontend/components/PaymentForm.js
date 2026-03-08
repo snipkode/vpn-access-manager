@@ -31,15 +31,20 @@ export default function PaymentForm({
   const [notes, setNotes] = useState('');
   const [copiedBankId, setCopiedBankId] = useState(null);
 
-  // Global Fee Configuration
+  // Indonesian Tax Regulation Compliance
+  // Reference: UU HPP (Harmonisasi Peraturan Perpajakan) No. 7 Tahun 2021
+  // PPN (Pajak Pertambahan Nilai): 11% for digital services/subscriptions
+  // PPh (Pajak Penghasilan): 2.5% for certain digital transactions
+  
   const FEE_CONFIG = {
     topup: {
-      adminFee: 0.005, // 0.5% for top-up (lower fee)
-      tax: 0, // No tax for top-up
+      adminFee: 0.005, // 0.5% - Admin fee for top-up (lower, as it's just credit)
+      tax: 0,          // 0% - No PPN for top-up (tax applied when used for subscription)
     },
     plan: {
-      adminFee: 0, // 0% for plans (can be changed)
-      tax: 0, // 0% for plans (can be changed to 0.11 for 11%)
+      adminFee: 0,     // 0% - No admin fee for plans
+      tax: 0.11,       // 11% - PPN (Pajak Pertambahan Nilai) for subscription services
+                       // Per UU HPP No. 7 Tahun 2021, effective April 1, 2022
     },
   };
 
@@ -431,10 +436,13 @@ export default function PaymentForm({
               </span>
             </div>
             
-            {/* Tax */}
+            {/* Tax (PPN) */}
             {TAX_RATE > 0 && (
               <div className="flex items-center justify-between text-[13px] sm:text-[14px]">
-                <span className="text-gray-600 dark:text-gray-400">Tax ({(TAX_RATE * 100).toFixed(1)}%)</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-gray-600 dark:text-gray-400">PPN ({(TAX_RATE * 100).toFixed(0)}%)</span>
+                  <span className="text-[10px] text-gray-400 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded">Tax</span>
+                </div>
                 <span className="font-semibold text-dark dark:text-white">
                   {formatCurrency(taxAmount)}
                 </span>
@@ -452,6 +460,11 @@ export default function PaymentForm({
               <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 mt-1">
                 Transfer exactly this amount to speed up verification
               </p>
+              {TAX_RATE > 0 && (
+                <p className="text-[9px] sm:text-[10px] text-gray-400 dark:text-gray-500 mt-1.5 pt-1.5 border-t border-gray-100 dark:border-[#38383A]">
+                  💡 Price includes 11% PPN (Pajak Pertambahan Nilai) per UU HPP No. 7 Tahun 2021
+                </p>
+              )}
             </div>
           </div>
         </div>
