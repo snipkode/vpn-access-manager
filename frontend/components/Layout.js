@@ -220,10 +220,10 @@ export default function Layout({
         {/* Top Bar */}
         <header className={`sticky top-0 z-30 bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border-b ${isAdmin ? 'border-purple-200 dark:border-purple-900' : 'border-gray-200 dark:border-[#38383A]'} px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 sm:gap-4`}>
           <button
-            className="lg:hidden flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-dark dark:hover:text-white p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-[#2C2C2E] transition-all flex-shrink-0"
+            className="lg:hidden flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-dark dark:hover:text-white p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-[#2C2C2E] transition-all flex-shrink-0"
             onClick={() => setSidebarOpen(true)}
           >
-            <Icon name="menu" variant="round" size="medium" />
+            <Icon name="menu" variant="round" size="large" />
           </button>
 
           <h1 className="text-lg sm:text-xl font-bold text-dark dark:text-white flex-1 min-w-0 truncate">
