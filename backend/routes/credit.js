@@ -434,6 +434,8 @@ router.post('/sync', verifyAuth, rateLimiters.general, async (req, res) => {
     res.json({
       success: true,
       synced: syncResult.synced,
+      old_balance: syncResult.old_balance,
+      new_balance: syncResult.new_balance,
       message: syncResult.synced ? 'Balance updated successfully' : 'Balance already in sync',
     });
   } catch (error) {
