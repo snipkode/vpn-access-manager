@@ -243,8 +243,8 @@ export default function Wallet({ token }) {
                 <span className="text-3xl">💳</span>
               </div>
               <div>
-                <div className="text-[13px] sm:text-sm text-white/80 font-medium tracking-wide">Available Balance</div>
-                <div className="text-4xl sm:text-5xl font-bold text-white tracking-tight mt-1 drop-shadow-lg">
+                <div className="text-[12px] sm:text-[13px] text-white/80 font-medium tracking-wide">Available Balance</div>
+                <div className="text-3xl sm:text-4xl font-bold text-white tracking-tight mt-1 drop-shadow-lg">
                   {formatCurrency(balance)}
                 </div>
               </div>
