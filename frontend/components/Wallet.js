@@ -121,15 +121,19 @@ export default function Wallet({ token }) {
       const syncResult = await creditAPI.syncBalance();
       console.log('🔄 Sync result:', syncResult);
 
-      // If balance changed, update state immediately
-      if (syncResult?.synced && syncResult?.new_balance !== undefined) {
+      // Always update balance if new_balance is returned (even if synced: false)
+      if (syncResult?.new_balance !== undefined) {
         // Update both Zustand and local state
         updateUserData({ credit_balance: syncResult.new_balance });
         setLocalBalance(syncResult.new_balance);
         setLastUpdated(new Date());
-        showNotification('Balance synced successfully', 'success');
+        
+        const message = syncResult.synced 
+          ? 'Balance synced successfully' 
+          : 'Balance already in sync';
+        showNotification(message, 'success');
       } else {
-        // Fetch fresh data if no sync needed
+        // Fetch fresh data if sync failed
         await fetchData(true);
         showNotification('Balance updated', 'success');
       }
@@ -144,8 +148,8 @@ export default function Wallet({ token }) {
       // Sync balance after successful topup
       const syncResult = await creditAPI.syncBalance();
 
-      // Update state immediately if sync succeeded
-      if (syncResult?.synced && syncResult?.new_balance !== undefined) {
+      // Always update balance if new_balance is returned
+      if (syncResult?.new_balance !== undefined) {
         updateUserData({ credit_balance: syncResult.new_balance });
         setLocalBalance(syncResult.new_balance);
         setLastUpdated(new Date());
