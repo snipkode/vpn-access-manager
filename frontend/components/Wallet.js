@@ -322,6 +322,7 @@ export default function Wallet({ token }) {
             </div>
           </div>
         </div>
+        </div>
       </div>
 
       {/* Tabs - iOS Style with Horizontal Scroll */}
