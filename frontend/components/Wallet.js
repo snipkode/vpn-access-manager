@@ -268,6 +268,7 @@ export default function Wallet({ token }) {
           </div>
         </div>
       ) : (
+        <>
         <div className="relative bg-gradient-to-br from-[#007AFF] via-blue-500 to-blue-600 rounded-[28px] p-6 sm:p-8 shadow-2xl shadow-[#007AFF]/30 overflow-hidden">
         {/* Animated Background Pattern */}
         <div className="absolute inset-0 opacity-10">
@@ -322,8 +323,9 @@ export default function Wallet({ token }) {
             </div>
           </div>
         </div>
-        </div>
       </div>
+      </>
+      )}
 
       {/* Tabs - iOS Style with Horizontal Scroll */}
       <Tabs
