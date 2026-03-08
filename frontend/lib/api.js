@@ -158,6 +158,18 @@ export const apiFetch = async (endpoint, options = {}, requestKey = null) => {
         endpoint,
       });
 
+      // Handle rate limit (429)
+      if (res.status === 429) {
+        const retryAfter = res.headers.get('Retry-After') || responseData.retryAfter || 30;
+        const rateLimitError = new Error(
+          `Too many requests. Please wait ${retryAfter} seconds before trying again.`
+        );
+        rateLimitError.code = 'RATE_LIMIT';
+        rateLimitError.status = 429;
+        rateLimitError.retryAfter = parseInt(retryAfter);
+        throw rateLimitError;
+      }
+
       // Handle rate limit errors with user-friendly message
       if (res.status === 429) {
         const retryAfter = res.headers.get('Retry-After') || responseData.retryAfter || 30;

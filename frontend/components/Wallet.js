@@ -24,6 +24,8 @@ export default function Wallet({ token }) {
   const [selectedPlanDetails, setSelectedPlanDetails] = useState(null);
   const [localBalance, setLocalBalance] = useState(userData?.credit_balance ?? 0);
   const [forceUpdate, setForceUpdate] = useState(false);
+  const [rateLimited, setRateLimited] = useState(false);
+  const [retryAfter, setRetryAfter] = useState(0);
   
   // Pagination state
   const [historyPage, setHistoryPage] = useState(1);
@@ -163,6 +165,8 @@ export default function Wallet({ token }) {
   }, []);
 
   const handleRefresh = async () => {
+    if (rateLimited) return; // Don't allow refresh when rate limited
+    
     try {
       // First, sync balance from Firestore
       const syncResult = await creditAPI.syncBalance();
@@ -174,9 +178,9 @@ export default function Wallet({ token }) {
         updateUserData({ credit_balance: syncResult.new_balance });
         setLocalBalance(syncResult.new_balance);
         setLastUpdated(new Date());
-        
-        const message = syncResult.synced 
-          ? 'Balance synced successfully' 
+
+        const message = syncResult.synced
+          ? 'Balance synced successfully'
           : 'Balance already in sync';
         showNotification(message, 'success');
       } else {
@@ -186,7 +190,21 @@ export default function Wallet({ token }) {
       }
     } catch (error) {
       console.error('❌ Refresh failed:', error);
-      showNotification(error.message || 'Failed to refresh balance', 'error');
+      
+      // Handle rate limit (429)
+      if (error.code === 'RATE_LIMIT' || error.status === 429) {
+        setRateLimited(true);
+        setRetryAfter(error.retryAfter || 30);
+        showNotification(`Too many requests. Please wait ${error.retryAfter || 30}s`, 'error');
+        
+        // Auto-reset after retry period
+        setTimeout(() => {
+          setRateLimited(false);
+          setRetryAfter(0);
+        }, (error.retryAfter || 30) * 1000);
+      } else {
+        showNotification(error.message || 'Failed to refresh balance', 'error');
+      }
     }
   };
 
@@ -223,7 +241,33 @@ export default function Wallet({ token }) {
 
   return (
     <div className="max-w-[900px] mx-auto space-y-4 sm:space-y-5 px-4 sm:px-0">
-      {/* Balance Card - Modern Gradient with Glassmorphism */}
+      {/* Rate Limit Skeleton */}
+      {rateLimited ? (
+        <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-[#2C2C2E] dark:to-[#1C1C1E] rounded-[28px] p-8 shadow-xl border-2 border-amber-200 dark:border-amber-500/30">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-14 h-14 rounded-2xl bg-amber-200 dark:bg-amber-500/20 animate-pulse" />
+            <div className="flex-1">
+              <div className="h-4 w-32 bg-amber-200 dark:bg-amber-500/20 rounded animate-pulse mb-2" />
+              <div className="h-8 w-48 bg-amber-200 dark:bg-amber-500/20 rounded animate-pulse" />
+            </div>
+          </div>
+          <div className="text-center py-8">
+            <div className="text-4xl mb-4">⏳</div>
+            <div className="text-lg font-bold text-amber-800 dark:text-amber-400 mb-2">
+              Too Many Requests
+            </div>
+            <div className="text-sm text-amber-600 dark:text-amber-500 mb-4">
+              Please wait {retryAfter} seconds before trying again
+            </div>
+            <div className="w-full max-w-xs mx-auto h-2 bg-amber-200 dark:bg-amber-500/20 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-amber-500 transition-all duration-1000"
+                style={{ width: `${Math.max(0, ((retryAfter - Date.now() / 1000) / retryAfter) * 100)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      ) : (
       <div className="relative bg-gradient-to-br from-[#007AFF] via-blue-500 to-blue-600 rounded-[28px] p-6 sm:p-8 shadow-2xl shadow-[#007AFF]/30 overflow-hidden">
         {/* Animated Background Pattern */}
         <div className="absolute inset-0 opacity-10">
