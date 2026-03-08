@@ -23,6 +23,7 @@ export default function Wallet({ token }) {
   const [showPlanDetails, setShowPlanDetails] = useState(false);
   const [selectedPlanDetails, setSelectedPlanDetails] = useState(null);
   const [localBalance, setLocalBalance] = useState(userData?.credit_balance ?? 0);
+  const [forceUpdate, setForceUpdate] = useState(false);
   
   // Pagination state
   const [historyPage, setHistoryPage] = useState(1);
@@ -32,12 +33,12 @@ export default function Wallet({ token }) {
   // Get balance from global Zustand state with fallback to local state
   const balance = userData?.credit_balance ?? localBalance;
 
-  // Sync localBalance when userData.credit_balance changes
+  // Sync localBalance when userData.credit_balance changes OR forceUpdate triggers
   useEffect(() => {
     if (userData?.credit_balance !== undefined) {
       setLocalBalance(userData.credit_balance);
     }
-  }, [userData?.credit_balance]);
+  }, [userData?.credit_balance, forceUpdate]);
 
   // Auto-sync balance when Wallet page loads
   useEffect(() => {
@@ -48,11 +49,21 @@ export default function Wallet({ token }) {
         console.log('🔄 Auto-syncing balance on Wallet mount...');
         const syncResult = await creditAPI.syncBalance();
         
+        console.log('📊 Sync result:', syncResult);
+
         if (syncResult?.new_balance !== undefined) {
+          // Force update both states
           updateUserData({ credit_balance: syncResult.new_balance });
           setLocalBalance(syncResult.new_balance);
           setLastUpdated(new Date());
+          
+          // Force re-render by updating a dummy state
+          setForceUpdate(prev => !prev);
+          
           console.log('✅ Auto-sync complete:', syncResult.new_balance);
+          console.log('💰 New balance:', syncResult.new_balance);
+        } else {
+          console.warn('⚠️ Sync returned no new_balance');
         }
       } catch (error) {
         console.error('❌ Auto-sync failed:', error.message);
