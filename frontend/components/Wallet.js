@@ -260,15 +260,15 @@ export default function Wallet({ token }) {
               Please wait {retryAfter} seconds before trying again
             </div>
             <div className="w-full max-w-xs mx-auto h-2 bg-amber-200 dark:bg-amber-500/20 rounded-full overflow-hidden">
-              <div 
+              <div
                 className="h-full bg-amber-500 transition-all duration-1000"
-                style={{ width: `${Math.max(0, ((retryAfter - Date.now() / 1000) / retryAfter) * 100)}%` }}
+                style={{ width: `${Math.max(0, ((retryAfter * 1000 - Date.now()) / (retryAfter * 1000)) * 100)}%` }}
               />
             </div>
           </div>
         </div>
       ) : (
-      <div className="relative bg-gradient-to-br from-[#007AFF] via-blue-500 to-blue-600 rounded-[28px] p-6 sm:p-8 shadow-2xl shadow-[#007AFF]/30 overflow-hidden">
+        <div className="relative bg-gradient-to-br from-[#007AFF] via-blue-500 to-blue-600 rounded-[28px] p-6 sm:p-8 shadow-2xl shadow-[#007AFF]/30 overflow-hidden">
         {/* Animated Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 animate-pulse" />
