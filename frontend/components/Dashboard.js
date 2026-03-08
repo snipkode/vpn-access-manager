@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useVpnStore, useUIStore } from '../store';
 import { vpnAPI, billingAPI } from '../lib/api';
 import { useRequestPending } from '../components/RequestBlockingOverlay';
+import Icon from './ui/Icon';
 
 export default function Dashboard({ token, userData }) {
   const { devices, setDevices, selectedDevice, setSelectedDevice, updateDeviceConfig } = useVpnStore();
