@@ -611,69 +611,82 @@ export function BankAccountsDisplay({ bankAccounts = [] }) {
 }
 
 /**
- * Payment History Display Component - Modern iOS Style
+ * Payment History Display Component - iPhone Style
  */
 export function PaymentHistory({ payments = [], emptyMessage = 'Belum ada riwayat pembayaran' }) {
   if (!payments || payments.length === 0) {
     return (
-      <div className="bg-gradient-to-br from-gray-50 to-gray-100/60 dark:from-[#2C2C2E] dark:to-[#252527] rounded-[24px] p-12 text-center border border-gray-200/50 dark:border-[#38383A]/50">
-        <div className="w-20 h-20 mx-auto mb-5 rounded-2xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center shadow-lg">
-          <span className="text-4xl opacity-50">📭</span>
-        </div>
-        <div className="text-base sm:text-lg font-bold text-dark dark:text-white mb-2">{emptyMessage}</div>
-        <div className="text-[13px] sm:text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed max-w-sm mx-auto">
-          Pembayaran yang dikirim akan muncul di sini
-        </div>
+      <div className="bg-[#F2F2F7] dark:bg-[#1C1C1E] rounded-lg sm:rounded-2xl p-6 sm:p-8 md:p-10 text-center">
+        <div className="text-4xl sm:text-5xl md:text-6xl mb-2 sm:mb-3 md:mb-4">📭</div>
+        <div className="text-[14px] sm:text-[15px] md:text-[17px] font-semibold text-dark dark:text-white mb-1 tracking-tight">{emptyMessage}</div>
+        <div className="text-[12px] sm:text-[13px] text-gray-400 dark:text-gray-500 font-medium">Pembayaran yang dikirim akan muncul di sini</div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2 sm:space-y-2.5">
       {payments.map((payment) => (
         <div
           key={payment.id}
-          className="group flex items-center gap-4 p-4 bg-gray-50/80 dark:bg-[#2C2C2E]/80 rounded-2xl border border-gray-100/60 dark:border-[#38383A] hover:border-primary/30 hover:bg-primary/5 dark:hover:bg-primary/10 transition-all duration-200 shadow-sm hover:shadow-md"
+          className="bg-white dark:bg-[#1C1C1E] border border-gray-100 dark:border-[#38383A] rounded-lg sm:rounded-xl p-3 sm:p-4 hover:border-[#007AFF]/30 dark:hover:border-[#007AFF]/50 hover:shadow-md transition-all duration-200"
         >
-          {/* Status Icon */}
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold flex-shrink-0 shadow-md ${
-            payment.status === 'approved' ? 'bg-green-500/10 text-green-600 dark:text-green-400' :
-            payment.status === 'pending' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
-            payment.status === 'rejected' ? 'bg-red-500/10 text-red-600 dark:text-red-400' :
-            'bg-purple-500/10 text-purple-600 dark:text-purple-400'
-          }`}>
-            {payment.status === 'approved' ? '✓' :
-             payment.status === 'pending' ? '⏳' :
-             payment.status === 'rejected' ? '✕' : '📦'}
+          <div className="flex justify-between items-start mb-2 sm:mb-2.5">
+            <div>
+              <div className="text-base sm:text-lg md:text-xl font-bold text-[#007AFF] tracking-tight">
+                {formatCurrency(payment.amount)}
+              </div>
+              <div className="text-[9px] sm:text-[10px] md:text-[11px] text-gray-400 dark:text-gray-500 font-medium mt-0.5">
+                {payment.plan_label || payment.plan || 'Top Up'} • {payment.duration_days || 'N/A'} hari
+              </div>
+            </div>
+            <StatusBadge status={payment.status} />
           </div>
-          
-          {/* Payment Info */}
-          <div className="flex-1 min-w-0">
-            <div className="text-[14px] sm:text-[15px] font-bold text-dark dark:text-white truncate mb-1">
-              {formatCurrency(payment.amount)}
+
+          <div className="grid grid-cols-2 gap-2 sm:gap-2.5 md:gap-3 text-[9px] sm:text-[10px] md:text-[11px]">
+            <div className="text-gray-400 dark:text-gray-500 font-medium truncate">
+              <Icon name="account_balance" variant="round" size="small" className="text-[#007AFF] mr-1" />
+              {payment.bank_from}
             </div>
-            <div className="text-[11px] sm:text-[12px] text-gray-400 dark:text-gray-500 font-medium">
-              {payment.plan_label || payment.plan || 'Top Up'} {payment.duration_days ? `• ${payment.duration_days} hari` : ''}
+            <div className="text-gray-400 dark:text-gray-500 font-medium">
+              <Icon name="calendar_today" variant="round" size="small" className="text-[#007AFF] mr-1" />
+              Transfer: {new Date(payment.transfer_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
             </div>
-            <div className="text-[10px] sm:text-[11px] text-gray-400 dark:text-gray-500 mt-1">
-              {new Date(payment.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            <div className="text-gray-400 dark:text-gray-500">
+              <Icon name="schedule" variant="round" size="small" className="text-gray-400 mr-1" />
+              Dikirim: {new Date(payment.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
             </div>
-          </div>
-          
-          {/* Status Badge */}
-          <div className="flex-shrink-0">
-            <span className={`px-3 py-1.5 rounded-full text-[11px] sm:text-[12px] font-bold uppercase tracking-wider ${
-              payment.status === 'approved' ? 'bg-green-500/10 text-green-600 dark:text-green-400' :
-              payment.status === 'pending' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
-              payment.status === 'rejected' ? 'bg-red-500/10 text-red-600 dark:text-red-400' :
-              'bg-purple-500/10 text-purple-600 dark:text-purple-400'
-            }`}>
-              {payment.status}
-            </span>
+            {payment.admin_note && (
+              <div className="col-span-2 bg-[#FFF3CD] dark:bg-[#FFF3CD]/20 border border-[#FFC107] dark:border-[#FFC107]/30 rounded-md sm:rounded-lg p-2 sm:p-2.5 md:p-3 mt-1.5 sm:mt-2">
+                <div className="text-[9px] sm:text-[10px] md:text-[11px] text-[#856404] dark:text-[#FFC107] font-medium">
+                  <Icon name="info" variant="round" size="small" className="mr-1" />
+                  <strong>Catatan Admin:</strong> {payment.admin_note}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ))}
     </div>
+  );
+}
+
+function StatusBadge({ status }) {
+  const styles = {
+    pending: 'bg-[#FF9500]/10 text-[#FF9500] dark:bg-[#FF9500]/20',
+    approved: 'bg-[#34C759]/10 text-[#34C759] dark:bg-[#34C759]/20',
+    rejected: 'bg-[#FF3B30]/10 text-[#FF3B30] dark:bg-[#FF3B30]/20',
+    blocked: 'bg-[#AF52DE]/10 text-[#AF52DE] dark:bg-[#AF52DE]/20',
+  };
+
+  return (
+    <span
+      className={`px-2 sm:px-2.5 md:px-3 py-0.5 sm:py-1 md:py-1.5 rounded-md sm:rounded-full text-[7px] sm:text-[8px] md:text-[10px] font-bold uppercase tracking-wider ${
+        styles[status] || 'bg-gray-400/10 text-gray-400'
+      }`}
+    >
+      {status}
+    </span>
   );
 }
 
