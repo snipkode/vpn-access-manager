@@ -22,14 +22,15 @@ export default function Wallet({ token }) {
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [showPlanDetails, setShowPlanDetails] = useState(false);
   const [selectedPlanDetails, setSelectedPlanDetails] = useState(null);
-  const [localBalance, setLocalBalance] = useState(0);
+  
+  // Initialize localBalance from userData.credit_balance
+  const [localBalance, setLocalBalance] = useState(userData?.credit_balance ?? 0);
 
   // Get balance from global Zustand state with fallback to local state
   const balance = userData?.credit_balance ?? localBalance;
 
-  // Subscribe to balance changes from Zustand
+  // Sync localBalance when userData.credit_balance changes
   useEffect(() => {
-    // Initial sync from userData
     if (userData?.credit_balance !== undefined) {
       setLocalBalance(userData.credit_balance);
     }
