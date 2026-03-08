@@ -358,14 +358,24 @@ export default function Wallet({ token }) {
         </div>
       )}
 
-      {/* Topup History - iOS Style */}
+      {/* Topup History - Modern iOS Style */}
       {activeTab === 'history' && (
-        <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.2)] border border-gray-100/50 dark:border-[#38383A]/50">
-          <div className="flex items-center gap-2.5 mb-6">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 dark:from-blue-500/20 dark:to-blue-500/5 flex items-center justify-center">
-              <span className="text-lg">📜</span>
+        <div className="bg-white dark:bg-[#1C1C1E] rounded-[24px] p-6 sm:p-8 shadow-xl shadow-gray-200/50 dark:shadow-black/20 border border-gray-100/50 dark:border-[#38383A]/50">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 dark:from-blue-500/20 dark:to-blue-500/5 flex items-center justify-center shadow-sm">
+                <span className="text-2xl">📜</span>
+              </div>
+              <div>
+                <h2 className="text-lg sm:text-xl font-bold text-dark dark:text-white tracking-tight">Top Up History</h2>
+                <p className="text-[11px] sm:text-[12px] text-gray-400 dark:text-gray-500 font-medium">Your payment history</p>
+              </div>
             </div>
-            <h2 className="text-base font-semibold text-dark dark:text-white tracking-tight">Top Up History</h2>
+            {topups.length > 0 && (
+              <div className="px-3 py-1.5 bg-blue-500/10 dark:bg-blue-500/20 rounded-full">
+                <span className="text-[11px] sm:text-[12px] font-bold text-blue-600 dark:text-blue-400">{topups.length}</span>
+              </div>
+            )}
           </div>
 
           <PaymentHistory
@@ -375,43 +385,55 @@ export default function Wallet({ token }) {
         </div>
       )}
 
-      {/* Transactions - iOS Style */}
+      {/* Transactions - Modern iOS Style */}
       {activeTab === 'transactions' && (
-        <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.2)] border border-gray-100/50 dark:border-[#38383A]/50">
-          <div className="flex items-center gap-2.5 mb-5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-500/5 dark:from-purple-500/20 dark:to-purple-500/5 flex items-center justify-center">
-              <span className="text-lg">📊</span>
+        <div className="bg-white dark:bg-[#1C1C1E] rounded-[24px] p-6 sm:p-8 shadow-xl shadow-gray-200/50 dark:shadow-black/20 border border-gray-100/50 dark:border-[#38383A]/50">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500/10 to-purple-500/5 dark:from-purple-500/20 dark:to-purple-500/5 flex items-center justify-center shadow-sm">
+                <span className="text-2xl">📊</span>
+              </div>
+              <div>
+                <h2 className="text-lg sm:text-xl font-bold text-dark dark:text-white tracking-tight">Transactions</h2>
+                <p className="text-[11px] sm:text-[12px] text-gray-400 dark:text-gray-500 font-medium">Recent activity</p>
+              </div>
             </div>
-            <h2 className="text-base font-semibold text-dark dark:text-white tracking-tight">Recent Transactions</h2>
+            {transactions.length > 0 && (
+              <div className="px-3 py-1.5 bg-purple-500/10 dark:bg-purple-500/20 rounded-full">
+                <span className="text-[11px] sm:text-[12px] font-bold text-purple-600 dark:text-purple-400">{transactions.length}</span>
+              </div>
+            )}
           </div>
 
           {transactions.length === 0 ? (
-            <div className="bg-gradient-to-br from-gray-50 to-gray-100/60 dark:from-[#2C2C2E] dark:to-[#252527] rounded-2xl p-10 text-center border border-gray-200/50 dark:border-[#38383A]/50">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center shadow-sm">
-                <span className="text-3xl opacity-60">📄</span>
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100/60 dark:from-[#2C2C2E] dark:to-[#252527] rounded-[24px] p-12 text-center border border-gray-200/50 dark:border-[#38383A]/50">
+              <div className="w-20 h-20 mx-auto mb-5 rounded-2xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center shadow-lg">
+                <span className="text-4xl opacity-50">📄</span>
               </div>
-              <div className="text-sm font-semibold text-dark dark:text-white mb-1.5">No transactions yet</div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">Your transaction history will appear here</div>
+              <div className="text-base sm:text-lg font-bold text-dark dark:text-white mb-2">No transactions yet</div>
+              <div className="text-[13px] sm:text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed max-w-sm mx-auto">
+                Your transaction history will appear here when you start using credit
+              </div>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {transactions.map((tx) => (
-                <div 
-                  key={tx.id} 
-                  className="group flex items-center gap-3 p-3.5 bg-gray-50/80 dark:bg-[#2C2C2E]/80 rounded-xl border border-gray-100/60 dark:border-[#38383A] hover:border-primary/30 hover:bg-primary/5 dark:hover:bg-primary/10 transition-all duration-200"
+                <div
+                  key={tx.id}
+                  className="group flex items-center gap-4 p-4 bg-gray-50/80 dark:bg-[#2C2C2E]/80 rounded-2xl border border-gray-100/60 dark:border-[#38383A] hover:border-primary/30 hover:bg-primary/5 dark:hover:bg-primary/10 transition-all duration-200 shadow-sm hover:shadow-md"
                 >
-                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-base font-semibold flex-shrink-0 shadow-sm ${
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold flex-shrink-0 shadow-md ${
                     getTxColor(tx.type)
                   }`}>
                     {getTxIcon(tx.type)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-dark dark:text-white truncate">{tx.description || tx.type}</div>
-                    <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
-                      {new Date(tx.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    <div className="text-[14px] sm:text-[15px] font-bold text-dark dark:text-white truncate mb-1">{tx.description || tx.type}</div>
+                    <div className="text-[11px] sm:text-[12px] text-gray-400 dark:text-gray-500 font-medium">
+                      {new Date(tx.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
-                  <div className={`text-sm font-bold ${
+                  <div className={`text-[15px] sm:text-[16px] font-bold ${
                     (tx.type === 'topup' || tx.type === 'credit') ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'
                   }`}>
                     {(tx.type === 'topup' || tx.type === 'credit') ? '+' : '-'}
