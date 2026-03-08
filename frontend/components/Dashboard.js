@@ -720,9 +720,10 @@ function DeviceModal({ device, onClose, onRevoke, onDisable, onReactivate, onDow
             <button
               onClick={onDownload}
               className="flex-1 flex items-center justify-center gap-2.5 py-3.5 px-4 bg-gradient-to-r from-[#007AFF] to-blue-500 hover:from-[#0056CC] hover:to-blue-600 text-white rounded-xl font-semibold shadow-lg shadow-[#007AFF]/30 hover:shadow-xl hover:shadow-[#007AFF]/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Download Config"
             >
               <Icon name="download" variant="round" size="small" className="text-white" />
-              <span>Download Config</span>
+              <span className="hidden sm:inline">Download Config</span>
             </button>
           )}
 
@@ -732,26 +733,28 @@ function DeviceModal({ device, onClose, onRevoke, onDisable, onReactivate, onDow
               onClick={onReactivate}
               disabled={reactivatingDevice || fetchingConfig}
               className="flex-1 flex items-center justify-center gap-2.5 py-3.5 px-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl font-semibold shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Reactivate"
             >
               {reactivatingDevice ? (
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <Icon name="check_circle" variant="round" size="small" className="text-white" />
               )}
-              {reactivatingDevice ? '...' : 'Reactivate'}
+              <span className="hidden sm:inline">{reactivatingDevice ? '...' : 'Reactivate'}</span>
             </button>
           ) : device.status === 'active' ? (
             <button
               onClick={onDisable}
               disabled={disablingDevice || fetchingConfig}
               className="flex-1 flex items-center justify-center gap-2.5 py-3.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl font-semibold shadow-lg shadow-amber-500/30 hover:shadow-xl hover:shadow-amber-500/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Disable"
             >
               {disablingDevice ? (
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <Icon name="pause_circle" variant="round" size="small" className="text-white" />
               )}
-              {disablingDevice ? '...' : 'Disable'}
+              <span className="hidden sm:inline">{disablingDevice ? '...' : 'Disable'}</span>
             </button>
           ) : null}
 
@@ -760,13 +763,14 @@ function DeviceModal({ device, onClose, onRevoke, onDisable, onReactivate, onDow
             onClick={onRevoke}
             disabled={deletingDevice || fetchingConfig}
             className="flex-1 flex items-center justify-center gap-2.5 py-3.5 px-4 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-semibold shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Remove"
           >
             {deletingDevice ? (
               <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <Icon name="delete" variant="round" size="small" className="text-white" />
             )}
-            {deletingDevice ? '...' : 'Remove'}
+            <span className="hidden sm:inline">{deletingDevice ? '...' : 'Remove'}</span>
           </button>
         </div>
       </div>
