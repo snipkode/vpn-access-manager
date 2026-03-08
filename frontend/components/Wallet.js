@@ -36,6 +36,30 @@ export default function Wallet({ token }) {
     }
   }, [userData?.credit_balance]);
 
+  // Auto-sync balance when Wallet page loads
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const autoSync = async () => {
+      try {
+        console.log('🔄 Auto-syncing balance on Wallet mount...');
+        const syncResult = await creditAPI.syncBalance();
+        
+        if (syncResult?.new_balance !== undefined) {
+          updateUserData({ credit_balance: syncResult.new_balance });
+          setLocalBalance(syncResult.new_balance);
+          setLastUpdated(new Date());
+          console.log('✅ Auto-sync complete:', syncResult.new_balance);
+        }
+      } catch (error) {
+        console.error('❌ Auto-sync failed:', error.message);
+        // Silent fail - will use existing balance
+      }
+    };
+
+    autoSync();
+  }, [user?.uid]);
+
   // Real-time Firestore listener for credit_balance
   useEffect(() => {
     if (!user?.uid) return;
