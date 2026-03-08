@@ -31,9 +31,22 @@ export default function PaymentForm({
   const [notes, setNotes] = useState('');
   const [copiedBankId, setCopiedBankId] = useState(null);
 
-  // Fee configuration
-  const ADMIN_FEE = 0; // Rp 0 - no admin fee
-  const TAX_RATE = 0; // 0% - no tax
+  // Global Fee Configuration
+  const FEE_CONFIG = {
+    topup: {
+      adminFee: 0.005, // 0.5% for top-up (lower fee)
+      tax: 0, // No tax for top-up
+    },
+    plan: {
+      adminFee: 0, // 0% for plans (can be changed)
+      tax: 0, // 0% for plans (can be changed to 0.11 for 11%)
+    },
+  };
+
+  // Get current fee config based on mode
+  const currentFeeConfig = mode === 'topup' ? FEE_CONFIG.topup : FEE_CONFIG.plan;
+  const ADMIN_FEE = currentFeeConfig.adminFee;
+  const TAX_RATE = currentFeeConfig.tax;
 
   // Calculate totals
   const adminFeeAmount = Math.round(amount * ADMIN_FEE);
@@ -411,14 +424,12 @@ export default function PaymentForm({
             </div>
             
             {/* Admin Fee */}
-            {ADMIN_FEE > 0 && (
-              <div className="flex items-center justify-between text-[13px] sm:text-[14px]">
-                <span className="text-gray-600 dark:text-gray-400">Admin Fee ({(ADMIN_FEE * 100).toFixed(0)}%)</span>
-                <span className="font-semibold text-dark dark:text-white">
-                  {formatCurrency(adminFeeAmount)}
-                </span>
-              </div>
-            )}
+            <div className="flex items-center justify-between text-[13px] sm:text-[14px]">
+              <span className="text-gray-600 dark:text-gray-400">Admin Fee ({(ADMIN_FEE * 100).toFixed(1)}%)</span>
+              <span className="font-semibold text-dark dark:text-white">
+                {formatCurrency(adminFeeAmount)}
+              </span>
+            </div>
             
             {/* Tax */}
             {TAX_RATE > 0 && (
