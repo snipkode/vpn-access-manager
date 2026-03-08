@@ -492,15 +492,15 @@ export default function AdminVPN({ token }) {
             {getCurrentPageItems().map((item, index) => (
               <div
                 key={item.ip || index}
-                className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                className="p-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm font-mono font-semibold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <span className="text-xs font-mono font-semibold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
                         {item.ip}
                       </span>
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
                         item.status === 'active'
                           ? 'bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400'
                           : item.status === 'stale'
@@ -509,7 +509,7 @@ export default function AdminVPN({ token }) {
                           ? 'bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400'
                           : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
                       }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${
+                        <span className={`w-1 h-1 rounded-full ${
                           item.status === 'active' ? 'bg-green-500'
                           : item.status === 'stale' ? 'bg-amber-500'
                           : item.status === 'orphaned' ? 'bg-red-500'
@@ -518,23 +518,23 @@ export default function AdminVPN({ token }) {
                         {item.status}
                       </span>
                     </div>
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Icon name="devices" className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-600 dark:text-gray-400">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <Icon name="devices" className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                        <span className="text-xs text-gray-600 dark:text-gray-400 truncate">
                           {item.device_name || '-'}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Icon name="person" className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm font-mono text-gray-500 dark:text-gray-500">
+                      <div className="flex items-center gap-1.5">
+                        <Icon name="person" className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                        <span className="text-xs font-mono text-gray-500 dark:text-gray-500 truncate">
                           {item.user_id ? `${item.user_id.substring(0, 8)}...` : '-'}
                         </span>
                       </div>
                       {item.lease_expires && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Icon name="schedule" className="w-4 h-4 text-gray-400" />
-                          <span className="text-gray-600 dark:text-gray-400">
+                        <div className="flex items-center gap-1.5">
+                          <Icon name="schedule" className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                          <span className="text-xs text-gray-600 dark:text-gray-400">
                             {new Date(item.lease_expires).toLocaleDateString('id-ID', {
                               year: 'numeric',
                               month: 'short',
