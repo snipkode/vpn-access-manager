@@ -176,41 +176,74 @@ export default function Wallet({ token }) {
 
   return (
     <div className="max-w-[900px] mx-auto space-y-4 sm:space-y-5 px-4 sm:px-0">
-      {/* Balance Card - Simple & Clean */}
-      <div className="relative bg-gradient-to-br from-[#007AFF] via-blue-500 to-blue-600 rounded-[24px] p-6 sm:p-8 shadow-xl shadow-[#007AFF]/25 overflow-hidden">
-        {/* Subtle gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
+      {/* Balance Card - Modern Gradient with Glassmorphism */}
+      <div className="relative bg-gradient-to-br from-[#007AFF] via-blue-500 to-blue-600 rounded-[28px] p-6 sm:p-8 shadow-2xl shadow-[#007AFF]/30 overflow-hidden">
+        {/* Animated Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 animate-pulse" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-300 rounded-full blur-2xl translate-y-1/3 -translate-x-1/3 animate-pulse" style={{ animationDelay: '1s' }} />
+        </div>
+
+        {/* Glassmorphism Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/15 via-transparent to-transparent pointer-events-none" />
 
         {/* Content */}
         <div className="relative z-10">
-          {/* Header with Refresh Button */}
-          <div className="flex justify-between items-start mb-3">
-            <div>
-              <div className="text-[13px] sm:text-sm text-white/80 font-medium">Available Balance</div>
-              <div className="text-4xl sm:text-5xl font-bold text-white tracking-tight mt-1">
-                {formatCurrency(balance)}
+          {/* Header with Refresh */}
+          <div className="flex justify-between items-start mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-14 h-14 rounded-2xl bg-white/25 backdrop-blur-md flex items-center justify-center shadow-xl">
+                <span className="text-3xl">💳</span>
+              </div>
+              <div>
+                <div className="text-[13px] sm:text-sm text-white/80 font-medium tracking-wide">Available Balance</div>
+                <div className="text-4xl sm:text-5xl font-bold text-white tracking-tight mt-1 drop-shadow-lg">
+                  {formatCurrency(balance)}
+                </div>
               </div>
             </div>
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/30 transition-all active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-12 h-12 rounded-2xl bg-white/25 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/35 transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl hover:shadow-2xl hover:shadow-white/20 group"
               title="Refresh balance"
             >
               <Icon
                 name="refresh"
                 variant="round"
                 size="small"
-                className={`text-white ${refreshing ? 'animate-spin' : ''}`}
+                className={`text-white ${refreshing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`}
               />
             </button>
           </div>
-          
-          {/* Last Updated */}
-          <div className="flex items-center gap-2 pt-4 border-t border-white/20">
-            <div className="w-2 h-2 rounded-full bg-green-400 shadow-sm shadow-green-400/50" />
-            <div className="text-[13px] sm:text-sm text-white/70">
-              Last updated: {lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+
+          {/* Live Status Indicator */}
+          <div className="flex items-center gap-3 pt-5 pb-3 border-t border-white/25">
+            <div className="relative">
+              <div className="w-3 h-3 rounded-full bg-green-400 shadow-lg shadow-green-400/50">
+                <div className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-75" />
+              </div>
+            </div>
+            <div className="text-[13px] sm:text-sm text-white/85 font-medium">Live Balance</div>
+            <div className="flex-1" />
+            <div className="text-[11px] sm:text-[12px] text-white/60 font-medium">
+              Updated: {lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+            </div>
+          </div>
+
+          {/* Quick Stats Grid */}
+          <div className="grid grid-cols-3 gap-3 mt-4 pt-5 border-t border-white/20">
+            <div className="text-center">
+              <div className="text-[10px] sm:text-[11px] text-white/60 uppercase tracking-wider mb-1">Balance</div>
+              <div className="text-sm sm:text-base font-bold text-white">{formatCurrency(balance)}</div>
+            </div>
+            <div className="text-center border-l border-white/20">
+              <div className="text-[10px] sm:text-[11px] text-white/60 uppercase tracking-wider mb-1">Status</div>
+              <div className="text-sm sm:text-base font-bold text-white">Active</div>
+            </div>
+            <div className="text-center border-l border-white/20">
+              <div className="text-[10px] sm:text-[11px] text-white/60 uppercase tracking-wider mb-1">Credit</div>
+              <div className="text-sm sm:text-base font-bold text-white">Available</div>
             </div>
           </div>
         </div>
