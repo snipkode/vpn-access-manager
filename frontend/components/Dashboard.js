@@ -18,11 +18,11 @@ export default function Dashboard({ token, userData }) {
   const [subLoading, setSubLoading] = useState(true);
   const [activatingTrial, setActivatingTrial] = useState(false);
 
-  // Subscription status checks
-  const isExpired = subscription?.subscription_end 
-    ? new Date(subscription.subscription_end) < new Date() 
+  // Subscription status checks - only check once at Add New Device section
+  const isExpired = subscription?.subscription_end
+    ? new Date(subscription.subscription_end) < new Date()
     : false;
-  
+
   const hasActiveSubscription = subscription?.active && !isExpired;
   const needsTrial = !subscription || (!subscription.active && !isExpired);
 
@@ -442,13 +442,7 @@ export default function Dashboard({ token, userData }) {
           </div>
         </div>
 
-        {isExpired ? (
-          // EXPIRED - Show warning with fraud tracking
-          <SubscriptionExpired subscription={subscription} onRenew={() => setActivePage('payment')} />
-        ) : needsTrial ? (
-          // NO TRIAL/SUBSCRIPTION - Show masking with trial CTA
-          <SubscriptionMask onActivateTrial={handleActivateTrial} activatingTrial={activatingTrial} />
-        ) : devices.length === 0 ? (
+        {devices.length === 0 ? (
           <div className="bg-gradient-to-br from-gray-50 to-gray-100/60 dark:from-[#2C2C2E] dark:to-[#252527] rounded-2xl p-10 text-center border border-gray-200/50 dark:border-[#38383A]/50">
             <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center shadow-sm">
               <span className="text-3xl opacity-60">📱</span>
