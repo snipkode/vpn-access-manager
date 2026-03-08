@@ -65,49 +65,49 @@ export default function SubscriptionExpired({ subscription, onRenew }) {
   return (
     <div className="relative w-full">
       {/* Card */}
-      <div className="bg-gradient-to-br from-red-50 to-red-100/60 dark:from-red-500/10 dark:to-red-500/5 rounded-2xl p-8 text-center border border-red-200/50 dark:border-red-500/20 overflow-hidden">
+      <div className="bg-gradient-to-br from-red-50 to-red-100/60 dark:from-red-500/10 dark:to-red-500/5 rounded-2xl p-6 sm:p-8 text-center border border-red-200/50 dark:border-red-500/20 overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-5 dark:opacity-10">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-red-500 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-32 h-32 bg-red-600 rounded-full blur-3xl" />
+          <div className="absolute top-0 right-0 w-24 h-24 sm:w-32 sm:h-32 bg-red-500 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 sm:w-32 sm:h-32 bg-red-600 rounded-full blur-3xl" />
         </div>
 
         {/* Content */}
         <div className="relative">
           {/* Icon */}
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/30 animate-pulse">
-            <span className="text-3xl">⚠️</span>
+          <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/30 animate-pulse">
+            <span className="text-2xl sm:text-3xl">⚠️</span>
           </div>
 
           {/* Title */}
-          <h3 className="text-lg font-bold text-dark dark:text-white mb-2">
+          <h3 className="text-base sm:text-lg font-bold text-dark dark:text-white mb-2">
             Subscription Expired
           </h3>
 
           {/* Days Expired Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-red-100/80 dark:bg-red-500/15 rounded-full mb-4">
-            <span className="text-2xl font-bold text-red-600 dark:text-red-400">{daysExpired}</span>
-            <span className="text-xs text-red-600 dark:text-red-400 font-medium">days expired</span>
+          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-red-100/80 dark:bg-red-500/15 rounded-full mb-4">
+            <span className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400">{daysExpired}</span>
+            <span className="text-[10px] sm:text-xs text-red-600 dark:text-red-400 font-medium">days expired</span>
           </div>
 
           {/* Description */}
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
             Your VPN access has been suspended. Renew to restore full access.
           </p>
 
           {/* Fraud Tracking Warning */}
           {deviceInfo && (
-            <div className="mb-6 p-4 bg-red-50/80 dark:bg-red-500/10 rounded-xl border border-red-200/40 dark:border-red-500/15">
-              <div className="flex items-start gap-3 mb-3">
-                <span className="text-xl mt-0.5">🚨</span>
+            <div className="mb-6 p-3 sm:p-4 bg-red-50/80 dark:bg-red-500/10 rounded-xl border border-red-200/40 dark:border-red-500/15">
+              <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
+                <span className="text-lg sm:text-xl mt-0.5">🚨</span>
                 <div className="flex-1 text-left">
-                  <div className="text-xs font-bold text-red-700 dark:text-red-400 mb-2 uppercase tracking-wide">
+                  <div className="text-[10px] sm:text-xs font-bold text-red-700 dark:text-red-400 mb-2 uppercase tracking-wide">
                     Fraud Detection Active
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs text-red-700/80 dark:text-red-300/80">
+                  <div className="grid grid-cols-2 gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-red-700/80 dark:text-red-300/80">
                     <div className="flex justify-between">
                       <span className="opacity-70">IP:</span>
-                      <span className="font-mono font-medium">{deviceInfo.publicIP}</span>
+                      <span className="font-mono font-medium truncate">{deviceInfo.publicIP}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="opacity-70">Device:</span>
@@ -124,7 +124,7 @@ export default function SubscriptionExpired({ subscription, onRenew }) {
                   </div>
                 </div>
               </div>
-              <div className="text-[10px] text-red-600 dark:text-red-400 pt-3 border-t border-red-200/40 dark:border-red-500/15 font-medium">
+              <div className="text-[9px] sm:text-[10px] text-red-600 dark:text-red-400 pt-2 sm:pt-3 border-t border-red-200/40 dark:border-red-500/15 font-medium">
                 ⚠️ Unauthorized access is logged and tracked
               </div>
             </div>
@@ -134,7 +134,7 @@ export default function SubscriptionExpired({ subscription, onRenew }) {
           <div className="space-y-3">
             <button
               onClick={handleRenewNow}
-              className="w-full px-6 py-3.5 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white rounded-xl text-sm font-semibold shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/30 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-300"
+              className="w-full px-4 sm:px-6 py-3 sm:py-3.5 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/30 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-300"
             >
               <span className="flex items-center justify-center gap-2">
                 <span>🔄</span>
@@ -144,21 +144,21 @@ export default function SubscriptionExpired({ subscription, onRenew }) {
 
             <button
               onClick={() => setActivePage('payment')}
-              className="w-full px-6 py-3.5 bg-white dark:bg-[#2C2C2E] text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 dark:hover:bg-[#38383A] transition-all duration-200"
+              className="w-full px-4 sm:px-6 py-3 sm:py-3.5 bg-white dark:bg-[#2C2C2E] text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-xl text-xs sm:text-sm font-semibold hover:bg-gray-50 dark:hover:bg-[#38383A] transition-all duration-200"
             >
               View Plans
             </button>
           </div>
 
           {/* Security Notice */}
-          <div className="mt-6 p-4 bg-gray-50/80 dark:bg-[#2C2C2E]/50 rounded-xl border border-gray-200/50 dark:border-[#38383A]/50">
-            <div className="flex items-start gap-3">
-              <span className="text-xl mt-0.5">🔐</span>
+          <div className="mt-6 p-3 sm:p-4 bg-gray-50/80 dark:bg-[#2C2C2E]/50 rounded-xl border border-gray-200/50 dark:border-[#38383A]/50">
+            <div className="flex items-start gap-2 sm:gap-3">
+              <span className="text-lg sm:text-xl mt-0.5">🔐</span>
               <div className="flex-1 text-left">
-                <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                <div className="text-[10px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
                   Security Notice
                 </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
                   We track device fingerprints and IP addresses to prevent unauthorized usage.
                 </div>
               </div>
