@@ -681,7 +681,7 @@ function StatusBadge({ status }) {
 
   return (
     <span
-      className={`px-2 py-0.5 rounded-md text-[8px] sm:text-[9px] font-bold uppercase tracking-wider ${
+      className={`px-1.5 py-0.5 rounded text-[7px] sm:text-[8px] font-bold uppercase tracking-wider ${
         styles[status] || 'bg-gray-400/10 text-gray-400'
       }`}
     >
