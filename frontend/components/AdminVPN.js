@@ -134,7 +134,7 @@ export default function AdminVPN({ token }) {
               </>
             ) : (
               <>
-                <Icon name="trash" className="w-5 h-5" />
+                <Icon name="delete" className="w-5 h-5" />
                 <span>Cleanup Leases</span>
               </>
             )}
@@ -155,7 +155,7 @@ export default function AdminVPN({ token }) {
               </>
             ) : (
               <>
-                <Icon name="refresh" className="w-5 h-5" />
+                <Icon name="sync" className="w-5 h-5" />
                 <span>Sync</span>
               </>
             )}
@@ -186,7 +186,7 @@ export default function AdminVPN({ token }) {
                   ? 'bg-green-50 dark:bg-green-500/10'
                   : 'bg-red-50 dark:bg-red-500/10'
               }`}>
-                <Icon name={health.wireguard_healthy ? 'checkCircle' : 'xCircle'} className="w-6 h-6 text-green-600 dark:text-green-400" />
+                <Icon name={health.wireguard_healthy ? 'check_circle' : 'error'} className="w-6 h-6" />
               </div>
             </div>
             <div className="mt-3 flex items-center gap-2">
@@ -215,7 +215,7 @@ export default function AdminVPN({ token }) {
                 </p>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
-                <Icon name="deviceMobile" className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                <Icon name="devices" className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
             </div>
             <div className="mt-3 flex items-center gap-2">
@@ -238,7 +238,7 @@ export default function AdminVPN({ token }) {
                 </p>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center">
-                <Icon name="chartBar" className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                <Icon name="insights" className="w-6 h-6 text-purple-600 dark:text-purple-400" />
               </div>
             </div>
             <div className="mt-3">
@@ -274,7 +274,7 @@ export default function AdminVPN({ token }) {
                   ? 'bg-green-50 dark:bg-green-500/10'
                   : 'bg-amber-50 dark:bg-amber-500/10'
               }`}>
-                <Icon name={health.sync_status === 'synced' ? 'checkCircle' : 'exclamationTriangle'} className="w-6 h-6" />
+                <Icon name={health.sync_status === 'synced' ? 'check_circle' : 'warning'} className="w-6 h-6" />
               </div>
             </div>
             <div className="mt-3 flex items-center gap-2">
@@ -298,7 +298,7 @@ export default function AdminVPN({ token }) {
         <div className="bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-500/10 dark:to-orange-500/10 border border-red-200 dark:border-red-500/20 rounded-2xl p-5">
           <div className="flex items-start gap-4">
             <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-500/20 flex items-center justify-center flex-shrink-0">
-              <Icon name="exclamationTriangle" className="w-6 h-6 text-red-600 dark:text-red-400" />
+              <Icon name="warning" className="w-6 h-6 text-red-600 dark:text-red-400" />
             </div>
             <div className="flex-1">
               <h3 className="text-sm font-semibold text-red-900 dark:text-red-400">
@@ -520,20 +520,20 @@ export default function AdminVPN({ token }) {
                     </div>
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2 text-sm">
-                        <Icon name="deviceMobile" className="w-4 h-4 text-gray-400" />
+                        <Icon name="devices" className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600 dark:text-gray-400">
                           {item.device_name || '-'}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
-                        <Icon name="user" className="w-4 h-4 text-gray-400" />
+                        <Icon name="person" className="w-4 h-4 text-gray-400" />
                         <span className="text-sm font-mono text-gray-500 dark:text-gray-500">
                           {item.user_id ? `${item.user_id.substring(0, 8)}...` : '-'}
                         </span>
                       </div>
                       {item.lease_expires && (
                         <div className="flex items-center gap-2 text-sm">
-                          <Icon name="clock" className="w-4 h-4 text-gray-400" />
+                          <Icon name="schedule" className="w-4 h-4 text-gray-400" />
                           <span className="text-gray-600 dark:text-gray-400">
                             {new Date(item.lease_expires).toLocaleDateString('id-ID', {
                               year: 'numeric',
@@ -604,7 +604,7 @@ export default function AdminVPN({ token }) {
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-500/10 dark:to-indigo-500/10 border border-blue-200 dark:border-blue-500/20 rounded-2xl p-5">
         <div className="flex items-start gap-4">
           <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-            <Icon name="informationCircle" className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <Icon name="info" className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-400">
