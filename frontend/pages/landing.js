@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 
 const translations = {
@@ -266,16 +266,19 @@ export default function LandingPage() {
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [router.isReady, router.query.ref]);
+  }, [router.isReady]);
 
   const t = translations[lang];
-  const toggleLang = () => setLang(lang === 'en' ? 'id' : 'en');
+  
+  const toggleLang = useCallback(() => {
+    setLang(prevLang => prevLang === 'en' ? 'id' : 'en');
+  }, []);
 
   // Helper to build links with referral code
-  const getLinkWithRef = (basePath) => {
+  const getLinkWithRef = useCallback((basePath) => {
     const refCode = router.query.ref;
     return refCode ? `${basePath}?ref=${refCode}` : basePath;
-  };
+  }, [router.query.ref]);
 
   return (
     <div className="min-h-screen bg-black text-white antialiased">
