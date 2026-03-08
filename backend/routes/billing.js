@@ -112,6 +112,7 @@ const PLANS = {
 router.post('/trial', verifyAuth, async (req, res) => {
   try {
     const { uid } = req.user;
+    const { device_info } = req.body;
 
     // Get user document
     const userDoc = await db.collection('users').doc(uid).get();
@@ -125,7 +126,7 @@ router.post('/trial', verifyAuth, async (req, res) => {
     if (userData.subscription_end_at) {
       const subscriptionEnd = new Date(userData.subscription_end_at);
       if (subscriptionEnd > new Date()) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: 'Active subscription exists',
           message: 'You already have an active subscription'
         });
@@ -134,7 +135,7 @@ router.post('/trial', verifyAuth, async (req, res) => {
 
     // Check if user already used trial
     if (userData.trial_used === true) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Trial already used',
         message: 'You have already used your free trial'
       });
@@ -144,17 +145,25 @@ router.post('/trial', verifyAuth, async (req, res) => {
     const trialEnd = new Date();
     trialEnd.setDate(trialEnd.getDate() + 7);
 
+    // Prepare fraud tracking data
+    const fraudTrackingData = {
+      trial_activated_at: new Date().toISOString(),
+      trial_device_info: device_info || null,
+      trial_ip_address: req.ip || req.connection.remoteAddress || null,
+      trial_user_agent: req.headers['user-agent'] || null,
+    };
+
     // Update user document
     await db.collection('users').doc(uid).update({
       subscription_start_at: new Date().toISOString(),
       subscription_end_at: trialEnd.toISOString(),
       trial_used: true,
-      trial_activated_at: new Date().toISOString(),
+      ...fraudTrackingData,
       updated_at: new Date().toISOString(),
     });
 
-    // Create payment record for trial
-    const paymentRef = await db.collection('payments').add({
+    // Create payment record for trial with device info
+    const paymentData = {
       user_id: uid,
       type: 'trial',
       amount: 0,
@@ -165,6 +174,19 @@ router.post('/trial', verifyAuth, async (req, res) => {
       subscription_end: trialEnd.toISOString(),
       created_at: new Date().toISOString(),
       notes: '7-day free trial',
+      device_info: device_info || null,
+      ip_address: req.ip || req.connection.remoteAddress || null,
+      user_agent: req.headers['user-agent'] || null,
+    };
+
+    const paymentRef = await db.collection('payments').add(paymentData);
+
+    // Log fraud tracking for security
+    console.log('🔍 Trial activated with fraud tracking:', {
+      uid,
+      ip: fraudTrackingData.trial_ip_address,
+      device: device_info?.publicIP || 'N/A',
+      platform: device_info?.platform || 'N/A',
     });
 
     res.json({
@@ -175,9 +197,9 @@ router.post('/trial', verifyAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('Trial activation error:', error.message);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to activate trial',
-      details: error.message 
+      details: error.message
     });
   }
 });

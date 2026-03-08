@@ -343,8 +343,11 @@ export const billingAPI = {
    * Activate 7-day free trial
    * POST /api/billing/trial
    */
-  activateTrial: async () => {
-    return apiFetch('/billing/trial', { method: 'POST' }, 'activate_trial');
+  activateTrial: async (deviceInfo = null) => {
+    return apiFetch('/billing/trial', {
+      method: 'POST',
+      body: JSON.stringify({ device_info: deviceInfo }),
+    }, 'activate_trial');
   },
 
   /**

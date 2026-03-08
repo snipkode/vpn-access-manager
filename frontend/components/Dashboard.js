@@ -5,6 +5,8 @@ import { useRequestPending } from '../components/RequestBlockingOverlay';
 import { useRateLimit } from '../hooks/useRateLimit';
 import RateLimitSkeleton from './ui/RateLimitSkeleton';
 import Icon from './ui/Icon';
+import SubscriptionMask from './SubscriptionMask';
+import SubscriptionExpired from './SubscriptionExpired';
 
 export default function Dashboard({ token, userData }) {
   const { devices, setDevices, selectedDevice, setSelectedDevice, updateDeviceConfig } = useVpnStore();
@@ -15,6 +17,14 @@ export default function Dashboard({ token, userData }) {
   const [subscription, setSubscription] = useState(null);
   const [subLoading, setSubLoading] = useState(true);
   const [activatingTrial, setActivatingTrial] = useState(false);
+
+  // Subscription status checks
+  const isExpired = subscription?.subscription_end 
+    ? new Date(subscription.subscription_end) < new Date() 
+    : false;
+  
+  const hasActiveSubscription = subscription?.active && !isExpired;
+  const needsTrial = !subscription || (!subscription.active && !isExpired);
 
   // Use request pending hook for generate VPN
   const generatingVpn = useRequestPending('generate_vpn');
@@ -103,7 +113,11 @@ export default function Dashboard({ token, userData }) {
   const handleActivateTrial = async () => {
     try {
       setActivatingTrial(true);
-      const response = await billingAPI.activateTrial();
+      
+      // Get device info if available
+      const deviceInfo = window.pendingTrialDeviceInfo;
+      
+      const response = await billingAPI.activateTrial(deviceInfo);
       
       showNotification('🎉 7-day free trial activated successfully!', 'success');
       
@@ -118,6 +132,9 @@ export default function Dashboard({ token, userData }) {
         id: d.id || d.device_id
       }));
       setDevices(devicesWithId);
+      
+      // Clear pending device info
+      delete window.pendingTrialDeviceInfo;
     } catch (error) {
       console.error('🔴 Trial activation error:', error);
       if (error.message?.includes('already used') || error.message?.includes('active subscription')) {
@@ -342,72 +359,14 @@ export default function Dashboard({ token, userData }) {
           <h2 className="text-base font-semibold text-dark dark:text-white tracking-tight">Add New Device</h2>
         </div>
 
-        {!subscription || !subscription.active ? (
-          <div className="relative overflow-hidden bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-pink-500/10 dark:from-indigo-500/20 dark:via-purple-500/20 dark:to-pink-500/20 rounded-2xl p-8 text-center border border-indigo-200/30 dark:border-indigo-500/20">
-            {/* Background decoration */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-400/20 to-purple-400/20 rounded-full blur-2xl" />
-            <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-pink-400/20 to-purple-400/20 rounded-full blur-2xl" />
-            
-            <div className="relative">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                <span className="text-3xl">🎁</span>
-              </div>
-              <div className="text-sm font-bold text-dark dark:text-white mb-1.5">Start Your Free Trial</div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 mb-6 leading-relaxed max-w-sm mx-auto">
-                Get <span className="font-semibold text-indigo-600 dark:text-indigo-400">7 days free access</span> to all features. No credit card required.
-              </div>
-              
-              <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-                <button
-                  onClick={handleActivateTrial}
-                  disabled={activatingTrial}
-                  className={`w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
-                    activatingTrial
-                      ? 'bg-gray-100 dark:bg-[#2C2C2E] text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500 text-white shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]'
-                  }`}
-                >
-                  {activatingTrial ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="w-4 h-4 border-2 border-gray-400/30 border-t-gray-400 rounded-full animate-spin" />
-                      Activating...
-                    </span>
-                  ) : (
-                    <span className="flex items-center justify-center gap-1.5">
-                      <span>🚀</span>
-                      <span>Start Free Trial</span>
-                    </span>
-                  )}
-                </button>
-                
-                <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">or</span>
-                
-                <button
-                  onClick={() => setActivePage('payment')}
-                  className="w-full sm:w-auto px-6 py-3 bg-white dark:bg-[#2C2C2E] text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 dark:hover:bg-[#38383A] hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200"
-                >
-                  View Plans
-                </button>
-              </div>
-              
-              {/* Feature highlights */}
-              <div className="mt-6 flex flex-wrap justify-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                  3 Devices
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                  Unlimited Bandwidth
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                  All Servers
-                </span>
-              </div>
-            </div>
-          </div>
+        {isExpired ? (
+          // EXPIRED - Show warning with fraud tracking
+          <SubscriptionExpired subscription={subscription} onRenew={() => setActivePage('payment')} />
+        ) : needsTrial ? (
+          // NO TRIAL/SUBSCRIPTION - Show masking with trial CTA
+          <SubscriptionMask onActivateTrial={handleActivateTrial} activatingTrial={activatingTrial} />
         ) : !userData?.vpn_enabled ? (
+          // VPN DISABLED BY ADMIN
           <div className="bg-gradient-to-br from-amber-50 to-amber-100/60 dark:from-amber-500/10 dark:to-amber-500/5 rounded-2xl p-8 text-center border border-amber-200/50 dark:border-amber-200/20">
             <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center shadow-sm">
               <span className="text-2xl">⚠️</span>
@@ -483,53 +442,12 @@ export default function Dashboard({ token, userData }) {
           </div>
         </div>
 
-        {!subscription || !subscription.active ? (
-          <div className="relative overflow-hidden bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10 dark:from-blue-500/20 dark:via-indigo-500/20 dark:to-purple-500/20 rounded-2xl p-8 text-center border border-blue-200/30 dark:border-blue-500/20">
-            {/* Background decoration */}
-            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-blue-400/20 to-indigo-400/20 rounded-full blur-2xl" />
-            <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-purple-400/20 to-indigo-400/20 rounded-full blur-2xl" />
-            
-            <div className="relative">
-              <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                <span className="text-2xl">📱</span>
-              </div>
-              <div className="text-sm font-bold text-dark dark:text-white mb-1.5">Unlock Device Management</div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 mb-6 leading-relaxed max-w-sm mx-auto">
-                Start your <span className="font-semibold text-blue-600 dark:text-blue-400">7-day free trial</span> to manage and add devices
-              </div>
-              
-              <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-                <button
-                  onClick={handleActivateTrial}
-                  disabled={activatingTrial}
-                  className={`w-full sm:w-auto px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
-                    activatingTrial
-                      ? 'bg-gray-100 dark:bg-[#2C2C2E] text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-md shadow-blue-500/30 hover:shadow-lg hover:shadow-blue-500/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]'
-                  }`}
-                >
-                  {activatingTrial ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="w-3.5 h-3.5 border-2 border-gray-400/30 border-t-gray-400 rounded-full animate-spin" />
-                      Activating...
-                    </span>
-                  ) : (
-                    <span className="flex items-center justify-center gap-1.5">
-                      <span>🚀</span>
-                      <span>Try Free</span>
-                    </span>
-                  )}
-                </button>
-                
-                <button
-                  onClick={() => setActivePage('payment')}
-                  className="w-full sm:w-auto px-5 py-2.5 bg-white/80 dark:bg-[#2C2C2E] text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold hover:bg-white dark:hover:bg-[#38383A] hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200"
-                >
-                  View Plans
-                </button>
-              </div>
-            </div>
-          </div>
+        {isExpired ? (
+          // EXPIRED - Show warning with fraud tracking
+          <SubscriptionExpired subscription={subscription} onRenew={() => setActivePage('payment')} />
+        ) : needsTrial ? (
+          // NO TRIAL/SUBSCRIPTION - Show masking with trial CTA
+          <SubscriptionMask onActivateTrial={handleActivateTrial} activatingTrial={activatingTrial} />
         ) : devices.length === 0 ? (
           <div className="bg-gradient-to-br from-gray-50 to-gray-100/60 dark:from-[#2C2C2E] dark:to-[#252527] rounded-2xl p-10 text-center border border-gray-200/50 dark:border-[#38383A]/50">
             <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white dark:bg-[#1C1C1E] flex items-center justify-center shadow-sm">
