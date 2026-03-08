@@ -31,6 +31,15 @@ export default function PaymentForm({
   const [notes, setNotes] = useState('');
   const [copiedBankId, setCopiedBankId] = useState(null);
 
+  // Fee configuration
+  const ADMIN_FEE = 0; // Rp 0 - no admin fee
+  const TAX_RATE = 0; // 0% - no tax
+
+  // Calculate totals
+  const adminFeeAmount = Math.round(amount * ADMIN_FEE);
+  const taxAmount = Math.round(amount * TAX_RATE);
+  const totalAmount = amount + adminFeeAmount + taxAmount;
+
   // Get today's date for min attribute
   const today = new Date().toISOString().split('T')[0];
 
@@ -139,7 +148,10 @@ export default function PaymentForm({
 
       // Create form data
       const formData = new FormData();
-      formData.append('amount', amount.toString());
+      formData.append('amount', totalAmount.toString()); // Send total with fees
+      formData.append('base_amount', amount.toString()); // Send base amount
+      formData.append('admin_fee', adminFeeAmount.toString());
+      formData.append('tax_amount', taxAmount.toString());
 
       // Add plan info if in plan mode
       if (mode === 'plan' && selectedPlan) {
@@ -381,6 +393,58 @@ export default function PaymentForm({
           required
         />
       </div>
+
+      {/* Cost Breakdown */}
+      {(mode === 'topup' || mode === 'plan') && (
+        <div className="bg-gradient-to-br from-gray-50 to-white dark:from-[#1C1C1E] dark:to-[#2C2C2E] rounded-xl p-4 border border-gray-200 dark:border-[#38383A] shadow-sm">
+          <h3 className="text-[13px] sm:text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">
+            Payment Summary
+          </h3>
+          
+          <div className="space-y-2">
+            {/* Base Amount */}
+            <div className="flex items-center justify-between text-[13px] sm:text-[14px]">
+              <span className="text-gray-600 dark:text-gray-400">Base Amount</span>
+              <span className="font-semibold text-dark dark:text-white">
+                {formatCurrency(amount)}
+              </span>
+            </div>
+            
+            {/* Admin Fee */}
+            {ADMIN_FEE > 0 && (
+              <div className="flex items-center justify-between text-[13px] sm:text-[14px]">
+                <span className="text-gray-600 dark:text-gray-400">Admin Fee ({(ADMIN_FEE * 100).toFixed(0)}%)</span>
+                <span className="font-semibold text-dark dark:text-white">
+                  {formatCurrency(adminFeeAmount)}
+                </span>
+              </div>
+            )}
+            
+            {/* Tax */}
+            {TAX_RATE > 0 && (
+              <div className="flex items-center justify-between text-[13px] sm:text-[14px]">
+                <span className="text-gray-600 dark:text-gray-400">Tax ({(TAX_RATE * 100).toFixed(1)}%)</span>
+                <span className="font-semibold text-dark dark:text-white">
+                  {formatCurrency(taxAmount)}
+                </span>
+              </div>
+            )}
+            
+            {/* Total */}
+            <div className="pt-3 mt-3 border-t border-gray-200 dark:border-[#38383A]">
+              <div className="flex items-center justify-between">
+                <span className="text-[14px] sm:text-[15px] font-bold text-gray-700 dark:text-gray-300">Total</span>
+                <span className="text-xl sm:text-2xl font-bold text-[#007AFF]">
+                  {formatCurrency(totalAmount)}
+                </span>
+              </div>
+              <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                Transfer exactly this amount to speed up verification
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Proof of Transfer */}
       <div>
