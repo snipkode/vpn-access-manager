@@ -247,7 +247,7 @@ const translations = {
 
 export default function LandingPage() {
   const router = useRouter();
-  const [lang, setLang] = useState('en');
+  const [lang, setLang] = useState('id');
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
 
