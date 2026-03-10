@@ -155,13 +155,6 @@
       ]
     },
     {
-      "collectionGroup": "referral_events",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "fraud_alerts",
       "queryScope": "COLLECTION",
       "fields": [
