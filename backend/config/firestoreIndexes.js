@@ -199,6 +199,36 @@ export const firestoreIndexes = [
           { fieldPath: 'requires_review', order: 'ASCENDING' },
           { fieldPath: 'created_at', order: 'DESCENDING' }
         ]
+      },
+      // Get transactions by user_id (for user's own transactions)
+      {
+        fields: [
+          { fieldPath: 'user_id', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      },
+      // Get transactions by user_id and status (filter by status)
+      {
+        fields: [
+          { fieldPath: 'user_id', order: 'ASCENDING' },
+          { fieldPath: 'status', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      },
+      // Get transactions by to_user_id (received transactions)
+      {
+        fields: [
+          { fieldPath: 'to_user_id', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      },
+      // Get blocked/fraud transactions for admin review
+      {
+        fields: [
+          { fieldPath: 'blocked_reason', order: 'ASCENDING' },
+          { fieldPath: 'status', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
       }
     ]
   },
