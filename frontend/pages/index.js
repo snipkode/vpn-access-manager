@@ -61,6 +61,15 @@ export default function App() {
   const [hasSkippedOnboarding, setHasSkippedOnboarding] = useState(false);
   const [lang, setLang] = useState('id'); // Default language
 
+  // Check if user has completed/skipped onboarding before
+  useEffect(() => {
+    const completed = localStorage.getItem('onboardingCompleted');
+    if (completed === 'true') {
+      setHasSkippedOnboarding(true);
+      console.log('✅ Onboarding already completed, skipping...');
+    }
+  }, []);
+
   // Translations
   const t = {
     id: {
@@ -296,6 +305,8 @@ export default function App() {
 
   // Handle onboarding complete - go to wallet
   const handleOnboardingComplete = () => {
+    // Save to localStorage so it doesn't show again
+    localStorage.setItem('onboardingCompleted', 'true');
     setHasSkippedOnboarding(true);
     setActivePage('wallet');
     setShowOnboarding(false);
@@ -303,6 +314,8 @@ export default function App() {
 
   // Handle onboarding skip - go to dashboard
   const handleOnboardingSkip = () => {
+    // Save to localStorage so it doesn't show again
+    localStorage.setItem('onboardingCompleted', 'true');
     setHasSkippedOnboarding(true);
     setShowOnboarding(false);
     setActivePage('dashboard');
@@ -472,9 +485,11 @@ export default function App() {
 
   // Show onboarding for new users (check from userData without API fetch)
   // Onboarding will be shown if user has no subscription_end_at (never subscribed)
+  // BUT only if user hasn't completed/skipped it before (stored in localStorage)
   const shouldShowOnboarding = !userData?.subscription_end_at && userData?.role === 'user' && !hasSkippedOnboarding;
 
-  if (shouldShowOnboarding && !showOnboarding) {
+  // Only show onboarding if user hasn't completed it before
+  if (shouldShowOnboarding && !showOnboarding && !hasSkippedOnboarding) {
     setShowOnboarding(true);
   }
 

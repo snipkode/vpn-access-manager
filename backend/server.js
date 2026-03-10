@@ -51,7 +51,15 @@ try {
 
 // Security & middleware setup
 securityMiddleware(app);
-app.use(cors({ origin: process.env.FRONTEND_URL || '*', credentials: true }));
+app.use(cors({ 
+  origin: [
+    'http://localhost:3000',
+    'https://perumdati.tech:3000',
+    'https://perumdati.tech',
+    process.env.FRONTEND_URL
+  ].filter(Boolean),
+  credentials: true 
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(addSecurityHeaders);
