@@ -150,17 +150,25 @@ router.post('/generate', verifyAuth, async (req, res) => {
     }
 
     // Check if subscription is active (not expired)
+    // Check both subscription_end (paid) and subscription_end_at (trial)
     const now = new Date();
-    const subscriptionEnd = userData.subscription_end 
-      ? new Date(userData.subscription_end) 
-      : null;
+    let subscriptionEnd = null;
     
+    // Try subscription_end first (for paid subscriptions)
+    if (userData.subscription_end) {
+      subscriptionEnd = new Date(userData.subscription_end);
+    }
+    // Then try subscription_end_at (for trials)
+    else if (userData.subscription_end_at) {
+      subscriptionEnd = new Date(userData.subscription_end_at);
+    }
+
     if (!subscriptionEnd || subscriptionEnd < now) {
       return res.status(403).json({
         error: 'Subscription expired',
         message: 'Your subscription has expired. Please top up to continue.',
-        subscription_end: userData.subscription_end,
-        expired_days: subscriptionEnd 
+        subscription_end: userData.subscription_end || userData.subscription_end_at,
+        expired_days: subscriptionEnd
           ? Math.floor((now - subscriptionEnd) / (1000 * 60 * 60 * 24))
           : 0,
       });
