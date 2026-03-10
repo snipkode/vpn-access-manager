@@ -1,47 +1,311 @@
 // Firestore Indexes Configuration
-// Complete list of all required indexes for VPN Access application
+// Based on actual queries used in the application
+// Last updated: March 10, 2026
 
 export const firestoreIndexes = [
   // ==================== USERS COLLECTION ====================
   {
     collectionGroup: 'users',
     indexes: [
-      // Get users by role (for admin panel)
+      // Admin: Get users by role (admin.js:98)
       {
         fields: [
           { fieldPath: 'role', order: 'ASCENDING' },
           { fieldPath: 'created_at', order: 'DESCENDING' }
         ]
       },
-      // Get users by VPN status
+      // Admin: Get users by VPN status (admin.js:104)
       {
         fields: [
           { fieldPath: 'vpn_enabled', order: 'ASCENDING' },
           { fieldPath: 'created_at', order: 'DESCENDING' }
         ]
-      },
-      // Get users by subscription status
+      }
+    ]
+  },
+
+  // ==================== DEVICES COLLECTION ====================
+  {
+    collectionGroup: 'devices',
+    indexes: [
+      // User: Get own devices (vpn.js:179, 378)
       {
         fields: [
-          { fieldPath: 'vpn_enabled', order: 'ASCENDING' },
-          { fieldPath: 'subscription_end', order: 'ASCENDING' }
+          { fieldPath: 'user_id', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
         ]
       },
-      // Get users by email (for lookup)
+      // User: Get active devices (user.js:258)
       {
         fields: [
-          { fieldPath: 'email', order: 'ASCENDING' }
+          { fieldPath: 'user_id', order: 'ASCENDING' },
+          { fieldPath: 'status', order: 'ASCENDING' }
         ]
       },
-      // Get users by subscription plan
+      // Admin: Get all devices by status (admin.js:416)
       {
         fields: [
-          { fieldPath: 'subscription_plan', order: 'ASCENDING' },
-          { fieldPath: 'subscription_end', order: 'DESCENDING' }
+          { fieldPath: 'status', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
         ]
       }
     ]
   },
+
+  // ==================== PAYMENTS COLLECTION ====================
+  {
+    collectionGroup: 'payments',
+    indexes: [
+      // User: Get own payments (billing.js:381, 491)
+      {
+        fields: [
+          { fieldPath: 'user_id', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      },
+      // User: Get pending payments (billing.js:381)
+      {
+        fields: [
+          { fieldPath: 'user_id', order: 'ASCENDING' },
+          { fieldPath: 'status', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      },
+      // Admin: Get payments by status (admin-billing.js:41)
+      {
+        fields: [
+          { fieldPath: 'status', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      },
+      // Admin: Get pending for approval (admin-billing.js:523)
+      {
+        fields: [
+          { fieldPath: 'status', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'ASCENDING' }
+        ]
+      }
+    ]
+  },
+
+  // ==================== CREDIT_TRANSACTIONS COLLECTION ====================
+  {
+    collectionGroup: 'credit_transactions',
+    indexes: [
+      // User: Get own transactions (credit.js:60)
+      {
+        fields: [
+          { fieldPath: 'user_id', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      },
+      // User: Get sent transfers (credit.js:263)
+      {
+        fields: [
+          { fieldPath: 'from_user_id', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      },
+      // User: Get transfers by type (credit.js:263)
+      {
+        fields: [
+          { fieldPath: 'from_user_id', order: 'ASCENDING' },
+          { fieldPath: 'type', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      },
+      // Admin: Get by type (admin-credit.js:47)
+      {
+        fields: [
+          { fieldPath: 'type', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      },
+      // Admin: Get by type and status (admin-credit.js:47)
+      {
+        fields: [
+          { fieldPath: 'type', order: 'ASCENDING' },
+          { fieldPath: 'status', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      },
+      // User: Check approved payments (credit.js:340)
+      {
+        fields: [
+          { fieldPath: 'user_id', order: 'ASCENDING' },
+          { fieldPath: 'status', order: 'ASCENDING' }
+        ]
+      }
+    ]
+  },
+
+  // ==================== REFERRALS COLLECTION ====================
+  {
+    collectionGroup: 'referrals',
+    indexes: [
+      // User: Get own referral (referral.js:84)
+      {
+        fields: [
+          { fieldPath: 'user_id', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      },
+      // User: Find by referral code (referral.js:84)
+      {
+        fields: [
+          { fieldPath: 'referral_code', order: 'ASCENDING' }
+        ]
+      }
+    ]
+  },
+
+  // ==================== REFERRAL_EVENTS COLLECTION ====================
+  {
+    collectionGroup: 'referral_events',
+    indexes: [
+      // Admin: Get by referrer (admin-referral.js:132)
+      {
+        fields: [
+          { fieldPath: 'referrer_id', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      },
+      // User: Check if already referred (referral.js:97)
+      {
+        fields: [
+          { fieldPath: 'referee_id', order: 'ASCENDING' }
+        ]
+      },
+      // Admin: Get by status (admin-referral.js:179)
+      {
+        fields: [
+          { fieldPath: 'status', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      },
+      // Admin: Get flagged for review (admin-referral.js:278)
+      {
+        fields: [
+          { fieldPath: 'status', order: 'ASCENDING' }
+        ]
+      }
+    ]
+  },
+
+  // ==================== FRAUD_ALERTS COLLECTION ====================
+  {
+    collectionGroup: 'fraud_alerts',
+    indexes: [
+      // Admin: Get by status (admin-credit.js:125)
+      {
+        fields: [
+          { fieldPath: 'status', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      }
+    ]
+  },
+
+  // ==================== BANK_ACCOUNTS COLLECTION ====================
+  {
+    collectionGroup: 'bank_accounts',
+    indexes: [
+      // User: Get active accounts (payment-settings.js:157)
+      {
+        fields: [
+          { fieldPath: 'active', order: 'ASCENDING' },
+          { fieldPath: 'order', order: 'ASCENDING' }
+        ]
+      }
+    ]
+  },
+
+  // ==================== SUBSCRIPTION_PLANS COLLECTION ====================
+  {
+    collectionGroup: 'subscription_plans',
+    indexes: [
+      // User: Get plans by order (payment-settings.js:435)
+      {
+        fields: [
+          { fieldPath: 'order', order: 'ASCENDING' }
+        ]
+      }
+    ]
+  },
+
+  // ==================== NOTIFICATIONS COLLECTION ====================
+  {
+    collectionGroup: 'notifications',
+    indexes: [
+      // User: Get own notifications
+      {
+        fields: [
+          { fieldPath: 'user_id', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      }
+    ]
+  },
+
+  // ==================== AUDIT_LOGS COLLECTION ====================
+  {
+    collectionGroup: 'audit_logs',
+    indexes: [
+      // Admin: Get by user
+      {
+        fields: [
+          { fieldPath: 'user_id', order: 'ASCENDING' },
+          { fieldPath: 'timestamp', order: 'DESCENDING' }
+        ]
+      }
+    ]
+  },
+
+  // ==================== BACKUPS COLLECTION ====================
+  {
+    collectionGroup: 'backups',
+    indexes: [
+      // Admin: Get by type
+      {
+        fields: [
+          { fieldPath: 'backup_type', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      },
+      // Admin: Get by status
+      {
+        fields: [
+          { fieldPath: 'status', order: 'ASCENDING' },
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      }
+    ]
+  },
+
+  // ==================== BACKUP_LOGS & RESTORE_LOGS ====================
+  {
+    collectionGroup: 'backup_logs',
+    indexes: [
+      // Admin: Get recent logs
+      {
+        fields: [
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      }
+    ]
+  },
+  {
+    collectionGroup: 'restore_logs',
+    indexes: [
+      // Admin: Get recent logs
+      {
+        fields: [
+          { fieldPath: 'created_at', order: 'DESCENDING' }
+        ]
+      }
+    ]
+  }
+];
 
   // ==================== DEVICES COLLECTION ====================
   {
