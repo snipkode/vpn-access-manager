@@ -132,13 +132,6 @@
       ]
     },
     {
-      "collectionGroup": "referrals",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "referral_code", "order": "ASCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "referral_events",
       "queryScope": "COLLECTION",
       "fields": [
