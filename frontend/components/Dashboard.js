@@ -26,6 +26,18 @@ export default function Dashboard({ token, userData }) {
   const hasActiveSubscription = subscription && (subscription.active || subscription.subscription_end) && !isExpired;
   const needsTrial = !hasActiveSubscription;
 
+  // Debug logging for subscription state
+  useEffect(() => {
+    console.log('🔵 Subscription State:', {
+      subscription,
+      hasActiveSubscription,
+      needsTrial,
+      isExpired,
+      subscription_end: subscription?.subscription_end,
+      active: subscription?.active
+    });
+  }, [subscription, hasActiveSubscription, needsTrial, isExpired]);
+
   // Use request pending hook for generate VPN
   const generatingVpn = useRequestPending('generate_vpn');
 

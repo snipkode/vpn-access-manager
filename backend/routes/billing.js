@@ -555,6 +555,21 @@ router.get('/subscription', verifyAuth, rateLimiters.billingView, async (req, re
 
     const userData = userDoc.data();
 
+    // Check for trial subscription FIRST
+    let subscriptionEnd = null;
+    let activePlan = null;
+    let totalDays = 0;
+
+    // Check if user has active trial
+    if (userData.trial_used === true && userData.subscription_end_at) {
+      const trialEnd = new Date(userData.subscription_end_at);
+      if (trialEnd > new Date()) {
+        subscriptionEnd = userData.subscription_end_at;
+        activePlan = 'trial';
+        totalDays = 7;
+      }
+    }
+
     // Get approved payments
     const approvedPayments = await db.collection('payments')
       .where('user_id', '==', uid)
@@ -562,11 +577,7 @@ router.get('/subscription', verifyAuth, rateLimiters.billingView, async (req, re
       .orderBy('created_at', 'desc')
       .get();
 
-    // Calculate subscription end date
-    let subscriptionEnd = null;
-    let activePlan = null;
-    let totalDays = 0;
-
+    // Calculate subscription end date from payments
     approvedPayments.forEach(doc => {
       const payment = doc.data();
       const paymentDate = new Date(payment.created_at);
@@ -586,13 +597,14 @@ router.get('/subscription', verifyAuth, rateLimiters.billingView, async (req, re
       subscription: {
         active: userData.vpn_enabled && subscriptionEnd && new Date(subscriptionEnd) > new Date(),
         plan: activePlan,
-        plan_label: activePlan ? PLANS[activePlan]?.label : null,
+        plan_label: activePlan === 'trial' ? '7-Day Trial' : (activePlan ? PLANS[activePlan]?.label : null),
         subscription_end: subscriptionEnd,
-        days_remaining: subscriptionEnd 
+        days_remaining: subscriptionEnd
           ? Math.max(0, Math.floor((new Date(subscriptionEnd) - new Date()) / (1000 * 60 * 60 * 24)))
           : 0,
         vpn_enabled: userData.vpn_enabled,
         total_purchases: approvedPayments.size,
+        trial_used: userData.trial_used || false,
       },
     });
   } catch (error) {
