@@ -113,18 +113,19 @@ export default function Dashboard({ token, userData }) {
   const handleActivateTrial = async () => {
     try {
       setActivatingTrial(true);
-      
+
       // Get device info if available
       const deviceInfo = window.pendingTrialDeviceInfo;
-      
+
       const response = await billingAPI.activateTrial(deviceInfo);
-      
+
       showNotification('🎉 7-day free trial activated successfully!', 'success');
-      
+
       // Refresh subscription data
       const subData = await billingAPI.getSubscription();
-      setSubscription(subData.subscription || null);
-      
+      const newSubscription = subData.subscription || null;
+      setSubscription(newSubscription);
+
       // Refresh devices data
       const devicesData = await vpnAPI.getDevices();
       const devicesWithId = (devicesData.devices || []).map(d => ({
@@ -132,9 +133,17 @@ export default function Dashboard({ token, userData }) {
         id: d.id || d.device_id
       }));
       setDevices(devicesWithId);
-      
+
       // Clear pending device info
       delete window.pendingTrialDeviceInfo;
+
+      // Force re-check subscription status after a short delay
+      setTimeout(async () => {
+        const refreshedSub = await billingAPI.getSubscription();
+        setSubscription(refreshedSub.subscription || null);
+        console.log('✅ Subscription refreshed:', refreshedSub.subscription);
+      }, 500);
+
     } catch (error) {
       console.error('🔴 Trial activation error:', error);
       if (error.message?.includes('already used') || error.message?.includes('active subscription')) {
