@@ -73,6 +73,11 @@ export default function LoginPage() {
       setLoggingIn(true);
       console.log('🔐 Initiating Google sign-in popup...');
 
+      // Set popup redirect resolver to handle storage issues
+      googleProvider.setCustomParameters({
+        prompt: 'select_account'
+      });
+
       await signInWithPopup(auth, googleProvider);
       console.log('✅ Google sign-in successful');
 
@@ -83,7 +88,20 @@ export default function LoginPage() {
       }, 1000);
     } catch (error) {
       console.error('❌ Login error:', error);
-      showNotification('Login failed: ' + error.message, 'error');
+      
+      // Handle specific errors
+      if (error.code === 'auth/popup-closed-by-user') {
+        showNotification('Login cancelled. Please try again.', 'error');
+      } else if (error.code === 'auth/popup-blocked') {
+        showNotification('Popup blocked. Please allow popups for this site.', 'error');
+      } else if (error.code === 'auth/unauthorized-domain') {
+        showNotification('Domain not authorized. Please contact support.', 'error');
+      } else if (error.message.includes('storage') || error.message.includes('storage-partitioned')) {
+        showNotification('Browser storage issue. Try using a different browser or disable strict privacy mode.', 'error');
+      } else {
+        showNotification('Login failed: ' + error.message, 'error');
+      }
+      
       setLoggingIn(false);
     }
   };

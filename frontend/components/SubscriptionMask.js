@@ -75,7 +75,7 @@ export default function SubscriptionMask({ onActivateTrial, activatingTrial }) {
             </div>
           )}
 
-          {/* CTA Buttons */}
+          {/* CTA Button */}
           <div className="space-y-3">
             <button
               onClick={handleStartTrial}
@@ -98,43 +98,6 @@ export default function SubscriptionMask({ onActivateTrial, activatingTrial }) {
                 </span>
               )}
             </button>
-
-            {/* Divider */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200 dark:border-gray-700" />
-              </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="px-3 bg-gradient-to-br from-gray-50 to-gray-100/80 dark:from-[#2C2C2E] dark:to-[#252527] text-gray-400 dark:text-gray-500 rounded-full">
-                  or
-                </span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setActivePage('payment')}
-              className="w-full px-4 sm:px-6 py-3 sm:py-3.5 bg-white dark:bg-[#2C2C2E] text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-xl text-xs sm:text-sm font-semibold hover:bg-gray-50 dark:hover:bg-[#38383A] transition-all duration-200"
-            >
-              View Plans
-            </button>
-          </div>
-
-          {/* Features */}
-          <div className="mt-6 pt-6 border-t border-gray-100 dark:border-[#38383A]/50">
-            <div className="grid grid-cols-3 gap-3 sm:gap-4 text-center">
-              <div>
-                <div className="text-lg sm:text-xl mb-1">📱</div>
-                <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium">3 Devices</div>
-              </div>
-              <div>
-                <div className="text-lg sm:text-xl mb-1">⚡</div>
-                <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium">Unlimited</div>
-              </div>
-              <div>
-                <div className="text-lg sm:text-xl mb-1">🌍</div>
-                <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium">All Servers</div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
