@@ -23,8 +23,8 @@ export default function Dashboard({ token, userData }) {
     ? new Date(subscription.subscription_end) < new Date()
     : false;
 
-  const hasActiveSubscription = subscription?.active && !isExpired;
-  const needsTrial = !subscription || (!subscription.active && !isExpired);
+  const hasActiveSubscription = subscription && (subscription.active || subscription.subscription_end) && !isExpired;
+  const needsTrial = !hasActiveSubscription;
 
   // Use request pending hook for generate VPN
   const generatingVpn = useRequestPending('generate_vpn');
