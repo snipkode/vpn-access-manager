@@ -1,26 +1,38 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ==================== HELPER FUNCTIONS ====================
     
-    // Helper function to check if user is admin
+    // Check if user is admin
     function isAdmin() {
-      return request.auth != null && 
+      return request.auth != null &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
-    
-    // Helper function to check if user owns the resource
+
+    // Check if user owns the resource
     function isOwner(userId) {
       return request.auth != null && request.auth.uid == userId;
     }
-    
-    // Helper function to validate email format
+
+    // Validate email format
     function isValidEmail(email) {
       return email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
     }
-    
-    // Helper function to validate phone number format
+
+    // Validate phone number format
     function isValidPhone(phone) {
       return phone == null || phone.matches('^\\+?[1-9]\\d{1,14}$');
+    }
+
+    // Validate timestamp format
+    function isValidTimestamp(value) {
+      return value is timestamp || value is string;
+    }
+
+    // Validate number is positive
+    function isPositiveNumber(value) {
+      return value is number && value >= 0;
     }
 
     // ==================== USERS COLLECTION ====================
@@ -234,19 +246,168 @@ service cloud.firestore {
     // ==================== NOTIFICATIONS COLLECTION ====================
     match /notifications/{notificationId} {
       // User can read their own notifications
-      allow read: if request.auth != null && 
+      allow read: if request.auth != null &&
         (resource.data.user_id == request.auth.uid || isAdmin());
-      
+
       // System creates notifications
       allow create: if request.auth != null;
-      
+
       // User can update their own notifications (mark as read)
-      allow update: if request.auth != null && 
+      allow update: if request.auth != null &&
         resource.data.user_id == request.auth.uid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'read_at']);
-      
+
       // Only admin can delete notifications
       allow delete: if isAdmin();
+    }
+
+    // ==================== USER_CREDITS COLLECTION ====================
+    match /user_credits/{userId} {
+      // User can read their own credit data
+      allow read: if isOwner(userId) || isAdmin();
+
+      // Only system/admin can create (via Cloud Functions)
+      allow create: if isAdmin();
+
+      // Only system/admin can update (via Cloud Functions)
+      allow update: if isAdmin() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'balance', 'total_earned', 'total_spent', 'updated_at'
+        ]);
+
+      // Only admin can delete
+      allow delete: if isAdmin();
+    }
+
+    // ==================== TOPUPS COLLECTION ====================
+    match /topups/{topupId} {
+      // User can read their own topups, admin can read all
+      allow read: if request.auth != null &&
+        (resource.data.user_id == request.auth.uid || isAdmin());
+
+      // Only admin can create topups
+      allow create: if isAdmin() &&
+        request.resource.data.user_id is string &&
+        request.resource.data.amount is number &&
+        request.resource.data.amount > 0;
+
+      // Only admin can update topups
+      allow update: if isAdmin() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'admin_note', 'updated_at'
+        ]);
+
+      // Only admin can delete topups
+      allow delete: if isAdmin();
+    }
+
+    // ==================== REFERRAL_BONUSES COLLECTION ====================
+    match /referral_bonuses/{bonusId} {
+      // User can read their own bonuses
+      allow read: if request.auth != null &&
+        (resource.data.user_id == request.auth.uid || isAdmin());
+
+      // System creates bonuses (via Cloud Functions)
+      allow create: if request.auth != null &&
+        request.resource.data.user_id is string &&
+        request.resource.data.amount is number &&
+        request.resource.data.amount > 0;
+
+      // Only admin can update bonuses
+      allow update: if isAdmin();
+
+      // Only admin can delete bonuses
+      allow delete: if isAdmin();
+    }
+
+    // ==================== FRAUD_CONFIG COLLECTION ====================
+    match /fraud_config/{configId} {
+      // Admin can read fraud config
+      allow read: if isAdmin();
+
+      // Only admin can write fraud config
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ==================== SUBSCRIPTION_PLANS COLLECTION ====================
+    match /subscription_plans/{planId} {
+      // Anyone can read active plans (for billing display)
+      allow read: if true;
+
+      // Only admin can write plans
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ==================== BACKUP_SETTINGS COLLECTION ====================
+    match /backup_settings/{settingId} {
+      // Admin can read backup settings
+      allow read: if isAdmin();
+
+      // Only admin can write backup settings
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ==================== BACKUP_LOGS COLLECTION ====================
+    match /backup_logs/{logId} {
+      // Admin can read backup logs
+      allow read: if isAdmin();
+
+      // System creates logs (via backup service)
+      allow create: if request.auth != null;
+
+      // Only admin can delete logs
+      allow delete: if isAdmin();
+
+      // No one can update logs
+      allow update: if false;
+    }
+
+    // ==================== RESTORE_LOGS COLLECTION ====================
+    match /restore_logs/{logId} {
+      // Admin can read restore logs
+      allow read: if isAdmin();
+
+      // System creates logs (via restore service)
+      allow create: if request.auth != null;
+
+      // Only admin can delete logs
+      allow delete: if isAdmin();
+
+      // No one can update logs
+      allow update: if false;
+    }
+
+    // ==================== BACKUP_ALERTS COLLECTION ====================
+    match /backup_alerts/{alertId} {
+      // Admin can read backup alerts
+      allow read: if isAdmin();
+
+      // System creates alerts (via backup monitor)
+      allow create: if request.auth != null;
+
+      // Only admin can update/delete alerts
+      allow update, delete: if isAdmin();
+    }
+
+    // ==================== AUDIT_LOGS_COMPACT COLLECTION ====================
+    match /audit_logs_compact/{logId} {
+      // Only admin can read compact audit logs
+      allow read: if isAdmin();
+
+      // System creates logs (via middleware)
+      allow create: if request.auth != null;
+
+      // No one can update or delete compact audit logs
+      allow update, delete: if false;
+    }
+
+    // ==================== REFERRAL_CONFIG COLLECTION ====================
+    match /referral_config/{configId} {
+      // Admin can read referral config
+      allow read: if isAdmin();
+
+      // Only admin can write referral config
+      allow create, update, delete: if isAdmin();
     }
 
     // ==================== DENY RULES (Default) ====================

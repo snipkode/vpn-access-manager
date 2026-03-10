@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Connection Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #00ff00; }
+        .test { margin: 20px 0; padding: 15px; border: 1px solid #333; border-radius: 5px; }
+        .success { border-color: #00ff00; background: rgba(0,255,0,0.1); }
+        .error { border-color: #ff0000; background: rgba(255,0,0,0.1); }
+        .pending { border-color: #ffff00; background: rgba(255,255,0,0.1); }
+        button { background: #00ff00; color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #00cc00; }
+        pre { background: #000; padding: 10px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔍 VPN API Connection Test</h1>
+    
+    <div class="test">
+        <h3>Test 1: Backend Health Check</h3>
+        <button onclick="testHealth()">Run Test</button>
+        <div id="health-result"></div>
+    </div>
+
+    <div class="test">
+        <h3>Test 2: CORS Check</h3>
+        <button onclick="testCors()">Run Test</button>
+        <div id="cors-result"></div>
+    </div>
+
+    <div class="test">
+        <h3>Test 3: API Info</h3>
+        <button onclick="testApiInfo()">Run Test</button>
+        <div id="api-result"></div>
+    </div>
+
+    <div class="test">
+        <h3>Test 4: Environment Check</h3>
+        <button onclick="checkEnv()">Run Test</button>
+        <div id="env-result"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        const BACKEND_URL = 'http://localhost:5000';
+        
+        async function testHealth() {
+            const resultDiv = document.getElementById('health-result');
+            resultDiv.className = 'test pending';
+            resultDiv.innerHTML = '<p>⏳ Testing...</p>';
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'test success';
+                    resultDiv.innerHTML = `
+                        <p>✅ SUCCESS</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'test error';
+                    resultDiv.innerHTML = `<p>❌ HTTP ${response.status}</p>`;
+                }
+            } catch (error) {
+                resultDiv.className = 'test error';
+                resultDiv.innerHTML = `
+                    <p>❌ ERROR: ${error.message}</p>
+                    <p>Backend might not be running on port 5000</p>
+                `;
+            }
+        }
+
+        async function testCors() {
+            const resultDiv = document.getElementById('cors-result');
+            resultDiv.className = 'test pending';
+            resultDiv.innerHTML = '<p>⏳ Testing CORS...</p>';
+            
+            try {
+                const response = await fetch(`${API_URL}`, {
+                    method: 'GET',
+                    headers: {
+                        'Origin': 'http://localhost:3000'
+                    }
+                });
+                
+                const corsHeader = response.headers.get('Access-Control-Allow-Origin');
+                
+                if (corsHeader) {
+                    resultDiv.className = 'test success';
+                    resultDiv.innerHTML = `
+                        <p>✅ CORS ENABLED</p>
+                        <p>Access-Control-Allow-Origin: ${corsHeader}</p>
+                    `;
+                } else {
+                    resultDiv.className = 'test error';
+                    resultDiv.innerHTML = `
+                        <p>❌ CORS HEADER MISSING</p>
+                        <p>Check backend CORS configuration</p>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'test error';
+                resultDiv.innerHTML = `<p>❌ ERROR: ${error.message}</p>`;
+            }
+        }
+
+        async function testApiInfo() {
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.className = 'test pending';
+            resultDiv.innerHTML = '<p>⏳ Testing API...</p>';
+            
+            try {
+                const response = await fetch(`${API_URL}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'test success';
+                    resultDiv.innerHTML = `
+                        <p>✅ API RESPONDING</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'test error';
+                    resultDiv.innerHTML = `<p>❌ HTTP ${response.status}</p>`;
+                }
+            } catch (error) {
+                resultDiv.className = 'test error';
+                resultDiv.innerHTML = `<p>❌ ERROR: ${error.message}</p>`;
+            }
+        }
+
+        function checkEnv() {
+            const resultDiv = document.getElementById('env-result');
+            resultDiv.className = 'test success';
+            resultDiv.innerHTML = `
+                <p>✅ Environment Info</p>
+                <p><strong>API_URL:</strong> ${API_URL}</p>
+                <p><strong>Origin:</strong> ${window.location.origin}</p>
+                <p><strong>Next.js API URL:</strong> ${typeof process !== 'undefined' ? process.env?.NEXT_PUBLIC_API_URL : 'Not available in browser'}</p>
+            `;
+        }
+
+        // Auto-run all tests on load
+        window.addEventListener('load', () => {
+            testHealth();
+            setTimeout(() => testCors(), 500);
+            setTimeout(() => testApiInfo(), 1000);
+            setTimeout(() => checkEnv(), 1500);
+        });
+    </script>
+</body>
+</html>

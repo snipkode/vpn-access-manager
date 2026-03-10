@@ -1,12 +1,12 @@
 /**
  * VPN Access API Client
- * Integrated with Swagger API documentation at http://localhost:3000/api-docs/
+ * Integrated with Swagger API documentation at http://localhost:5000/api-docs/
  */
 
 import { useAuthStore, useUIStore } from '../store';
 import { auth } from './firebase';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 /**
  * Refresh Firebase token

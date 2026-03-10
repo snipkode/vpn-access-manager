@@ -8,7 +8,7 @@ export default function Login({ onLogin, appName }) {
 
   useEffect(() => {
     setMounted(true);
-    
+
     // Fetch app name from settings
     fetch('/api/settings/public/general')
       .then(res => res.json())
@@ -61,14 +61,14 @@ export default function Login({ onLogin, appName }) {
       <div className="relative z-10 flex flex-col items-center max-w-md w-full">
         {/* Main Card */}
         <div className={`w-full bg-white/5 backdrop-blur-2xl rounded-3xl border border-white/10 p-8 sm:p-10 shadow-2xl transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-          
+
           {/* Logo Section */}
           <div className="flex flex-col items-center mb-8">
             {/* Animated Logo Container */}
             <div className="relative mb-6">
               {/* Outer Ring */}
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl blur-lg opacity-50 animate-pulse" />
-              
+
               {/* Logo Box */}
               <div className="relative w-20 h-20 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl flex items-center justify-center shadow-xl transform transition-transform duration-500 hover:scale-105">
                 <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -110,7 +110,7 @@ export default function Login({ onLogin, appName }) {
           >
             {/* Shine Effect */}
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-            
+
             <div className="relative flex items-center justify-center gap-3">
               {/* Google Icon */}
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -120,7 +120,7 @@ export default function Login({ onLogin, appName }) {
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
               <span>Sign in with Google</span>
-              
+
               {/* Arrow Icon */}
               <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -165,7 +165,7 @@ export default function Login({ onLogin, appName }) {
             </svg>
             <span>End-to-end encrypted</span>
           </div>
-          
+
           <p className="text-gray-600 text-[11px] leading-relaxed">
             By signing in, you agree to our{' '}
             <a href="#" className="text-blue-400 hover:text-blue-300 underline">Terms of Service</a>

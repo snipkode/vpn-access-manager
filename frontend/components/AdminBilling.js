@@ -404,7 +404,7 @@ function PaymentDetailModal({ payment, onClose, onApprove, onReject }) {
               </div>
               <div className="bg-[#F2F2F7] rounded-2xl p-4 text-center border border-gray-100">
                 <img
-                  src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}${payment.proof_image_url}`}
+                  src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}${payment.proof_image_url}`}
                   alt="Payment proof"
                   className="max-w-full max-h-80 rounded-2xl shadow-md mx-auto"
                 />

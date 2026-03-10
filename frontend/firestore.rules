@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Users collection
+    match /users/{userId} {
+      // User bisa baca data sendiri
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // User bisa buat document sendiri saat pertama login
+      allow create: if request.auth != null && request.auth.uid == userId;
+      
+      // User bisa update data sendiri (tapi TIDAK bisa ubah role)
+      allow update: if request.auth != null && request.auth.uid == userId
+                    && request.resource.data.role == resource.data.role;  // Cegah user ubah role sendiri
+      
+      // Admin bisa baca semua users
+      allow read: if request.auth != null && 
+                  get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      
+      // Admin bisa update semua users (termasuk role)
+      allow update: if request.auth != null && 
+                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Default deny all other collections
+    match /{document=**} {
+      allow read, write: if false;  // Block akses ke collection lain
+    }
+  }
+}
