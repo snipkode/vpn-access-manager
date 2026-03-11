@@ -26,7 +26,12 @@ export default function AdminDevices() {
   // Get unique users for filter dropdown from users list
   const uniqueUsers = useMemo(() => {
     return users
-      .filter(user => user.id && user.email)
+      .filter(user => (user.id || user.uid) && (user.email || user.emailAddress))
+      .map(user => ({
+        id: user.id || user.uid,
+        name: user.name || user.fullname || user.email || user.emailAddress || 'Unknown',
+        email: user.email || user.emailAddress || 'N/A'
+      }))
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [users]);
 
@@ -50,7 +55,32 @@ export default function AdminDevices() {
       setDevices(devicesList);
       setUsers(usersList);
       
-      console.log('Loaded:', { devices: devicesList.length, users: usersList.length });
+      console.log('Loaded devices:', devicesList.length);
+      console.log('Loaded users:', usersList.length);
+      if (devicesList.length > 0) {
+        console.log('Sample device:', {
+          id: devicesList[0].id,
+          user_id: devicesList[0].user_id,
+          device_name: devicesList[0].device_name
+        });
+      }
+      if (usersList.length > 0) {
+        console.log('Sample user:', {
+          id: usersList[0].id,
+          name: usersList[0].name,
+          email: usersList[0].email
+        });
+      }
+      
+      // Check for matching IDs
+      const deviceUserIds = new Set(devicesList.map(d => d.user_id));
+      const userIds = new Set(usersList.map(u => u.id));
+      const matchedIds = [...deviceUserIds].filter(id => userIds.has(id));
+      console.log('User ID matching:', {
+        device_user_ids: [...deviceUserIds].slice(0, 5),
+        user_ids: [...userIds].slice(0, 5),
+        matched: matchedIds.length
+      });
     } catch (error) {
       console.error('Failed to load data:', error);
       showNotification('Failed to load devices', 'error');
@@ -338,9 +368,22 @@ function DevicesTable({ devices, selectedDevice, onSelect, onDelete, onToggleSta
   // Create user map for quick lookup
   const userMap = useMemo(() => {
     const map = new Map();
-    users.forEach(user => map.set(user.id, { name: user.name, email: user.email }));
+    users.forEach(user => {
+      const key = user.id || user.uid;
+      const displayName = user.name || user.fullname || user.email?.split('@')[0] || user.emailAddress?.split('@')[0] || 'Unknown';
+      const email = user.email || user.emailAddress || 'N/A';
+      map.set(key, { name: displayName, email });
+    });
     return map;
   }, [users]);
+
+  console.log('DevicesTable render:', { 
+    devicesCount: devices.length, 
+    usersCount: users.length, 
+    userMapSize: userMap.size,
+    sampleDevice: devices[0] ? { id: devices[0].id, user_id: devices[0].user_id } : null,
+    sampleUser: users[0] ? { id: users[0].id, email: users[0].email } : null
+  });
 
   const columns = [
     {
