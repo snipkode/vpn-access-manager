@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
-import { adminDevicesAPI } from '../lib/api';
+import { adminDevicesAPI, adminUsersAPI } from '../lib/api';
 import { useUIStore } from '../store';
 import { StatusBadge } from './admin';
 import { Pagination, SearchInput, SortableHeader, EmptyState } from './Pagination';
 
 export default function AdminDevices() {
   const [devices, setDevices] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDevice, setSelectedDevice] = useState(null);
   const { showNotification } = useUIStore();
@@ -19,37 +20,42 @@ export default function AdminDevices() {
   const [filterStatus, setFilterStatus] = useState('all'); // all, active, inactive
   const [filterUser, setFilterUser] = useState('all');
   
-  // Get unique users for filter dropdown
-  const uniqueUsers = useMemo(() => {
-    const usersMap = new Map();
-    devices.forEach(device => {
-      if (device.user_id && !usersMap.has(device.user_id)) {
-        usersMap.set(device.user_id, {
-          id: device.user_id,
-          name: device.user_name,
-          email: device.user_email
-        });
-      }
-    });
-    return Array.from(usersMap.values()).sort((a, b) => 
-      (a.name || '').localeCompare(b.name || '')
-    );
-  }, [devices]);
-  
   // Sorting state
   const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
 
+  // Get unique users for filter dropdown from users list
+  const uniqueUsers = useMemo(() => {
+    return users
+      .filter(user => user.id && user.email)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [users]);
+
   useEffect(() => {
-    fetchDevices();
+    fetchAllData();
   }, []);
 
-  const fetchDevices = async () => {
+  const fetchAllData = async () => {
     setLoading(true);
     try {
-      const data = await adminDevicesAPI.getDevices();
-      setDevices(data.devices || []);
+      // Fetch devices and users in parallel
+      const [devicesData, usersData] = await Promise.all([
+        adminDevicesAPI.getDevices(),
+        adminUsersAPI.getUsers()
+      ]);
+      
+      // Handle different response structures
+      const devicesList = devicesData.devices || devicesData.data || [];
+      const usersList = usersData.users || usersData.data || [];
+      
+      setDevices(devicesList);
+      setUsers(usersList);
+      
+      console.log('Loaded:', { devices: devicesList.length, users: usersList.length });
     } catch (error) {
+      console.error('Failed to load data:', error);
       showNotification('Failed to load devices', 'error');
+      setDevices([]);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -64,10 +70,16 @@ export default function AdminDevices() {
       const query = searchQuery.toLowerCase();
       result = result.filter(device =>
         device.device_name?.toLowerCase().includes(query) ||
-        device.ip_address?.toLowerCase().includes(query) ||
-        device.user_email?.toLowerCase().includes(query) ||
-        device.user_name?.toLowerCase().includes(query)
+        device.ip_address?.toLowerCase().includes(query)
       );
+      // Also search by user if we have users loaded
+      if (users.length > 0) {
+        const userMap = new Map(users.map(u => [u.id, { name: u.name?.toLowerCase(), email: u.email?.toLowerCase() }]));
+        result = result.filter(device => {
+          const userData = userMap.get(device.user_id);
+          return userData && (userData.name?.includes(query) || userData.email?.includes(query));
+        });
+      }
     }
 
     // User filter (by user_id)
@@ -252,6 +264,7 @@ export default function AdminDevices() {
         {/* Devices Table */}
         <DevicesTable
           devices={paginatedDevices}
+          users={users}
           selectedDevice={selectedDevice}
           onSelect={setSelectedDevice}
           onDelete={handleDelete}
@@ -321,7 +334,14 @@ export default function AdminDevices() {
   );
 }
 
-function DevicesTable({ devices, selectedDevice, onSelect, onDelete, onToggleStatus, sortConfig, onSort }) {
+function DevicesTable({ devices, selectedDevice, onSelect, onDelete, onToggleStatus, sortConfig, onSort, users }) {
+  // Create user map for quick lookup
+  const userMap = useMemo(() => {
+    const map = new Map();
+    users.forEach(user => map.set(user.id, { name: user.name, email: user.email }));
+    return map;
+  }, [users]);
+
   const columns = [
     {
       key: 'device_name',
@@ -338,12 +358,15 @@ function DevicesTable({ devices, selectedDevice, onSelect, onDelete, onToggleSta
       key: 'user_name',
       label: 'Owner',
       sortable: true,
-      render: (device) => (
-        <div>
-          <div className="font-medium text-dark">{device.user_name}</div>
-          <div className="text-xs text-gray-500">{device.user_email}</div>
-        </div>
-      ),
+      render: (device) => {
+        const userData = userMap.get(device.user_id);
+        return (
+          <div>
+            <div className="font-medium text-dark">{userData?.name || 'Unknown'}</div>
+            <div className="text-xs text-gray-500">{userData?.email || device.user_id}</div>
+          </div>
+        );
+      },
     },
     {
       key: 'status',
