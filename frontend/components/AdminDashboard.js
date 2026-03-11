@@ -5,6 +5,7 @@ import { Tabs, DataTable, StatusBadge } from './admin';
 import AdminVPN from './AdminVPN';
 import AdminFirewall from './AdminFirewall';
 import AdminDepartments from './AdminDepartments';
+import AdminDevices from './AdminDevices';
 import AdminMonitoring from './AdminMonitoring';
 import AdminIPPool from './AdminIPPool';
 
@@ -146,7 +147,7 @@ export default function AdminDashboard({ token, userData }) {
 
       {activeTab === 'overview' && <Overview stats={stats} />}
       {activeTab === 'users' && <UsersTable users={users} onToggle={toggleVpnAccess} onDelete={deleteUser} />}
-      {activeTab === 'devices' && <DevicesTable devices={devices} onRevoke={revokeDevice} />}
+      {activeTab === 'devices' && <AdminDevices />}
       {activeTab === 'vpn' && <AdminVPN token={token} />}
       {activeTab === 'firewall' && <AdminFirewall token={token} />}
       {activeTab === 'departments' && <AdminDepartments />}

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { adminDepartmentsAPI, adminFirewallAPI } from '../lib/api';
 import { useUIStore } from '../store';
 import { StatusBadge } from './admin';
+import { Pagination, SearchInput, SortableHeader, EmptyState } from './Pagination';
 
 export default function AdminDepartments() {
   const [departments, setDepartments] = useState([]);
@@ -11,6 +12,17 @@ export default function AdminDepartments() {
   const [editingDept, setEditingDept] = useState(null);
   const [selectedDept, setSelectedDept] = useState(null);
   const { showNotification } = useUIStore();
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all'); // all, active, disabled
+  
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
 
   const [formData, setFormData] = useState({
     name: '',
@@ -36,6 +48,74 @@ export default function AdminDepartments() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Filtered and sorted departments
+  const filteredDepartments = useMemo(() => {
+    let result = [...departments];
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(dept =>
+        dept.name.toLowerCase().includes(query) ||
+        dept.description?.toLowerCase().includes(query) ||
+        dept.device_count?.toString().includes(query)
+      );
+    }
+
+    // Status filter
+    if (filterStatus !== 'all') {
+      const isActive = filterStatus === 'active';
+      result = result.filter(dept => dept.enabled === isActive);
+    }
+
+    // Sorting
+    if (sortConfig.key) {
+      result.sort((a, b) => {
+        let aVal = a[sortConfig.key];
+        let bVal = b[sortConfig.key];
+
+        if (sortConfig.key === 'device_count') {
+          aVal = parseInt(aVal) || 0;
+          bVal = parseInt(bVal) || 0;
+        } else if (sortConfig.key === 'name') {
+          aVal = (aVal || '').toLowerCase();
+          bVal = (bVal || '').toLowerCase();
+        } else if (sortConfig.key === 'created_at') {
+          aVal = new Date(aVal || 0).getTime();
+          bVal = new Date(bVal || 0).getTime();
+        }
+
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [departments, searchQuery, filterStatus, sortConfig]);
+
+  // Paginated departments
+  const paginatedDepartments = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredDepartments.slice(startIndex, endIndex);
+  }, [filteredDepartments, currentPage, itemsPerPage]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredDepartments.length / itemsPerPage);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterStatus, itemsPerPage]);
+
+  const handleSort = (key) => {
+    setSortConfig(prevConfig => ({
+      key,
+      direction: prevConfig.key === key && prevConfig.direction === 'asc' ? 'desc' : 'asc'
+    }));
   };
 
   const handleInputChange = (e) => {
@@ -284,62 +364,67 @@ export default function AdminDepartments() {
         </div>
       )}
 
-      {/* Departments List */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {departments.map((dept) => (
-          <div
-            key={dept.id}
-            className={`bg-white rounded-xl p-4 shadow-sm border-2 transition-colors cursor-pointer ${
-              selectedDept?.id === dept.id ? 'border-primary bg-blue-50' : 'border-gray-100 hover:border-gray-200'
-            }`}
-            onClick={() => setSelectedDept(dept)}
-          >
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                  <span className="text-lg">🏢</span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-dark">{dept.name}</h3>
-                  <p className="text-xs text-gray-500">{dept.description || 'No description'}</p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleEdit(dept); }}
-                  className="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs hover:bg-blue-100"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleDelete(dept.id); }}
-                  className="px-2 py-1 bg-red-50 text-red-600 rounded text-xs hover:bg-red-100"
-                >
-                  Delete
-                </button>
-              </div>
+      {/* Departments Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Header with search and filters */}
+        <div className="px-6 py-4 border-b border-gray-100">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-semibold text-dark">Departments List</h3>
             </div>
-            
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <StatusBadge status={dept.enabled ? 'active' : 'disabled'} />
-                <span className="text-gray-500">{dept.device_count} devices</span>
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              {/* Search */}
+              <div className="w-full sm:w-64">
+                <SearchInput
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder="Search departments..."
+                  size="sm"
+                />
               </div>
-              <span className="text-xs text-gray-400">
-                {new Date(dept.created_at).toLocaleDateString()}
-              </span>
+
+              {/* Status Filter */}
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="disabled">Disabled</option>
+              </select>
             </div>
           </div>
-        ))}
-      </div>
 
-      {departments.length === 0 && (
-        <div className="bg-white rounded-xl p-8 text-center text-gray-500">
-          <div className="text-4xl mb-2">🏢</div>
-          <p>No departments created yet</p>
-          <p className="text-sm mt-1">Click "Add Department" to create your first department</p>
+          {/* Results summary */}
+          <div className="mt-3 text-sm text-gray-600">
+            Showing {paginatedDepartments.length} of {filteredDepartments.length} departments
+            {searchQuery && ` (filtered from ${departments.length} total)`}
+          </div>
         </div>
-      )}
+
+        {/* Departments Table */}
+        <DepartmentsTable
+          departments={paginatedDepartments}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onSelect={setSelectedDept}
+          selectedDept={selectedDept}
+          sortConfig={sortConfig}
+          onSort={handleSort}
+        />
+
+        {/* Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredDepartments.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+        />
+      </div>
 
       {/* Selected Department Details */}
       {selectedDept && (
@@ -355,7 +440,7 @@ export default function AdminDepartments() {
               ✕ Close
             </button>
           </div>
-          
+
           {selectedDept.device_details && selectedDept.device_details.length > 0 ? (
             <div className="space-y-2">
               {selectedDept.device_details.map((device) => (
@@ -382,6 +467,137 @@ export default function AdminDepartments() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function DepartmentsTable({ departments, onEdit, onDelete, onSelect, selectedDept, sortConfig, onSort }) {
+  const columns = [
+    {
+      key: 'name',
+      label: 'Department Name',
+      sortable: true,
+      render: (dept) => (
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🏢</span>
+            <div>
+              <div className="font-medium text-dark">{dept.name}</div>
+              {dept.description && (
+                <div className="text-xs text-gray-500 truncate max-w-xs">{dept.description}</div>
+              )}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'device_count',
+      label: 'Devices',
+      sortable: true,
+      render: (dept) => (
+        <div className="text-sm text-gray-600">
+          <span className="font-medium">{dept.device_count || 0}</span> devices
+        </div>
+      ),
+    },
+    {
+      key: 'enabled',
+      label: 'Status',
+      sortable: true,
+      render: (dept) => (
+        <StatusBadge status={dept.enabled ? 'active' : 'disabled'} />
+      ),
+    },
+    {
+      key: 'created_at',
+      label: 'Created',
+      sortable: true,
+      render: (dept) => (
+        <div className="text-sm text-gray-500">
+          {new Date(dept.created_at).toLocaleDateString()}
+        </div>
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      sortable: false,
+      render: (dept) => (
+        <div className="flex gap-1.5 whitespace-nowrap">
+          <button
+            onClick={() => onSelect(dept)}
+            className="px-2 py-1 bg-purple-50 text-purple-600 rounded-lg text-xs font-medium hover:bg-purple-100"
+          >
+            View
+          </button>
+          <button
+            onClick={() => onEdit(dept)}
+            className="px-2 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-medium hover:bg-blue-100"
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => onDelete(dept.id)}
+            className="px-2 py-1 bg-red-50 text-red-600 rounded-lg text-xs font-medium hover:bg-red-100"
+          >
+            Delete
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  if (departments.length === 0) {
+    return (
+      <EmptyState
+        icon="🏢"
+        message="No departments found"
+        description="Create your first department to get started"
+      />
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[800px]">
+        <thead className="bg-gray-50">
+          <tr>
+            {columns.map((col) => (
+              <SortableHeader
+                key={col.key}
+                column={col}
+                sortConfig={sortConfig}
+                onSort={onSort}
+                className={
+                  col.key === 'name' ? 'w-[35%]' :
+                  col.key === 'device_count' ? 'w-32' :
+                  col.key === 'enabled' ? 'w-24' :
+                  col.key === 'created_at' ? 'w-32' :
+                  col.key === 'actions' ? 'w-48' : ''
+                }
+              />
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {departments.map((dept) => (
+            <tr
+              key={dept.id}
+              className={`hover:bg-gray-50 transition-colors cursor-pointer ${
+                selectedDept?.id === dept.id ? 'bg-blue-50 border-l-4 border-l-primary' : ''
+              }`}
+              onClick={() => onSelect(dept)}
+            >
+              {columns.map((col) => (
+                <td key={col.key} className="px-6 py-4 align-top">
+                  {col.render(dept)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
