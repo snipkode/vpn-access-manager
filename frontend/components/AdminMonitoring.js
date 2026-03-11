@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { adminFirewallAPI, adminMonitoringAPI } from '../lib/api';
 import { useUIStore } from '../store';
 import { StatusBadge } from './admin';
+import { DataTable } from './admin';
 
 export default function AdminMonitoring() {
   const [metrics, setMetrics] = useState(null);
@@ -402,102 +403,225 @@ function Tabs({ tabs, activeTab, onTabChange }) {
 }
 
 function AccessLogsTable({ logs }) {
-  if (!logs || logs.length === 0) {
-    return (
-      <div className="bg-white rounded-xl p-8 text-center text-gray-500">
-        <div className="text-4xl mb-2">📋</div>
-        <p>No access logs available</p>
-      </div>
-    );
-  }
+  const columns = useMemo(() => [
+    {
+      key: 'timestamp',
+      label: 'Time',
+      sortable: true,
+      render: (log) => (
+        <div className="text-sm text-gray-500 whitespace-nowrap">
+          {log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}
+        </div>
+      ),
+    },
+    {
+      key: 'source_ip',
+      label: 'Source IP',
+      sortable: true,
+      render: (log) => (
+        <div className="text-sm font-mono text-dark whitespace-nowrap">
+          {log.source_ip}
+        </div>
+      ),
+    },
+    {
+      key: 'port',
+      label: 'Port',
+      sortable: true,
+      render: (log) => (
+        <div className="text-sm font-mono whitespace-nowrap">
+          {log.port}
+        </div>
+      ),
+    },
+    {
+      key: 'protocol',
+      label: 'Protocol',
+      sortable: true,
+      render: (log) => (
+        <div className="text-sm uppercase text-gray-600 whitespace-nowrap">
+          {log.protocol}
+        </div>
+      ),
+    },
+    {
+      key: 'action',
+      label: 'Action',
+      sortable: true,
+      render: (log) => (
+        <div className="whitespace-nowrap">
+          <StatusBadge
+            status={log.action === 'allowed' ? 'active' : 'disabled'}
+            customStyles={{
+              active: 'bg-green-50 text-green-700',
+              disabled: 'bg-red-50 text-red-700'
+            }}
+          />
+        </div>
+      ),
+    },
+  ], []);
 
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Source IP</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Port</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Protocol</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {logs.slice(0, 50).map((log, idx) => (
-              <tr key={idx} className="hover:bg-gray-50">
-                <td className="px-6 py-4 text-sm text-gray-500">
-                  {log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}
-                </td>
-                <td className="px-6 py-4 text-sm font-mono">{log.source_ip}</td>
-                <td className="px-6 py-4 text-sm">{log.port}</td>
-                <td className="px-6 py-4 text-sm uppercase">{log.protocol}</td>
-                <td className="px-6 py-4">
-                  <StatusBadge 
-                    status={log.action === 'allowed' ? 'active' : 'disabled'}
-                    customStyles={{
-                      active: 'bg-green-50 text-green-700',
-                      disabled: 'bg-red-50 text-red-700'
-                    }}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+  const headerContent = (
+    <div className="bg-blue-50 border-b border-blue-100 px-6 py-3">
+      <div className="flex items-center gap-2 text-sm text-blue-700">
+        <span className="text-lg">📋</span>
+        <span>
+          Showing <strong>{logs?.length || 0}</strong> recent access log entries
+        </span>
       </div>
     </div>
+  );
+
+  return (
+    <DataTable
+      columns={columns}
+      data={logs || []}
+      itemsPerPage={20}
+      emptyMessage="No access logs available"
+      headerContent={headerContent}
+      searchable={true}
+      searchKeys={['source_ip', 'port', 'protocol', 'action']}
+      sortable={true}
+      mobileCardView={true}
+      renderCard={(log) => (
+        <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <div className="font-mono text-sm text-dark">{log.source_ip}</div>
+              <div className="text-xs text-gray-400">Port: {log.port} • {log.protocol?.toUpperCase()}</div>
+            </div>
+            <StatusBadge
+              status={log.action === 'allowed' ? 'active' : 'disabled'}
+              customStyles={{
+                active: 'bg-green-50 text-green-700',
+                disabled: 'bg-red-50 text-red-700'
+              }}
+            />
+          </div>
+          <div className="text-xs text-gray-500">
+            {log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}
+          </div>
+        </div>
+      )}
+    />
   );
 }
 
 function SuspiciousActivityTable({ activity }) {
-  if (!activity || activity.length === 0) {
-    return (
-      <div className="bg-white rounded-xl p-8 text-center text-gray-500">
-        <div className="text-4xl mb-2">✅</div>
-        <p>No suspicious activity detected</p>
-      </div>
-    );
-  }
+  const columns = useMemo(() => [
+    {
+      key: 'ip',
+      label: 'IP Address',
+      sortable: true,
+      render: (item) => (
+        <div className="text-sm font-mono text-dark whitespace-nowrap">
+          {item.ip}
+        </div>
+      ),
+    },
+    {
+      key: 'risk_level',
+      label: 'Risk Level',
+      sortable: true,
+      render: (item) => (
+        <div className="whitespace-nowrap">
+          <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
+            item.risk_level === 'critical' ? 'bg-red-100 text-red-700' :
+            item.risk_level === 'high' ? 'bg-amber-100 text-amber-700' :
+            'bg-gray-100 text-gray-700'
+          }`}>
+            {item.risk_level.toUpperCase()}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'blocked',
+      label: 'Blocked',
+      sortable: true,
+      render: (item) => (
+        <div className="text-sm font-bold text-dark whitespace-nowrap">
+          {item.blocked || 0}
+        </div>
+      ),
+    },
+    {
+      key: 'ports_targeted',
+      label: 'Ports Targeted',
+      sortable: true,
+      render: (item) => (
+        <div className="text-sm font-mono text-gray-600 whitespace-nowrap max-w-xs truncate">
+          {item.ports_targeted?.join(', ') || 'N/A'}
+        </div>
+      ),
+    },
+    {
+      key: 'last_seen',
+      label: 'Last Seen',
+      sortable: true,
+      render: (item) => (
+        <div className="text-sm text-gray-500 whitespace-nowrap">
+          {item.last_seen ? new Date(item.last_seen).toLocaleString() : 'N/A'}
+        </div>
+      ),
+    },
+  ], []);
 
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-amber-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-amber-700 uppercase">IP Address</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-amber-700 uppercase">Risk Level</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-amber-700 uppercase">Blocked</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-amber-700 uppercase">Ports Targeted</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-amber-700 uppercase">Last Seen</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {activity.map((item, idx) => (
-              <tr key={idx} className="hover:bg-gray-50">
-                <td className="px-6 py-4 text-sm font-mono">{item.ip}</td>
-                <td className="px-6 py-4">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    item.risk_level === 'critical' ? 'bg-red-100 text-red-700' :
-                    item.risk_level === 'high' ? 'bg-amber-100 text-amber-700' :
-                    'bg-gray-100 text-gray-700'
-                  }`}>
-                    {item.risk_level.toUpperCase()}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm">{item.blocked}</td>
-                <td className="px-6 py-4 text-sm">{item.ports_targeted.join(', ')}</td>
-                <td className="px-6 py-4 text-sm text-gray-500">
-                  {new Date(item.last_seen).toLocaleString()}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+  const headerContent = (
+    <div className="bg-amber-50 border-b border-amber-100 px-6 py-3">
+      <div className="flex items-center gap-2 text-sm text-amber-700">
+        <span className="text-lg">⚠️</span>
+        <span>
+          <strong>{activity?.length || 0}</strong> suspicious IP{activity?.length !== 1 ? 's' : ''} detected
+        </span>
       </div>
     </div>
+  );
+
+  return (
+    <DataTable
+      columns={columns}
+      data={activity || []}
+      itemsPerPage={15}
+      emptyMessage="No suspicious activity detected"
+      headerContent={headerContent}
+      searchable={true}
+      searchKeys={['ip', 'risk_level', 'ports_targeted']}
+      sortable={true}
+      mobileCardView={true}
+      renderCard={(item) => (
+        <div className="bg-white border border-amber-200 rounded-xl p-4 shadow-sm">
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <div className="font-mono text-sm text-dark">{item.ip}</div>
+              <div className="text-xs text-gray-400">
+                {item.ports_targeted?.length || 0} port{item.ports_targeted?.length !== 1 ? 's' : ''} targeted
+              </div>
+            </div>
+            <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
+              item.risk_level === 'critical' ? 'bg-red-100 text-red-700' :
+              item.risk_level === 'high' ? 'bg-amber-100 text-amber-700' :
+              'bg-gray-100 text-gray-700'
+            }`}>
+              {item.risk_level.toUpperCase()}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <div className="text-gray-400">Blocked</div>
+              <div className="font-bold text-dark">{item.blocked || 0}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-gray-400">Last Seen</div>
+              <div className="text-dark">
+                {item.last_seen ? new Date(item.last_seen).toLocaleDateString() : 'N/A'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    />
   );
 }
 
