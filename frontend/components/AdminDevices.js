@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
-import { adminDevicesAPI } from '../lib/api';
+import { adminDevicesAPI, adminUsersAPI } from '../lib/api';
 import { useUIStore } from '../store';
 import { StatusBadge } from './admin';
 import { Pagination, SearchInput, SortableHeader, EmptyState } from './Pagination';
 
 export default function AdminDevices() {
   const [devices, setDevices] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDevice, setSelectedDevice] = useState(null);
   const { showNotification } = useUIStore();
@@ -22,36 +23,46 @@ export default function AdminDevices() {
   // Sorting state
   const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
 
-  // Extract unique users from devices (since users API might be empty)
+  // Get unique users for filter dropdown from users list
   const uniqueUsers = useMemo(() => {
-    const userMap = new Map();
-    devices.forEach(device => {
-      if (device.user_id && !userMap.has(device.user_id)) {
-        userMap.set(device.user_id, {
-          id: device.user_id,
-          name: `User ${device.user_id.slice(0, 8)}`,
-          email: `${device.user_id.slice(0, 8)}@unknown.local`
-        });
-      }
-    });
-    return Array.from(userMap.values()).sort((a, b) => a.id.localeCompare(b.id));
-  }, [devices]);
+    return users
+      .filter(user => user.id && user.email)
+      .map(user => ({
+        id: user.id,
+        name: user.name || user.email.split('@')[0],
+        email: user.email
+      }))
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [users]);
 
   useEffect(() => {
-    fetchDevices();
+    fetchAllData();
   }, []);
 
-  const fetchDevices = async () => {
+  const fetchAllData = async () => {
     setLoading(true);
     try {
-      const data = await adminDevicesAPI.getDevices();
-      const devicesList = data.devices || data.data || [];
+      const [devicesData, usersData] = await Promise.all([
+        adminDevicesAPI.getDevices(),
+        adminUsersAPI.getUsers()
+      ]);
+
+      console.log('[AdminDevices] Devices API response:', devicesData);
+      console.log('[AdminDevices] Users API response:', usersData);
+
+      const devicesList = devicesData.devices || devicesData.data || [];
+      const usersList = usersData.users || usersData.data || [];
+
+      console.log('[AdminDevices] Loaded devices:', devicesList.length);
+      console.log('[AdminDevices] Loaded users:', usersList.length);
+
       setDevices(devicesList);
-      console.log('Loaded devices:', devicesList.length);
+      setUsers(usersList);
     } catch (error) {
-      console.error('Failed to load devices:', error);
+      console.error('[AdminDevices] Failed to load data:', error);
       showNotification('Failed to load devices', 'error');
       setDevices([]);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -260,6 +271,7 @@ export default function AdminDevices() {
         {/* Devices Table */}
         <DevicesTable
           devices={paginatedDevices}
+          users={users}
           selectedDevice={selectedDevice}
           onSelect={setSelectedDevice}
           onDelete={handleDelete}
@@ -329,7 +341,19 @@ export default function AdminDevices() {
   );
 }
 
-function DevicesTable({ devices, selectedDevice, onSelect, onDelete, onToggleStatus, sortConfig, onSort }) {
+function DevicesTable({ devices, selectedDevice, onSelect, onDelete, onToggleStatus, sortConfig, onSort, users }) {
+  // Create user map for quick lookup
+  const userMap = useMemo(() => {
+    const map = new Map();
+    users.forEach(user => {
+      map.set(user.id, {
+        name: user.name || user.email.split('@')[0],
+        email: user.email
+      });
+    });
+    return map;
+  }, [users]);
+
   const columns = [
     {
       key: 'device_name',
@@ -343,15 +367,18 @@ function DevicesTable({ devices, selectedDevice, onSelect, onDelete, onToggleSta
       ),
     },
     {
-      key: 'user_id',
-      label: 'User ID',
+      key: 'user_name',
+      label: 'Owner',
       sortable: true,
-      render: (device) => (
-        <div>
-          <div className="font-mono text-xs text-dark">{device.user_id}</div>
-          <div className="text-xs text-gray-400">User ID</div>
-        </div>
-      ),
+      render: (device) => {
+        const userData = userMap.get(device.user_id);
+        return (
+          <div>
+            <div className="font-medium text-dark">{userData?.name || 'Unknown'}</div>
+            <div className="text-xs text-gray-500">{userData?.email || device.user_id}</div>
+          </div>
+        );
+      },
     },
     {
       key: 'status',
