@@ -1,12 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { adminDevicesAPI, adminUsersAPI } from '../lib/api';
+import { adminDevicesAPI } from '../lib/api';
 import { useUIStore } from '../store';
 import { StatusBadge } from './admin';
 import { Pagination, SearchInput, SortableHeader, EmptyState } from './Pagination';
 
 export default function AdminDevices() {
   const [devices, setDevices] = useState([]);
-  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDevice, setSelectedDevice] = useState(null);
   const { showNotification } = useUIStore();
@@ -23,69 +22,36 @@ export default function AdminDevices() {
   // Sorting state
   const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
 
-  // Get unique users for filter dropdown from users list
+  // Extract unique users from devices (since users API might be empty)
   const uniqueUsers = useMemo(() => {
-    return users
-      .filter(user => (user.id || user.uid) && (user.email || user.emailAddress))
-      .map(user => ({
-        id: user.id || user.uid,
-        name: user.name || user.fullname || user.email || user.emailAddress || 'Unknown',
-        email: user.email || user.emailAddress || 'N/A'
-      }))
-      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  }, [users]);
+    const userMap = new Map();
+    devices.forEach(device => {
+      if (device.user_id && !userMap.has(device.user_id)) {
+        userMap.set(device.user_id, {
+          id: device.user_id,
+          name: `User ${device.user_id.slice(0, 8)}`,
+          email: `${device.user_id.slice(0, 8)}@unknown.local`
+        });
+      }
+    });
+    return Array.from(userMap.values()).sort((a, b) => a.id.localeCompare(b.id));
+  }, [devices]);
 
   useEffect(() => {
-    fetchAllData();
+    fetchDevices();
   }, []);
 
-  const fetchAllData = async () => {
+  const fetchDevices = async () => {
     setLoading(true);
     try {
-      // Fetch devices and users in parallel
-      const [devicesData, usersData] = await Promise.all([
-        adminDevicesAPI.getDevices(),
-        adminUsersAPI.getUsers()
-      ]);
-      
-      // Handle different response structures
-      const devicesList = devicesData.devices || devicesData.data || [];
-      const usersList = usersData.users || usersData.data || [];
-      
+      const data = await adminDevicesAPI.getDevices();
+      const devicesList = data.devices || data.data || [];
       setDevices(devicesList);
-      setUsers(usersList);
-      
       console.log('Loaded devices:', devicesList.length);
-      console.log('Loaded users:', usersList.length);
-      if (devicesList.length > 0) {
-        console.log('Sample device:', {
-          id: devicesList[0].id,
-          user_id: devicesList[0].user_id,
-          device_name: devicesList[0].device_name
-        });
-      }
-      if (usersList.length > 0) {
-        console.log('Sample user:', {
-          id: usersList[0].id,
-          name: usersList[0].name,
-          email: usersList[0].email
-        });
-      }
-      
-      // Check for matching IDs
-      const deviceUserIds = new Set(devicesList.map(d => d.user_id));
-      const userIds = new Set(usersList.map(u => u.id));
-      const matchedIds = [...deviceUserIds].filter(id => userIds.has(id));
-      console.log('User ID matching:', {
-        device_user_ids: [...deviceUserIds].slice(0, 5),
-        user_ids: [...userIds].slice(0, 5),
-        matched: matchedIds.length
-      });
     } catch (error) {
-      console.error('Failed to load data:', error);
+      console.error('Failed to load devices:', error);
       showNotification('Failed to load devices', 'error');
       setDevices([]);
-      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -294,7 +260,6 @@ export default function AdminDevices() {
         {/* Devices Table */}
         <DevicesTable
           devices={paginatedDevices}
-          users={users}
           selectedDevice={selectedDevice}
           onSelect={setSelectedDevice}
           onDelete={handleDelete}
@@ -364,27 +329,7 @@ export default function AdminDevices() {
   );
 }
 
-function DevicesTable({ devices, selectedDevice, onSelect, onDelete, onToggleStatus, sortConfig, onSort, users }) {
-  // Create user map for quick lookup
-  const userMap = useMemo(() => {
-    const map = new Map();
-    users.forEach(user => {
-      const key = user.id || user.uid;
-      const displayName = user.name || user.fullname || user.email?.split('@')[0] || user.emailAddress?.split('@')[0] || 'Unknown';
-      const email = user.email || user.emailAddress || 'N/A';
-      map.set(key, { name: displayName, email });
-    });
-    return map;
-  }, [users]);
-
-  console.log('DevicesTable render:', { 
-    devicesCount: devices.length, 
-    usersCount: users.length, 
-    userMapSize: userMap.size,
-    sampleDevice: devices[0] ? { id: devices[0].id, user_id: devices[0].user_id } : null,
-    sampleUser: users[0] ? { id: users[0].id, email: users[0].email } : null
-  });
-
+function DevicesTable({ devices, selectedDevice, onSelect, onDelete, onToggleStatus, sortConfig, onSort }) {
   const columns = [
     {
       key: 'device_name',
@@ -398,18 +343,15 @@ function DevicesTable({ devices, selectedDevice, onSelect, onDelete, onToggleSta
       ),
     },
     {
-      key: 'user_name',
-      label: 'Owner',
+      key: 'user_id',
+      label: 'User ID',
       sortable: true,
-      render: (device) => {
-        const userData = userMap.get(device.user_id);
-        return (
-          <div>
-            <div className="font-medium text-dark">{userData?.name || 'Unknown'}</div>
-            <div className="text-xs text-gray-500">{userData?.email || device.user_id}</div>
-          </div>
-        );
-      },
+      render: (device) => (
+        <div>
+          <div className="font-mono text-xs text-dark">{device.user_id}</div>
+          <div className="text-xs text-gray-400">User ID</div>
+        </div>
+      ),
     },
     {
       key: 'status',
