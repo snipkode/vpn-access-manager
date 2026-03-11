@@ -548,6 +548,17 @@ export const adminUsersAPI = {
   },
 
   /**
+   * Cancel user subscription
+   * POST /api/admin/users/:id/cancel-subscription
+   */
+  cancelSubscription: async (userId, data) => {
+    return apiFetch(`/admin/users/${userId}/cancel-subscription`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
    * Update user role
    * PATCH /api/admin/users/:id/role
    */

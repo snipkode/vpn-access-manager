@@ -173,15 +173,71 @@ router.patch('/users/:id', verifyAdmin, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    await userRef.update({ vpn_enabled });
+    await userRef.update({ 
+      vpn_enabled,
+      updated_at: new Date().toISOString()
+    });
 
-    res.json({ 
+    console.log(`[Admin] User ${id} VPN access ${vpn_enabled ? 'enabled' : 'disabled'}`);
+
+    res.json({
       message: 'User VPN access updated',
       user: { id, vpn_enabled }
     });
   } catch (error) {
     console.error('Update user error:', error.message);
     res.status(500).json({ error: 'Failed to update user', details: error.message });
+  }
+});
+
+// Cancel user subscription
+router.post('/users/:id/cancel-subscription', verifyAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason, immediate } = req.body;
+
+    const userRef = db.collection('users').doc(id);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const userData = userDoc.data();
+    
+    await userRef.update({
+      subscription_status: 'canceled',
+      subscription_canceled_at: new Date().toISOString(),
+      subscription_cancel_reason: reason || null,
+      vpn_enabled: immediate ? false : userData.vpn_enabled,
+      updated_at: new Date().toISOString(),
+    });
+
+    // Log to audit
+    await db.collection('audit_logs').add({
+      action: 'subscription_canceled',
+      user_id: id,
+      user_email: userData.email,
+      admin_id: req.user?.uid,
+      reason: reason || null,
+      immediate: immediate || false,
+      timestamp: new Date().toISOString(),
+    });
+
+    console.log(`[Admin] User ${id} subscription canceled. Reason: ${reason || 'N/A'}`);
+
+    res.json({ 
+      success: true, 
+      message: 'Subscription canceled successfully',
+      user: { 
+        id, 
+        subscription_status: 'canceled',
+        vpn_enabled: immediate ? false : userData.vpn_enabled
+      }
+    });
+  } catch (error) {
+    console.error('Cancel subscription error:', error.message);
+    res.status(500).json({ error: 'Failed to cancel subscription', details: error.message });
   }
 });
 

@@ -101,13 +101,52 @@ export default function AdminDashboard({ token, userData }) {
     }
   };
 
-  const toggleVpnAccess = async (userId, currentStatus) => {
+  const toggleVpnAccess = async (userId, currentStatus, userEmail) => {
+    // Show warning when disabling VPN access
+    if (currentStatus) {
+      const confirmed = confirm(
+        `⚠️ WARNING: Disable VPN Access for ${userEmail}?\n\n` +
+        `This will:\n` +
+        `• Revoke all active VPN sessions\n` +
+        `• Remove WireGuard configuration\n` +
+        `• Block VPN access until re-enabled\n\n` +
+        `Are you sure you want to continue?`
+      );
+      if (!confirmed) return;
+    }
+    
     try {
       await adminUsersAPI.updateUser(userId, { vpn_enabled: !currentStatus });
-      showNotification('User access updated');
+      showNotification(`VPN access ${!currentStatus ? 'enabled' : 'disabled'} for user`);
       fetchData();
     } catch (error) {
-      showNotification('Failed to update user', 'error');
+      showNotification('Failed to update user: ' + error.message, 'error');
+    }
+  };
+
+  const cancelSubscription = async (userId, userEmail) => {
+    const reason = prompt(
+      `Cancel subscription for ${userEmail}?\n\n` +
+      `Enter cancellation reason (optional):`
+    );
+    
+    if (reason === null) return; // User canceled
+    
+    const immediate = confirm(
+      `Immediately disable VPN access?\n\n` +
+      `OK = Disable VPN now\n` +
+      `Cancel = Keep VPN until subscription ends`
+    );
+    
+    try {
+      await adminUsersAPI.cancelSubscription(userId, {
+        reason: reason || null,
+        immediate
+      });
+      showNotification('Subscription canceled successfully');
+      fetchData();
+    } catch (error) {
+      showNotification('Failed to cancel subscription: ' + error.message, 'error');
     }
   };
 
@@ -146,7 +185,14 @@ export default function AdminDashboard({ token, userData }) {
       <Tabs tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />
 
       {activeTab === 'overview' && <Overview stats={stats} />}
-      {activeTab === 'users' && <UsersTable users={users} onToggle={toggleVpnAccess} onDelete={deleteUser} />}
+      {activeTab === 'users' && (
+        <UsersTable 
+          users={users} 
+          onToggle={toggleVpnAccess} 
+          onDelete={deleteUser}
+          onCancelSubscription={cancelSubscription}
+        />
+      )}
       {activeTab === 'devices' && <AdminDevices />}
       {activeTab === 'vpn' && <AdminVPN token={token} />}
       {activeTab === 'firewall' && <AdminFirewall token={token} />}
@@ -322,7 +368,7 @@ function Overview({ stats }) {
   );
 }
 
-function UsersTable({ users, onToggle, onDelete }) {
+function UsersTable({ users, onToggle, onDelete, onCancelSubscription }) {
   const columns = useMemo(() => [
     {
       key: 'email',
@@ -331,6 +377,27 @@ function UsersTable({ users, onToggle, onDelete }) {
       render: (user) => (
         <span className="text-sm text-dark font-medium">{user.email}</span>
       ),
+    },
+    {
+      key: 'subscription',
+      label: 'Subscription',
+      sortable: true,
+      render: (user) => {
+        const hasSubscription = user.subscription_status === 'active' || user.subscription_status === 'trialing';
+        return (
+          <div className="flex items-center gap-2">
+            {hasSubscription ? (
+              <span className="px-2 py-1 bg-green-50 text-green-600 rounded text-xs font-medium">
+                {user.subscription_status || 'Active'}
+              </span>
+            ) : (
+              <span className="px-2 py-1 bg-gray-50 text-gray-500 rounded text-xs font-medium">
+                No Subscription
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: 'vpn_enabled',
@@ -351,27 +418,38 @@ function UsersTable({ users, onToggle, onDelete }) {
       label: 'Actions',
       sortable: false,
       render: (user) => (
-        <div className="flex gap-2">
+        <div className="flex gap-1.5">
           <button
-            onClick={() => onToggle(user.id, user.vpn_enabled)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+            onClick={() => onToggle(user.id, user.vpn_enabled, user.email)}
+            className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
               user.vpn_enabled
                 ? 'bg-red-50 text-red-500 hover:bg-red-100'
                 : 'bg-green-50 text-success hover:bg-green-100'
             }`}
+            title={user.vpn_enabled ? 'Disable VPN Access' : 'Enable VPN Access'}
           >
             {user.vpn_enabled ? 'Disable' : 'Enable'}
           </button>
+          {user.subscription_status && (
+            <button
+              onClick={() => onCancelSubscription(user.id, user.email)}
+              className="px-2 py-1.5 bg-amber-50 text-amber-600 rounded-lg text-xs font-medium hover:bg-amber-100 transition-colors whitespace-nowrap"
+              title="Cancel Subscription"
+            >
+              Cancel
+            </button>
+          )}
           <button
             onClick={() => onDelete(user.id, user.email)}
-            className="px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors whitespace-nowrap"
+            className="px-2 py-1.5 bg-red-50 text-red-500 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors whitespace-nowrap"
+            title="Delete User"
           >
             Delete
           </button>
         </div>
       ),
     },
-  ], [onToggle, onDelete]);
+  ], [onToggle, onDelete, onCancelSubscription]);
 
   const headerContent = (
     <div className="bg-blue-50 border-b border-blue-100 px-6 py-3">
@@ -402,24 +480,41 @@ function UsersTable({ users, onToggle, onDelete }) {
               <div className="font-medium text-dark">{user.email}</div>
               <div className="text-xs text-gray-400">User ID: {user.id}</div>
             </div>
-            <StatusBadge
-              status={user.vpn_enabled ? 'active' : 'disabled'}
-              customStyles={{
-                active: 'bg-green-50 text-success',
-                disabled: 'bg-gray-50 text-gray-400',
-              }}
-            />
+            <div className="flex flex-col items-end gap-1">
+              {user.subscription_status && (
+                <span className="px-2 py-1 bg-green-50 text-green-600 rounded text-xs font-medium">
+                  {user.subscription_status}
+                </span>
+              )}
+              <StatusBadge
+                status={user.vpn_enabled ? 'active' : 'disabled'}
+                customStyles={{
+                  active: 'bg-green-50 text-success',
+                  disabled: 'bg-gray-50 text-gray-400',
+                }}
+              />
+            </div>
           </div>
-          <button
-            onClick={() => onToggle(user.id, user.vpn_enabled)}
-            className={`w-full px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-              user.vpn_enabled
-                ? 'bg-red-50 text-red-500 hover:bg-red-100'
-                : 'bg-green-50 text-success hover:bg-green-100'
-            }`}
-          >
-            {user.vpn_enabled ? 'Disable VPN Access' : 'Enable VPN Access'}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onToggle(user.id, user.vpn_enabled, user.email)}
+              className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                user.vpn_enabled
+                  ? 'bg-red-50 text-red-500 hover:bg-red-100'
+                  : 'bg-green-50 text-success hover:bg-green-100'
+              }`}
+            >
+              {user.vpn_enabled ? '⚠️ Disable VPN' : '✓ Enable VPN'}
+            </button>
+            {user.subscription_status && (
+              <button
+                onClick={() => onCancelSubscription(user.id, user.email)}
+                className="px-3 py-2 bg-amber-50 text-amber-600 rounded-lg text-xs font-medium hover:bg-amber-100"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
         </div>
       )}
     />
