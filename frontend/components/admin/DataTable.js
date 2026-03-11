@@ -240,6 +240,19 @@ function MobileCardView({ data, columns, renderCard, onRowClick }) {
 }
 
 /**
+ * Responsive Table Wrapper
+ */
+function ResponsiveTableWrapper({ children, className = '' }) {
+  return (
+    <div className={`overflow-x-auto ${className}`} style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div className="min-w-full">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/**
  * Enhanced DataTable Component with Pagination, Search, Sort & Bulk Actions
  * 
  * @param {Array} columns - Column definitions: [{ key, label, className, render, sortable }]
@@ -342,24 +355,28 @@ export default function DataTable({
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {headerContent}
-        <table className="w-full">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-100">
-              {columns.map((column) => (
-                <th key={column.key} className="py-4 px-4">
-                  <div className="h-4 bg-gray-200 rounded w-24" />
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <TableSkeleton rows={5} columns={columns.length} />
-        </table>
+        <ResponsiveTableWrapper>
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-100">
+                {columns.map((column) => (
+                  <th key={column.key} className="py-4 px-4">
+                    <div className="h-4 bg-gray-200 rounded w-24" />
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <TableSkeleton rows={5} columns={columns.length} />
+          </table>
+        </ResponsiveTableWrapper>
       </div>
     );
   }
 
-  // Mobile card view
-  if (mobileCardView && typeof window !== 'undefined' && window.innerWidth < 768) {
+  // Mobile card view - always use cards on mobile via CSS
+  const showMobileView = mobileCardView;
+
+  if (showMobileView) {
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {headerContent}
@@ -395,11 +412,11 @@ export default function DataTable({
     );
   }
 
-  // Desktop table view
+  // Desktop table view with responsive wrapper
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
       {headerContent}
-      
+
       {bulkActions.length > 0 && (
         <BulkActionsBar
           selectedCount={selectedRows.size}
@@ -407,7 +424,7 @@ export default function DataTable({
           onClear={() => setSelectedRows(new Set())}
         />
       )}
-      
+
       {searchable && (
         <SearchInput
           value={searchTerm}
@@ -416,7 +433,7 @@ export default function DataTable({
         />
       )}
 
-      <div className="overflow-x-auto">
+      <ResponsiveTableWrapper>
         <table className="w-full min-w-max">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
@@ -475,7 +492,7 @@ export default function DataTable({
                   {columns.map((column) => (
                     <td
                       key={column.key}
-                      className="py-4 px-4 whitespace-nowrap"
+                      className={`py-4 px-4 ${column.className || ''}`}
                       onClick={() => column.key === 'actions' ? null : onRowClick?.(row)}
                     >
                       {column.render
@@ -488,7 +505,7 @@ export default function DataTable({
             )}
           </tbody>
         </table>
-      </div>
+      </ResponsiveTableWrapper>
 
       <Pagination {...pagination} onPageChange={pagination.goToPage} />
     </div>

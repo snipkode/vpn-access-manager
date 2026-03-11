@@ -71,19 +71,30 @@ export default function AdminDashboard({ token, userData }) {
         adminUsersAPI.getUsers(),
         adminDevicesAPI.getDevices(),
       ]);
+      
+      console.log('📊 Admin data loaded:', {
+        users: usersData?.users?.length || 0,
+        devices: devicesData?.devices?.length || 0,
+        stats: statsData ? 'ok' : 'missing'
+      });
+      
       setStats(statsData);
 
       // Get all users - only exclude current logged-in user for safety
-      const allUsers = usersData.users || [];
+      const allUsers = usersData?.users || [];
+      console.log('👥 All users from API:', allUsers.length);
+      
       const filteredUsers = allUsers.filter(u =>
         u.id !== user?.uid // Only exclude current user
       );
+      
+      console.log('👥 Filtered users:', filteredUsers.length);
 
       setUsers(filteredUsers);
       setDevices(devicesData.devices || []);
     } catch (error) {
-      console.error('Failed to load admin data:', error);
-      showNotification('Failed to load admin data', 'error');
+      console.error('❌ Failed to load admin data:', error);
+      showNotification('Failed to load admin data: ' + error.message, 'error');
     } finally {
       setLoading(false);
     }

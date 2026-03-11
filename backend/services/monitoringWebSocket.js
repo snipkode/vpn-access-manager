@@ -24,7 +24,20 @@ export function initializeMonitoringWebSocket(server) {
   try {
     wss = new WebSocketServer({ 
       server,
-      path: '/ws/monitoring'
+      path: '/ws/monitoring',
+      noServer: false
+    });
+
+    // Handle upgrade request before Express intercepts it
+    server.on('upgrade', (request, socket, head) => {
+      const { pathname } = new URL(request.url, `http://${request.headers.host}`);
+      
+      if (pathname === '/ws/monitoring') {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+          wss.emit('connection', ws, request);
+        });
+      }
+      // Don't close socket for other paths - let Express handle them
     });
 
     wss.on('connection', (ws) => {

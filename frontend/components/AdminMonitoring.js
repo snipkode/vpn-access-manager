@@ -46,8 +46,15 @@ export default function AdminMonitoring() {
   };
 
   const connectWebSocket = () => {
-    const wsUrl = `ws://${process.env.NEXT_PUBLIC_API_URL?.replace('http://', '') || 'localhost:5000'}/ws/monitoring`;
+    // Construct WebSocket URL from API URL
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    const apiHost = apiUrl.replace('http://', '').replace('https://', '').replace('/api', '');
+    const isHttps = apiUrl.startsWith('https://');
+    const wsProtocol = isHttps ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${apiHost}/ws/monitoring`;
     
+    console.log('🔌 Connecting to WebSocket:', wsUrl);
+
     try {
       wsRef.current = new WebSocket(wsUrl);
 
@@ -93,16 +100,18 @@ export default function AdminMonitoring() {
       wsRef.current.onclose = () => {
         console.log('🔌 WebSocket disconnected');
         setWsConnected(false);
-        
+
         // Reconnect after 5 seconds
         setTimeout(connectWebSocket, 5000);
       };
 
       wsRef.current.onerror = (error) => {
-        console.error('WebSocket error:', error);
+        console.error('❌ WebSocket error:', error);
+        setWsConnected(false);
       };
     } catch (error) {
-      console.error('Failed to connect WebSocket:', error);
+      console.error('❌ Failed to connect WebSocket:', error.message);
+      setWsConnected(false);
     }
   };
 

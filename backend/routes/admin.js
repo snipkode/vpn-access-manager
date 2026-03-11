@@ -90,20 +90,20 @@ const verifyAdmin = async (req, res, next) => {
 router.get('/users', verifyAdmin, async (req, res) => {
   try {
     const { role, vpn_enabled } = req.query;
-    
+
     let usersQuery = db.collection('users').orderBy('created_at', 'desc');
-    
+
     // Filter by role if provided
     if (role) {
       usersQuery = usersQuery.where('role', '==', role);
     }
-    
+
     // Filter by vpn_enabled if provided
     if (vpn_enabled !== undefined) {
       const vpnEnabled = vpn_enabled === 'true';
       usersQuery = usersQuery.where('vpn_enabled', '==', vpnEnabled);
     }
-    
+
     const usersSnapshot = await usersQuery.get();
 
     const users = usersSnapshot.docs.map(doc => ({
@@ -111,33 +111,43 @@ router.get('/users', verifyAdmin, async (req, res) => {
       ...doc.data(),
     }));
 
-    console.log(`[Admin Users] Query returned ${users.length} users`, { 
-      role_filter: role, 
-      vpn_filter: vpn_enabled 
+    console.log(`[Admin Users] Query returned ${users.length} users`, {
+      role_filter: role,
+      vpn_filter: vpn_enabled
     });
 
     res.json({ users });
   } catch (error) {
     console.error('Get users error:', error.message);
-    // If error is about index, return all users without filter
-    if (error.code === 'FAILED_PRECONDITION' || error.message.includes('index')) {
-      console.log('[Admin Users] Firestore index missing, returning all users');
-      const allUsersSnapshot = await db.collection('users').orderBy('created_at', 'desc').get();
+    console.log('[Admin Users] Falling back to unfiltered query');
+    
+    // Fallback: Get all users without ordering
+    try {
+      const allUsersSnapshot = await db.collection('users').get();
       const allUsers = allUsersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
-      // Filter client-side if role specified
+      // Sort by created_at manually
+      allUsers.sort((a, b) => {
+        const aDate = new Date(a.created_at || 0);
+        const bDate = new Date(b.created_at || 0);
+        return bDate - aDate;
+      });
+
+      // Filter client-side if specified
       let filteredUsers = allUsers;
-      if (role) {
-        filteredUsers = allUsers.filter(u => u.role === role);
+      if (req.query.role) {
+        filteredUsers = filteredUsers.filter(u => u.role === req.query.role);
       }
-      if (vpn_enabled !== undefined) {
-        const vpnEnabled = vpn_enabled === 'true';
+      if (req.query.vpn_enabled !== undefined) {
+        const vpnEnabled = req.query.vpn_enabled === 'true';
         filteredUsers = filteredUsers.filter(u => u.vpn_enabled === vpnEnabled);
       }
-      
+
       return res.json({ users: filteredUsers });
+    } catch (fallbackError) {
+      console.error('Fallback users query failed:', fallbackError.message);
+      return res.status(500).json({ error: 'Failed to get users', details: fallbackError.message });
     }
-    res.status(500).json({ error: 'Failed to get users', details: error.message });
   }
 });
 
