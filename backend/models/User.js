@@ -17,6 +17,10 @@ const User = sequelize.define('user', {
       isEmail: true
     }
   },
+  password: {
+    type: DataTypes.STRING(255),
+    allowNull: true  // Null for users created via OAuth
+  },
   name: {
     type: DataTypes.STRING(255),
     allowNull: true
@@ -42,6 +46,10 @@ const User = sequelize.define('user', {
   subscription_cancel_reason: {
     type: DataTypes.TEXT,
     field: 'subscription_cancel_reason'
+  },
+  last_login: {
+    type: DataTypes.DATE,
+    field: 'last_login'
   }
 }, {
   tableName: 'users',

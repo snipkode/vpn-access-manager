@@ -15,6 +15,7 @@
     "db:migrate:undo:all": "npx sequelize-cli db:migrate:undo:all",
     "db:seed": "node seeders/20260311000000-seed-initial-data.js",
     "db:drop": "npx sequelize-cli db:migrate:undo:all",
+    "create:admin": "node scripts/create-admin.js",
     "migrate:firestore": "node scripts/migrate-firestore-to-mysql.js",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
@@ -23,6 +24,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1002.0",
     "axios": "^1.13.6",
+    "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
@@ -32,6 +34,7 @@
     "firebase-admin": "^11.11.0",
     "helmet": "^7.1.0",
     "hpp": "^0.2.3",
+    "jsonwebtoken": "^9.0.3",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.11.5",
     "node-cron": "^3.0.3",

@@ -6,6 +6,7 @@ import swaggerSpec from './config/swagger.js';
 
 // Route imports
 import authRoutes from './routes/auth.js';
+import authMySQLRoutes from './routes/auth-mysql.js';
 import vpnRoutes from './routes/vpn.js';
 import adminRoutes from './routes/admin.js';
 import adminMySQLRoutes from './routes/admin-mysql.js';
@@ -78,9 +79,10 @@ app.use('/api', rateLimiters.general);
 
 // Routes - Use MySQL routes when DB_ENABLED is true
 const useMySQL = isMySQLEnabled();
+const authRoute = useMySQL ? authMySQLRoutes : authRoutes;
 const adminRoute = useMySQL ? adminMySQLRoutes : adminRoutes;
 
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authRoute);
 app.use('/api/vpn', vpnRoutes);
 app.use('/api/admin', adminRoute);
 app.use('/api/billing', billingRoutes);
