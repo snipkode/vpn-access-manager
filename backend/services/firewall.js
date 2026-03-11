@@ -281,12 +281,17 @@ export async function getAllRules() {
     const snapshot = await db.collection(FIREWALL_COLLECTION)
       .orderBy('created_at', 'desc')
       .get();
-    
+
     return snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
   } catch (error) {
+    // Handle Firestore quota errors gracefully
+    if (error.code === 8) { // RESOURCE_EXHAUSTED
+      console.warn('⚠️ Firestore quota exceeded, returning empty rules list');
+      return [];
+    }
     console.error('Error getting firewall rules:', error.message);
     throw new Error('Failed to get firewall rules');
   }
@@ -302,12 +307,17 @@ export async function getActiveRules() {
       .where('enabled', '==', true)
       .orderBy('created_at', 'desc')
       .get();
-    
+
     return snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
   } catch (error) {
+    // Handle Firestore quota errors gracefully
+    if (error.code === 8) { // RESOURCE_EXHAUSTED
+      console.warn('⚠️ Firestore quota exceeded, returning empty active rules');
+      return [];
+    }
     console.error('Error getting active firewall rules:', error.message);
     // Fallback to all rules if index missing
     const allRules = await getAllRules();

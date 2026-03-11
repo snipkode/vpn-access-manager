@@ -163,10 +163,42 @@ function startMetricsBroadcast() {
 }
 
 /**
- * Start broadcasting access logs every 5 seconds
+ * Cache for monitoring data to reduce Firestore reads
+ */
+const monitoringCache = {
+  accessLogs: { data: [], timestamp: 0, ttl: 30000 }, // 30 seconds
+  suspicious: { data: [], timestamp: 0, ttl: 60000 }, // 1 minute
+  activeRules: { data: [], timestamp: 0, ttl: 30000 } // 30 seconds
+};
+
+/**
+ * Get cached data if still valid
+ */
+function getCachedData(key) {
+  const cache = monitoringCache[key];
+  if (cache && Date.now() - cache.timestamp < cache.ttl) {
+    return cache.data;
+  }
+  return null;
+}
+
+/**
+ * Set cached data with timestamp
+ */
+function setCachedData(key, data) {
+  monitoringCache[key] = {
+    data,
+    timestamp: Date.now(),
+    ttl: monitoringCache[key].ttl
+  };
+}
+
+/**
+ * Start broadcasting access logs every 10 seconds (reduced from 5s)
  */
 function startLogsBroadcast() {
   let lastLogCount = 0;
+  let lastSuspiciousCount = 0;
 
   import('./accessMonitor.js').then(({ getRecentAccessAttempts, getSuspiciousActivity }) => {
     import('./firewall.js').then(({ getActiveRules }) => {
@@ -174,13 +206,29 @@ function startLogsBroadcast() {
         if (clients.size === 0) return;
 
         try {
-          const [attempts, suspicious, activeRules] = await Promise.all([
-            getRecentAccessAttempts(20),
-            getSuspiciousActivity(),
-            getActiveRules()
-          ]);
+          // Use cache to reduce Firestore reads
+          let attempts = getCachedData('accessLogs');
+          let suspicious = getCachedData('suspicious');
+          let activeRules = getCachedData('activeRules');
 
-          if (attempts.length !== lastLogCount || suspicious.length > 0) {
+          // Fetch fresh data if cache miss
+          if (!attempts) {
+            attempts = await getRecentAccessAttempts(20);
+            setCachedData('accessLogs', attempts);
+          }
+
+          if (!suspicious) {
+            suspicious = await getSuspiciousActivity();
+            setCachedData('suspicious', suspicious);
+          }
+
+          if (!activeRules) {
+            activeRules = await getActiveRules();
+            setCachedData('activeRules', activeRules);
+          }
+
+          // Only broadcast if there are changes
+          if (attempts.length !== lastLogCount || suspicious.length !== lastSuspiciousCount) {
             const message = JSON.stringify({
               type: 'access_logs',
               data: {
@@ -193,13 +241,14 @@ function startLogsBroadcast() {
 
             broadcast(message, 'access_logs');
             lastLogCount = attempts.length;
+            lastSuspiciousCount = suspicious.length;
           }
         } catch (error) {
-          console.error('Logs broadcast error:', error);
+          console.error('Logs broadcast error:', error.message);
         }
-      }, 5000);
+      }, 10000); // 10 seconds instead of 5
 
-      console.log('📋 Access logs broadcast started (5s interval)');
+      console.log('📋 Access logs broadcast started (10s interval with caching)');
     }).catch(error => {
       console.error('Failed to load firewall:', error);
     });

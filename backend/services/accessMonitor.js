@@ -107,6 +107,11 @@ export async function getRecentAccessAttempts(limit = 100, filter = null) {
     
     return attempts;
   } catch (error) {
+    // Handle Firestore quota errors gracefully
+    if (error.code === 8) { // RESOURCE_EXHAUSTED
+      console.warn('⚠️ Firestore quota exceeded, returning empty access attempts');
+      return [];
+    }
     console.error('Error getting access attempts:', error.message);
     return [];
   }
