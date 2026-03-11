@@ -98,13 +98,20 @@ export async function register(userData) {
 export async function login(email, password) {
   try {
     // Find user
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({ 
+      where: { email },
+      attributes: { exclude: ['password'] }  // Don't return password
+    });
+    
     if (!user) {
       throw new Error('Invalid email or password');
     }
 
+    // Get full user with password for verification
+    const fullUser = await User.findByPk(user.id);
+    
     // Verify password
-    const isValid = await verifyPassword(password, user.password);
+    const isValid = await verifyPassword(password, fullUser.password);
     if (!isValid) {
       throw new Error('Invalid email or password');
     }
@@ -113,7 +120,7 @@ export async function login(email, password) {
     const token = generateToken(user.toJSON());
 
     return {
-      user: user.toJSON(),
+      user: user.toJSON(),  // Password already excluded
       token,
       message: 'Login successful'
     };
@@ -129,7 +136,7 @@ export async function login(email, password) {
 export async function getUserById(userId) {
   const user = await User.findByPk(userId, {
     attributes: {
-      exclude: ['password']
+      exclude: ['password']  // Always exclude password
     }
   });
 
