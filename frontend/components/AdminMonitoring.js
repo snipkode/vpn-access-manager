@@ -48,14 +48,22 @@ export default function AdminMonitoring() {
   const connectWebSocket = () => {
     // Construct WebSocket URL from API URL
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-    const apiHost = apiUrl.replace('http://', '').replace('https://', '').replace('/api', '');
+    
+    // For production with stunnel, use same host but different protocol
     const isHttps = apiUrl.startsWith('https://');
+    const apiHost = apiUrl.replace('http://', '').replace('https://', '').replace('/api', '');
+    
+    // Try WSS first (production), fallback to WS (development)
     const wsProtocol = isHttps ? 'wss:' : 'ws:';
     const wsUrl = `${wsProtocol}//${apiHost}/ws/monitoring`;
     
     console.log('🔌 Connecting to WebSocket:', wsUrl);
+    
+    // Alternative: Direct backend connection for development
+    const directWsUrl = 'ws://localhost:5000/ws/monitoring';
 
     try {
+      // Try proxy URL first
       wsRef.current = new WebSocket(wsUrl);
 
       wsRef.current.onopen = () => {
@@ -108,6 +116,33 @@ export default function AdminMonitoring() {
       wsRef.current.onerror = (error) => {
         console.error('❌ WebSocket error:', error);
         setWsConnected(false);
+        
+        // If WSS fails, try direct WS connection (for development)
+        if (wsUrl.includes('wss://') && wsUrl !== directWsUrl) {
+          console.log('🔄 WSS failed, trying direct WS connection...');
+          setTimeout(() => {
+            console.log('🔌 Connecting to direct WebSocket:', directWsUrl);
+            try {
+              wsRef.current = new WebSocket(directWsUrl);
+              // Re-setup handlers (simplified for fallback)
+              wsRef.current.onopen = () => {
+                console.log('✅ Direct WebSocket connected');
+                setWsConnected(true);
+              };
+              wsRef.current.onclose = () => {
+                console.log('🔌 Direct WebSocket disconnected');
+                setWsConnected(false);
+                setTimeout(connectWebSocket, 5000);
+              };
+              wsRef.current.onerror = () => {
+                console.error('❌ Direct WebSocket error');
+                setWsConnected(false);
+              };
+            } catch (e) {
+              console.error('❌ Failed to connect direct WebSocket:', e);
+            }
+          }, 1000);
+        }
       };
     } catch (error) {
       console.error('❌ Failed to connect WebSocket:', error.message);
