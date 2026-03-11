@@ -1297,7 +1297,7 @@ function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle
       label: 'Rule Name',
       sortable: true,
       render: (rule) => (
-        <div className="max-w-xs">
+        <div className="max-w-[200px]">
           <div className="font-medium text-dark truncate">{rule.name}</div>
           {rule.description && (
             <div className="text-xs text-gray-500 truncate">{rule.description}</div>
@@ -1326,7 +1326,7 @@ function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle
       label: 'IP Selection',
       sortable: true,
       render: (rule) => (
-        <div className="max-w-xs">
+        <div className="max-w-[180px]">
           <div className="font-mono text-sm text-dark truncate">
             {rule.ip_type === 'individual'
               ? `${rule.ips?.length || 0} IPs`
@@ -1366,7 +1366,7 @@ function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle
       label: 'Actions',
       sortable: false,
       render: (rule) => (
-        <div className="flex gap-2 whitespace-nowrap">
+        <div className="flex gap-1.5 whitespace-nowrap">
           <button
             onClick={() => onToggle(rule.id, rule.enabled)}
             className={`px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
@@ -1410,24 +1410,24 @@ function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[1000px]">
+      <table className="w-full min-w-[1100px]">
         <thead className="bg-gray-50">
           <tr>
-            {columns.map((col, index) => (
+            {columns.map((col) => (
               <SortableHeader
                 key={col.key}
                 column={col}
                 sortConfig={sortConfig}
                 onSort={onSort}
                 className={
-                  col.key === 'select' ? 'w-10' :
-                  col.key === 'name' ? 'w-1/4' :
-                  col.key === 'port' ? 'w-20' :
-                  col.key === 'protocol' ? 'w-24' :
-                  col.key === 'ip_range' ? 'w-1/4' :
-                  col.key === 'action' ? 'w-24' :
-                  col.key === 'enabled' ? 'w-24' :
-                  col.key === 'actions' ? 'w-48' : ''
+                  col.key === 'select' ? 'w-12' :
+                  col.key === 'name' ? 'w-[28%]' :
+                  col.key === 'port' ? 'w-16' :
+                  col.key === 'protocol' ? 'w-20' :
+                  col.key === 'ip_range' ? 'w-[25%]' :
+                  col.key === 'action' ? 'w-20' :
+                  col.key === 'enabled' ? 'w-20' :
+                  col.key === 'actions' ? 'w-40' : ''
                 }
               />
             ))}
@@ -1437,7 +1437,7 @@ function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle
           {rules.map((rule) => (
             <tr key={rule.id} className={`hover:bg-gray-50 transition-colors ${selectedRules.includes(rule.id) ? 'bg-blue-50' : ''}`}>
               {columns.map((col) => (
-                <td key={col.key} className="px-6 py-4 align-top">
+                <td key={col.key} className="px-4 py-3 align-top">
                   {col.render(rule)}
                 </td>
               ))}
