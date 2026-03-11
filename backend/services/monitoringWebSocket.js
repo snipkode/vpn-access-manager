@@ -22,16 +22,16 @@ const clients = new Set();
  */
 export function initializeMonitoringWebSocket(server) {
   try {
-    wss = new WebSocketServer({ 
-      server,
-      path: '/ws/monitoring',
-      noServer: false
+    // Create WebSocket server with noServer: true to manually handle upgrades
+    wss = new WebSocketServer({
+      noServer: true,
+      path: '/ws/monitoring'
     });
 
     // Handle upgrade request before Express intercepts it
     server.on('upgrade', (request, socket, head) => {
       const { pathname } = new URL(request.url, `http://${request.headers.host}`);
-      
+
       if (pathname === '/ws/monitoring') {
         wss.handleUpgrade(request, socket, head, (ws) => {
           wss.emit('connection', ws, request);
