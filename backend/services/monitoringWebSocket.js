@@ -1,7 +1,7 @@
 import { WebSocketServer } from 'ws';
-import { getAllMetrics, getMetricsDelta } from './services/systemMetrics.js';
-import { getRecentAccessAttempts, getSuspiciousActivity } from './services/accessMonitor.js';
-import { getActiveRules } from './services/firewall.js';
+import { getAllMetrics, getMetricsDelta } from './systemMetrics.js';
+import { getRecentAccessAttempts, getSuspiciousActivity } from './accessMonitor.js';
+import { getActiveRules } from './firewall.js';
 
 /**
  * Real-time Monitoring WebSocket Server
