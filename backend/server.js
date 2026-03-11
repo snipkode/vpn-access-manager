@@ -202,17 +202,11 @@ const server = app.listen(PORT, async () => {
   }, 2000);
   printIndexInstructions();
 
-  // Initialize WebSocket for real-time monitoring using worker thread
+  // Initialize WebSocket for real-time monitoring
   try {
-    const { initializeWebSocketWorker, handleWebSocketUpgrade } = await import('./services/websocketManager.js');
-    initializeWebSocketWorker(server);
-    
-    // Handle WebSocket upgrade requests
-    server.on('upgrade', (request, socket, head) => {
-      handleWebSocketUpgrade(request, socket, head);
-    });
-    
-    console.log(`🔌 WebSocket: ws://localhost:${PORT}/ws/monitoring (worker thread)\n`);
+    const { initializeMonitoringWebSocket } = await import('./services/monitoringWebSocket.js');
+    initializeMonitoringWebSocket(server);
+    console.log(`🔌 WebSocket: ws://localhost:${PORT}/ws/monitoring\n`);
   } catch (error) {
     console.error('❌ WebSocket initialization failed:', error.message);
   }
@@ -231,10 +225,10 @@ const gracefulShutdown = async (signal) => {
     await new Promise((resolve) => server.close(resolve));
     console.log('  ✓ HTTP server closed');
 
-    // Stop WebSocket worker
-    const { stopWebSocketWorker } = await import('./services/websocketManager.js');
-    await stopWebSocketWorker();
-    console.log('  ✓ WebSocket worker stopped');
+    // Stop WebSocket server
+    const { stopMonitoringWebSocket } = await import('./services/monitoringWebSocket.js');
+    stopMonitoringWebSocket();
+    console.log('  ✓ WebSocket server closed');
 
     stopCronJobs();
     console.log('  ✓ Cron jobs stopped');
