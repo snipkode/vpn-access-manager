@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { adminFirewallAPI, adminDepartmentsAPI } from '../lib/api';
 import { useUIStore } from '../store';
 import { StatusBadge } from './admin';
 import BlockedPortsSettings from './admin/BlockedPortsSettings';
+import { Pagination, SearchInput, SortableHeader, EmptyState } from './Pagination';
 
 // Blocked ports that cannot be used
 const BLOCKED_PORTS = [
@@ -33,6 +34,18 @@ export default function AdminFirewall({ token }) {
   const [departments, setDepartments] = useState([]);
   const [firewallSubTab, setFirewallSubTab] = useState('rules'); // 'rules' or 'blocked-ports'
   const { showNotification } = useUIStore();
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterAction, setFilterAction] = useState('all'); // all, allow, deny
+  const [filterStatus, setFilterStatus] = useState('all'); // all, active, disabled
+  
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
 
   const [formData, setFormData] = useState({
     name: '',
@@ -81,6 +94,80 @@ export default function AdminFirewall({ token }) {
     } catch (error) {
       showNotification('Failed to load firewall rules', 'error');
     }
+  };
+
+  // Filtered and sorted rules
+  const filteredRules = useMemo(() => {
+    let result = [...rules];
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(rule =>
+        rule.name.toLowerCase().includes(query) ||
+        rule.description?.toLowerCase().includes(query) ||
+        rule.port.toString().includes(query) ||
+        rule.protocol.toLowerCase().includes(query) ||
+        rule.ip_range.toLowerCase().includes(query) ||
+        rule.action.toLowerCase().includes(query)
+      );
+    }
+
+    // Action filter
+    if (filterAction !== 'all') {
+      result = result.filter(rule => rule.action === filterAction);
+    }
+
+    // Status filter
+    if (filterStatus !== 'all') {
+      const isActive = filterStatus === 'active';
+      result = result.filter(rule => rule.enabled === isActive);
+    }
+
+    // Sorting
+    if (sortConfig.key) {
+      result.sort((a, b) => {
+        let aVal = a[sortConfig.key];
+        let bVal = b[sortConfig.key];
+
+        // Handle special cases
+        if (sortConfig.key === 'port') {
+          aVal = parseInt(aVal) || 0;
+          bVal = parseInt(bVal) || 0;
+        } else if (sortConfig.key === 'name' || sortConfig.key === 'protocol') {
+          aVal = (aVal || '').toLowerCase();
+          bVal = (bVal || '').toLowerCase();
+        }
+
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [rules, searchQuery, filterAction, filterStatus, sortConfig]);
+
+  // Paginated rules
+  const paginatedRules = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredRules.slice(startIndex, endIndex);
+  }, [filteredRules, currentPage, itemsPerPage]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredRules.length / itemsPerPage);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterAction, filterStatus, itemsPerPage]);
+
+  const handleSort = (key) => {
+    setSortConfig(prevConfig => ({
+      key,
+      direction: prevConfig.key === key && prevConfig.direction === 'asc' ? 'desc' : 'asc'
+    }));
   };
 
   const fetchIptablesStatus = async () => {
@@ -1080,46 +1167,105 @@ export default function AdminFirewall({ token }) {
 
       {/* Rules Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h3 className="text-lg font-semibold text-dark">Firewall Rules</h3>
-            {selectedRules.length > 0 && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-200 rounded-lg">
-                <span className="text-sm font-medium text-red-700">
-                  {selectedRules.length} selected
-                </span>
-                <button
-                  onClick={handleBulkDelete}
-                  className="px-3 py-1 bg-red-600 text-white rounded text-xs font-medium hover:bg-red-700"
-                >
-                  🗑️ Delete Selected
-                </button>
-                <button
-                  onClick={() => setSelectedRules([])}
-                  className="px-2 py-1 text-red-600 hover:bg-red-100 rounded text-xs"
-                >
-                  ✕ Clear
-                </button>
+        {/* Header with search and filters */}
+        <div className="px-6 py-4 border-b border-gray-100">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <h3 className="text-lg font-semibold text-dark">Firewall Rules</h3>
+              {selectedRules.length > 0 && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-200 rounded-lg">
+                  <span className="text-sm font-medium text-red-700">
+                    {selectedRules.length} selected
+                  </span>
+                  <button
+                    onClick={handleBulkDelete}
+                    className="px-3 py-1 bg-red-600 text-white rounded text-xs font-medium hover:bg-red-700"
+                  >
+                    🗑️ Delete Selected
+                  </button>
+                  <button
+                    onClick={() => setSelectedRules([])}
+                    className="px-2 py-1 text-red-600 hover:bg-red-100 rounded text-xs"
+                  >
+                    ✕ Clear
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              {/* Search */}
+              <div className="w-full sm:w-64">
+                <SearchInput
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder="Search rules..."
+                  size="sm"
+                />
               </div>
-            )}
+
+              {/* Action Filter */}
+              <select
+                value={filterAction}
+                onChange={(e) => setFilterAction(e.target.value)}
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              >
+                <option value="all">All Actions</option>
+                <option value="allow">Allow</option>
+                <option value="deny">Deny</option>
+              </select>
+
+              {/* Status Filter */}
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="disabled">Disabled</option>
+              </select>
+
+              {/* Select All Checkbox */}
+              <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
+                <input
+                  type="checkbox"
+                  checked={selectedRules.length === filteredRules.length && filteredRules.length > 0}
+                  onChange={handleSelectAllRules}
+                  className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                />
+                <span className="text-xs text-gray-500">Select All</span>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={selectedRules.length === rules.length && rules.length > 0}
-              onChange={handleSelectAllRules}
-              className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-            />
-            <span className="text-xs text-gray-500">Select All</span>
+
+          {/* Results summary */}
+          <div className="mt-3 text-sm text-gray-600">
+            Showing {paginatedRules.length} of {filteredRules.length} rules
+            {searchQuery && ` (filtered from ${rules.length} total)`}
           </div>
         </div>
+
+        {/* Rules Table */}
         <RulesTable
-          rules={rules}
+          rules={paginatedRules}
           selectedRules={selectedRules}
           onSelect={handleSelectRule}
           onEdit={handleEdit}
           onDelete={handleDeleteClick}
           onToggle={handleToggle}
+          sortConfig={sortConfig}
+          onSort={handleSort}
+        />
+
+        {/* Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredRules.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
         />
       </div>
         </>
@@ -1128,7 +1274,7 @@ export default function AdminFirewall({ token }) {
   );
 }
 
-function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle }) {
+function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle, sortConfig, onSort }) {
   const columns = [
     {
       key: 'select',
@@ -1245,10 +1391,15 @@ function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle
 
   if (rules.length === 0) {
     return (
-      <div className="p-8 text-center text-gray-500">
-        <div className="text-4xl mb-2">🛡️</div>
-        <p>No firewall rules configured</p>
-      </div>
+      <EmptyState
+        icon="🛡️"
+        message={searchQuery || filterAction !== 'all' || filterStatus !== 'all' 
+          ? 'No matching firewall rules found' 
+          : 'No firewall rules configured'}
+        description={searchQuery 
+          ? 'Try adjusting your search or filters' 
+          : 'Add your first firewall rule to get started'}
+      />
     );
   }
 
@@ -1258,9 +1409,12 @@ function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle
         <thead className="bg-gray-50">
           <tr>
             {columns.map((col) => (
-              <th key={col.key} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                {col.label}
-              </th>
+              <SortableHeader
+                key={col.key}
+                column={col}
+                sortConfig={sortConfig}
+                onSort={onSort}
+              />
             ))}
           </tr>
         </thead>
