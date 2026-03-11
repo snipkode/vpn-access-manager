@@ -8,6 +8,7 @@ import AdminDepartments from './AdminDepartments';
 import AdminDevices from './AdminDevices';
 import AdminMonitoring from './AdminMonitoring';
 import AdminIPPool from './AdminIPPool';
+import ModernOverview from './ModernOverview';
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
@@ -184,7 +185,7 @@ export default function AdminDashboard({ token, userData }) {
     <div className="max-w-[1100px] mx-auto space-y-6">
       <Tabs tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {activeTab === 'overview' && <Overview stats={stats} />}
+      {activeTab === 'overview' && <ModernOverview stats={stats} />}
       {activeTab === 'users' && (
         <UsersTable 
           users={users} 
