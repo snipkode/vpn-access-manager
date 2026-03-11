@@ -8,6 +8,7 @@ import swaggerSpec from './config/swagger.js';
 import authRoutes from './routes/auth.js';
 import vpnRoutes from './routes/vpn.js';
 import adminRoutes from './routes/admin.js';
+import adminMySQLRoutes from './routes/admin-mysql.js';
 import billingRoutes from './routes/billing.js';
 import adminBillingRoutes from './routes/admin-billing.js';
 import paymentSettingsRoutes from './routes/payment-settings.js';
@@ -36,6 +37,7 @@ import { initializeCronJobs, stopCronJobs } from './services/cronJobs.js';
 import { scheduleFileCleanup } from './services/fileCleanup.js';
 import { initializeScheduledBackups, initializeScheduledCleanup } from './services/backupSchedule.js';
 import { printIndexInstructions } from './config/firestoreIndexes.js';
+import { initializeDatabase, closeDatabase, isMySQLEnabled } from './config/database-adapter.js';
 
 dotenv.config();
 
@@ -74,10 +76,13 @@ app.use(auditMiddleware);
 app.use(environmentValidationMiddleware);
 app.use('/api', rateLimiters.general);
 
-// Routes
+// Routes - Use MySQL routes when DB_ENABLED is true
+const useMySQL = isMySQLEnabled();
+const adminRoute = useMySQL ? adminMySQLRoutes : adminRoutes;
+
 app.use('/api/auth', authRoutes);
 app.use('/api/vpn', vpnRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/admin', adminRoute);
 app.use('/api/billing', billingRoutes);
 app.use('/api/admin/billing', adminBillingRoutes);
 app.use('/api/payment-settings', paymentSettingsRoutes);
@@ -193,6 +198,15 @@ const server = app.listen(PORT, async () => {
   console.log(`📊 Health: http://localhost:${PORT}/health`);
   console.log(`🔒 Environment: ${process.env.NODE_ENV || 'development'}\n`);
 
+  // Initialize database
+  if (isMySQLEnabled()) {
+    console.log('📦 Initializing MySQL database...');
+    await initializeDatabase();
+  } else {
+    console.log('📦 Using Firestore database');
+    printIndexInstructions();
+  }
+
   await initializeEmailTransporter();
   setTimeout(async () => {
     await initializeCronJobs();
@@ -200,7 +214,6 @@ const server = app.listen(PORT, async () => {
     await initializeScheduledBackups();
     await initializeScheduledCleanup();
   }, 2000);
-  printIndexInstructions();
 
   // Initialize WebSocket for real-time monitoring
   try {
@@ -229,6 +242,12 @@ const gracefulShutdown = async (signal) => {
     const { stopMonitoringWebSocket } = await import('./services/monitoringWebSocket.js');
     stopMonitoringWebSocket();
     console.log('  ✓ WebSocket server closed');
+
+    // Close database connection
+    if (isMySQLEnabled()) {
+      await closeDatabase();
+      console.log('  ✓ MySQL connection closed');
+    }
 
     stopCronJobs();
     console.log('  ✓ Cron jobs stopped');

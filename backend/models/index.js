@@ -7,6 +7,8 @@ import Device from './Device.js';
 import Department from './Department.js';
 import FirewallRule from './FirewallRule.js';
 import AccessLog from './AccessLog.js';
+import Payment from './Payment.js';
+import CreditTransaction from './CreditTransaction.js';
 
 // Define associations
 User.hasMany(Device, { foreignKey: 'user_id', as: 'devices' });
@@ -32,6 +34,13 @@ Department.hasMany(FirewallRule, {
   as: 'firewall_rules' 
 });
 
+User.hasMany(Payment, { foreignKey: 'user_id', as: 'payments' });
+Payment.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+User.hasMany(CreditTransaction, { foreignKey: 'user_id', as: 'credit_transactions' });
+CreditTransaction.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+CreditTransaction.belongsTo(User, { foreignKey: 'from_user_id', as: 'from_user' });
+
 // Export all models
 export {
   sequelize,
@@ -39,7 +48,9 @@ export {
   Device,
   Department,
   FirewallRule,
-  AccessLog
+  AccessLog,
+  Payment,
+  CreditTransaction
 };
 
 export default {
@@ -48,5 +59,7 @@ export default {
   Device,
   Department,
   FirewallRule,
-  AccessLog
+  AccessLog,
+  Payment,
+  CreditTransaction
 };
