@@ -195,7 +195,7 @@ export function SortableHeader({ column, sortConfig, onSort, className = '' }) {
   const isSorted = sortConfig?.key === column.key;
   const sortDirection = sortConfig?.direction;
 
-  const baseClasses = "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase";
+  const baseClasses = "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap";
   const sortableClasses = column.sortable 
     ? "cursor-pointer hover:bg-gray-100 transition-colors" 
     : "";
@@ -213,7 +213,7 @@ export function SortableHeader({ column, sortConfig, onSort, className = '' }) {
       className={`${baseClasses} ${sortableClasses} ${className}`}
       onClick={() => onSort(column.key)}
     >
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 whitespace-nowrap">
         {column.label}
         <span className={`transition-opacity ${isSorted ? 'opacity-100' : 'opacity-30'}`}>
           {isSorted && sortDirection === 'desc' ? '🔽' : '🔼'}
