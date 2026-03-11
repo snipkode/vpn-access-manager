@@ -5,8 +5,6 @@ import PaymentForm, { PaymentHistory, PlanDetailsModal } from './PaymentForm';
 import CreditTransferForm from './CreditTransferForm';
 import Tabs from './ui/Tabs';
 import Icon from './ui/Icon';
-import { db } from '../lib/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
 
 export default function Wallet({ token }) {
   const { showNotification } = useUIStore();
@@ -76,25 +74,30 @@ export default function Wallet({ token }) {
     autoSync();
   }, [user?.uid]);
 
-  // Real-time Firestore listener for credit_balance
+  // Polling API for credit_balance (replaced Firestore real-time listener)
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
 
-    const userRef = doc(db, 'users', user.uid);
-    
-    const unsubscribe = onSnapshot(userRef, (docSnapshot) => {
-      if (docSnapshot.exists()) {
-        const data = docSnapshot.data();
-        const newBalance = data.credit_balance || 0;
-        
-        // Update global Zustand state
-        updateUserData({ credit_balance: newBalance });
+    // Initial fetch
+    fetchBalance();
+
+    // Poll every 30 seconds
+    const intervalId = setInterval(fetchBalance, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [user?.id]);
+
+  const fetchBalance = async () => {
+    try {
+      const profileData = await userAPI.getProfile();
+      if (profileData?.profile?.credit_balance !== undefined) {
+        updateUserData({ credit_balance: profileData.profile.credit_balance });
         setLastUpdated(new Date());
       }
-    });
-
-    return () => unsubscribe();
-  }, [user?.uid, updateUserData]);
+    } catch (error) {
+      console.error('Failed to fetch balance:', error);
+    }
+  };
 
   // Fetch user profile on mount to ensure credit_balance is loaded
   useEffect(() => {

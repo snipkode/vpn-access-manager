@@ -1,8 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, googleProvider, db } from '../lib/firebase';
 import { useAuthStore, useUIStore } from '../store';
 import { referralAPI, billingAPI } from '../lib/api';
 
@@ -131,76 +128,49 @@ export default function App() {
   const toggleLang = () => setLang(lang === 'en' ? 'id' : 'en');
   const content = t[lang];
 
-  // Initialize Firebase auth + Firestore user data with timeout
+  // Initialize user from JWT token in localStorage
   useEffect(() => {
-    let timeoutId;
-    
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      // Clear timeout when auth state changes
-      if (timeoutId) {
-        clearTimeout(timeoutId);
+    const initUser = async () => {
+      // Check if user is already logged in via JWT
+      const storedToken = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
+
+      if (storedToken && storedUser) {
+        try {
+          // Verify token by fetching user profile
+          const response = await fetch('/api/auth/me', {
+            headers: {
+              'Authorization': `Bearer ${storedToken}`
+            }
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setUser(data.user, storedToken, data.user);
+            console.log('✅ User initialized from JWT');
+            
+            // Auto redirect based on role
+            const targetPage = data.user.role === 'admin' ? 'admin-dashboard' : 'dashboard';
+            router.push(targetPage);
+          } else {
+            // Token invalid, clear storage
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            clearUser();
+          }
+        } catch (error) {
+          console.error('Failed to verify token:', error);
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          clearUser();
+        }
       }
       
-      if (firebaseUser) {
-        const idToken = await firebaseUser.getIdToken();
+      setInitialized(true);
+    };
 
-        // Fetch or create user data from Firestore
-        const userRef = doc(db, 'users', firebaseUser.uid);
-        let userDoc = await getDoc(userRef);
-
-        let userData = {};
-
-        if (userDoc.exists()) {
-          // User exists in Firestore
-          userData = userDoc.data();
-          console.log('📄 User data from Firestore:', userData);
-        } else {
-          // New user - create document in Firestore
-          userData = {
-            email: firebaseUser.email,
-            name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-            photoURL: firebaseUser.photoURL,
-            role: 'user', // Default role
-            vpn_enabled: true,
-            provider: firebaseUser.providerData[0]?.providerId || 'google.com',
-            emailVerified: firebaseUser.emailVerified,
-            createdAt: new Date().toISOString(),
-            lastLogin: new Date().toISOString(),
-          };
-
-          console.log('📝 Creating new user in Firestore:', userData);
-          await setDoc(userRef, userData);
-        }
-
-        // Ensure userData has required fields (even if missing in Firestore)
-        userData = {
-          ...userData,
-          email: userData.email || firebaseUser.email,
-          name: userData.name || firebaseUser.displayName || firebaseUser.email.split('@')[0],
-          photoURL: userData.photoURL || firebaseUser.photoURL,
-          role: userData.role || 'user',
-          vpn_enabled: userData.vpn_enabled !== undefined ? userData.vpn_enabled : true,
-          provider: userData.provider || firebaseUser.providerData[0]?.providerId || 'google.com',
-          uid: firebaseUser.uid,
-          emailVerified: userData.emailVerified !== undefined ? userData.emailVerified : firebaseUser.emailVerified,
-          credit_balance: userData.credit_balance || 0,
-        };
-
-        // Debug: Log user data
-        console.log('🔐 Firebase Auth:', {
-          email: firebaseUser.email,
-          uid: firebaseUser.uid,
-          role: userData.role,
-        });
-
-        // Set user with complete profile data
-        setUser(firebaseUser, idToken, userData);
-
-        console.log('✅ User initialized successfully');
-
-        // Auto redirect to dashboard based on role from Firestore
-        const targetPage = userData.role === 'admin' ? 'admin-dashboard' : 'dashboard';
-        console.log('🎯 Redirecting to:', targetPage, '(role:', userData.role + ')');
+    initUser();
+  }, []);
         setActivePage(targetPage);
 
         // Track referral if exists in localStorage
