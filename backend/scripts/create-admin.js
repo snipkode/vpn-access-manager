@@ -3,8 +3,8 @@
  * Run with: node scripts/create-admin.js
  */
 
-import { User } from './models/index.js';
-import { hashPassword } from './services/auth-mysql.js';
+import { User } from '../models/index.js';
+import { hashPassword } from '../services/auth-mysql.js';
 
 async function createAdmin() {
   console.log('👤 Create Admin User\n');

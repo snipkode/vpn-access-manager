@@ -3,10 +3,10 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const requiredEnvVars = [
-  // Firebase
-  'FIREBASE_PROJECT_ID',
-  'FIREBASE_CLIENT_EMAIL',
-  'FIREBASE_PRIVATE_KEY',
+  // Firebase (optional - only needed if DB_ENABLED=false)
+  // 'FIREBASE_PROJECT_ID',
+  // 'FIREBASE_CLIENT_EMAIL',
+  // 'FIREBASE_PRIVATE_KEY',
   
   // Server
   'PORT',
@@ -50,15 +50,6 @@ export function validateEnvironment() {
       missingVars.push(varName);
     }
   });
-
-  // Validate Firebase private key format
-  if (process.env.FIREBASE_PRIVATE_KEY) {
-    const key = process.env.FIREBASE_PRIVATE_KEY;
-    if (!key.includes('-----BEGIN PRIVATE KEY-----') || 
-        !key.includes('-----END PRIVATE KEY-----')) {
-      console.warn('⚠️  FIREBASE_PRIVATE_KEY format may be invalid');
-    }
-  }
 
   // Validate PORT is a number
   if (process.env.PORT) {
