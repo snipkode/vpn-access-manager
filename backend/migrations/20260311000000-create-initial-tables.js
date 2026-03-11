@@ -68,8 +68,14 @@ export async function up(queryInterface) {
       allowNull: false, 
       references: { model: 'devices', key: 'id' } 
     },
-    created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
-    unique: [['department_id', 'device_id']]
+    created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW }
+  });
+
+  // Add unique constraint
+  await queryInterface.addConstraint('department_devices', {
+    fields: ['department_id', 'device_id'],
+    type: 'unique',
+    name: 'unique_department_device'
   });
 
   // Firewall rules table

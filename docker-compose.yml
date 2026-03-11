@@ -41,7 +41,7 @@ services:
       PMA_PASSWORD: ${MYSQL_PASSWORD:-vpnpassword123}
       UPLOAD_LIMIT: 100M
     ports:
-      - "${PMA_PORT:-8080}:80"
+      - "${PMA_PORT:-9080}:80"
     depends_on:
       - mysql
     networks:
