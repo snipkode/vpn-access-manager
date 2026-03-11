@@ -1126,6 +1126,420 @@ export const adminVpnAPI = {
 };
 
 /**
+ * Admin Firewall API - Firewall rule management (Admin only)
+ */
+export const adminFirewallAPI = {
+  /**
+   * Get all firewall rules
+   * GET /api/admin/firewall/rules
+   */
+  getRules: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/admin/firewall/rules?${queryString}` : '/admin/firewall/rules';
+    return apiFetch(url);
+  },
+
+  /**
+   * Get firewall rule by ID
+   * GET /api/admin/firewall/rules/:id
+   */
+  getRule: async (ruleId) => {
+    return apiFetch(`/admin/firewall/rules/${ruleId}`);
+  },
+
+  /**
+   * Get all devices with IP addresses (for IP selection)
+   * GET /api/admin/firewall/devices
+   */
+  getDevices: async () => {
+    return apiFetch('/admin/firewall/devices');
+  },
+
+  /**
+   * Get IP usage map
+   * GET /api/admin/firewall/ip-usage
+   */
+  getIPUsage: async () => {
+    return apiFetch('/admin/firewall/ip-usage');
+  },
+
+  /**
+   * Get blocked/reserved ports
+   * GET /api/admin/firewall/blocked-ports
+   */
+  getBlockedPorts: async () => {
+    return apiFetch('/admin/firewall/blocked-ports');
+  },
+
+  /**
+   * Get open ports from active rules
+   * GET /api/admin/firewall/open-ports
+   */
+  getOpenPorts: async () => {
+    return apiFetch('/admin/firewall/open-ports');
+  },
+
+  /**
+   * Get system ports scan
+   * GET /api/admin/firewall/system-ports
+   */
+  getSystemPorts: async () => {
+    return apiFetch('/admin/firewall/system-ports');
+  },
+
+  /**
+   * Get ports open to public
+   * GET /api/admin/firewall/public-ports
+   */
+  getPublicPorts: async () => {
+    return apiFetch('/admin/firewall/public-ports');
+  },
+
+  /**
+   * Get IP conflict report
+   * POST /api/admin/firewall/conflict-report
+   */
+  getConflictReport: async (data) => {
+    return apiFetch('/admin/firewall/conflict-report', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Get access statistics
+   * GET /api/admin/firewall/access-stats
+   */
+  getAccessStats: async () => {
+    return apiFetch('/admin/firewall/access-stats');
+  },
+
+  /**
+   * Get recent access attempts
+   * GET /api/admin/firewall/access-attempts
+   */
+  getAccessAttempts: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/admin/firewall/access-attempts?${queryString}` : '/admin/firewall/access-attempts';
+    return apiFetch(url);
+  },
+
+  /**
+   * Get suspicious activity
+   * GET /api/admin/firewall/suspicious-activity
+   */
+  getSuspiciousActivity: async () => {
+    return apiFetch('/admin/firewall/suspicious-activity');
+  },
+
+  /**
+   * Block an IP address
+   * POST /api/admin/firewall/block-ip
+   */
+  blockIP: async (ipAddress, reason) => {
+    return apiFetch('/admin/firewall/block-ip', {
+      method: 'POST',
+      body: JSON.stringify({ ip_address: ipAddress, reason }),
+    });
+  },
+
+  /**
+   * Unblock an IP address
+   * POST /api/admin/firewall/unblock-ip
+   */
+  unblockIP: async (ipAddress) => {
+    return apiFetch('/admin/firewall/unblock-ip', {
+      method: 'POST',
+      body: JSON.stringify({ ip_address: ipAddress }),
+    });
+  },
+
+  /**
+   * Get blocked IPs list
+   * GET /api/admin/firewall/blocked-ips
+   */
+  getBlockedIPs: async () => {
+    return apiFetch('/admin/firewall/blocked-ips');
+  },
+
+  /**
+   * Validate if a port is allowed
+   * POST /api/admin/firewall/validate-port
+   */
+  validatePort: async (port) => {
+    return apiFetch('/admin/firewall/validate-port', {
+      method: 'POST',
+      body: JSON.stringify({ port }),
+    });
+  },
+
+  /**
+   * Validate IPs for overlap
+   * POST /api/admin/firewall/validate-ips
+   */
+  validateIPs: async (data) => {
+    return apiFetch('/admin/firewall/validate-ips', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Get delete impact for a rule
+   * GET /api/admin/firewall/rules/:id/impact
+   */
+  getDeleteImpact: async (ruleId) => {
+    return apiFetch(`/admin/firewall/rules/${ruleId}/impact`);
+  },
+
+  /**
+   * Create new firewall rule
+   * POST /api/admin/firewall/rules
+   */
+  createRule: async (data) => {
+    return apiFetch('/admin/firewall/rules', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Update firewall rule
+   * PUT /api/admin/firewall/rules/:id
+   */
+  updateRule: async (ruleId, data) => {
+    return apiFetch(`/admin/firewall/rules/${ruleId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Delete firewall rule
+   * DELETE /api/admin/firewall/rules/:id
+   */
+  deleteRule: async (ruleId) => {
+    return apiFetch(`/admin/firewall/rules/${ruleId}`, { method: 'DELETE' });
+  },
+
+  /**
+   * Toggle firewall rule enabled/disabled
+   * POST /api/admin/firewall/rules/:id/toggle
+   */
+  toggleRule: async (ruleId) => {
+    return apiFetch(`/admin/firewall/rules/${ruleId}/toggle`, { method: 'POST' });
+  },
+
+  /**
+   * Get iptables status
+   * GET /api/admin/firewall/status
+   */
+  getStatus: async () => {
+    return apiFetch('/admin/firewall/status');
+  },
+
+  /**
+   * Sync database rules with iptables
+   * POST /api/admin/firewall/sync
+   */
+  syncRules: async () => {
+    return apiFetch('/admin/firewall/sync', { method: 'POST' });
+  },
+
+  /**
+   * Bulk delete firewall rules
+   * POST /api/admin/firewall/bulk-delete
+   */
+  bulkDelete: async (data) => {
+    return apiFetch('/admin/firewall/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Get department IPs
+   * GET /api/admin/departments/:id/ips
+   */
+  getDepartmentIPs: async (departmentId) => {
+    return apiFetch(`/admin/departments/${departmentId}/ips`);
+  },
+
+  /**
+   * Get IP pool status
+   * GET /api/admin/firewall/ip-pool
+   */
+  getIPPool: async () => {
+    return apiFetch('/admin/firewall/ip-pool');
+  },
+
+  /**
+   * Get blocked ports settings
+   * GET /api/admin/settings/blocked-ports
+   */
+  getBlockedPorts: async () => {
+    return apiFetch('/admin/settings/blocked-ports');
+  },
+
+  /**
+   * Add blocked port
+   * POST /api/admin/settings/blocked-ports
+   */
+  addBlockedPort: async (data) => {
+    return apiFetch('/admin/settings/blocked-ports', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Update blocked port
+   * PUT /api/admin/settings/blocked-ports/:id
+   */
+  updateBlockedPort: async (portId, data) => {
+    return apiFetch(`/admin/settings/blocked-ports/${portId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Delete blocked port
+   * DELETE /api/admin/settings/blocked-ports/:id
+   */
+  deleteBlockedPort: async (portId) => {
+    return apiFetch(`/admin/settings/blocked-ports/${portId}`, { method: 'DELETE' });
+  },
+
+  /**
+   * Toggle blocked port
+   * POST /api/admin/settings/blocked-ports/:id/toggle
+   */
+  toggleBlockedPort: async (portId) => {
+    return apiFetch(`/admin/settings/blocked-ports/${portId}/toggle`, {
+      method: 'POST',
+    });
+  },
+};
+
+/**
+ * Admin Monitoring API - System monitoring (Admin only)
+ */
+export const adminMonitoringAPI = {
+  /**
+   * Get current system metrics
+   * GET /api/admin/monitoring/metrics
+   */
+  getMetrics: async () => {
+    return apiFetch('/admin/monitoring/metrics');
+  },
+
+  /**
+   * Get system health status
+   * GET /api/admin/monitoring/health
+   */
+  getHealth: async () => {
+    return apiFetch('/admin/monitoring/health');
+  },
+};
+
+/**
+ * Admin Departments API - Department/Division management (Admin only)
+ */
+export const adminDepartmentsAPI = {
+  /**
+   * Get all departments
+   * GET /api/admin/departments
+   */
+  getDepartments: async () => {
+    return apiFetch('/admin/departments');
+  },
+
+  /**
+   * Get devices grouped by department
+   * GET /api/admin/departments/grouped
+   */
+  getGroupedDevices: async () => {
+    return apiFetch('/admin/departments/grouped');
+  },
+
+  /**
+   * Get department by ID
+   * GET /api/admin/departments/:id
+   */
+  getDepartment: async (departmentId) => {
+    return apiFetch(`/admin/departments/${departmentId}`);
+  },
+
+  /**
+   * Create new department
+   * POST /api/admin/departments
+   */
+  createDepartment: async (data) => {
+    return apiFetch('/admin/departments', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Update department
+   * PUT /api/admin/departments/:id
+   */
+  updateDepartment: async (departmentId, data) => {
+    return apiFetch(`/admin/departments/${departmentId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Delete department
+   * DELETE /api/admin/departments/:id
+   */
+  deleteDepartment: async (departmentId) => {
+    return apiFetch(`/admin/departments/${departmentId}`, { method: 'DELETE' });
+  },
+
+  /**
+   * Add device to department
+   * POST /api/admin/departments/:id/devices
+   */
+  addDevice: async (departmentId, deviceId) => {
+    return apiFetch(`/admin/departments/${departmentId}/devices`, {
+      method: 'POST',
+      body: JSON.stringify({ device_id: deviceId }),
+    });
+  },
+
+  /**
+   * Remove device from department
+   * DELETE /api/admin/departments/:id/devices/:deviceId
+   */
+  removeDevice: async (departmentId, deviceId) => {
+    return apiFetch(`/admin/departments/${departmentId}/devices/${deviceId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  /**
+   * Get department IPs
+   * GET /api/admin/departments/:id/ips
+   */
+  getDepartmentIPs: async (departmentId) => {
+    return apiFetch(`/admin/departments/${departmentId}/ips`);
+  },
+
+  /**
+   * Get device department assignment
+   * GET /api/admin/devices/:deviceId/department
+   */
+  getDeviceDepartment: async (deviceId) => {
+    return apiFetch(`/admin/departments/devices/${deviceId}/department`);
+  },
+};
+
+/**
  * Export all API modules
  */
 export default {
@@ -1146,6 +1560,8 @@ export default {
     dashboard: adminDashboardAPI,
     devices: adminDevicesAPI,
     vpn: adminVpnAPI,
+    firewall: adminFirewallAPI,
+    departments: adminDepartmentsAPI,
   },
 };
 

@@ -18,6 +18,10 @@ import userRoutes from './routes/user.js';
 import adminBackupRoutes from './routes/admin-backup.js';
 import referralRoutes from './routes/referral.js';
 import adminReferralRoutes from './routes/admin-referral.js';
+import adminFirewallRoutes from './routes/admin-firewall.js';
+import adminDepartmentsRoutes from './routes/admin-departments.js';
+import adminMonitoringRoutes from './routes/admin-monitoring.js';
+import adminBlockedPortsRoutes from './routes/admin-settings-blocked-ports.js';
 
 // Middleware imports
 import { rateLimiters, checkBlockedIP, logRequest } from './middleware/rateLimit.js';
@@ -84,6 +88,10 @@ app.use('/api/user', userRoutes);
 app.use('/api/admin/backup', adminBackupRoutes);
 app.use('/api/referral', referralRoutes);
 app.use('/api/admin/referral', adminReferralRoutes);
+app.use('/api/admin/firewall', adminFirewallRoutes);
+app.use('/api/admin/departments', adminDepartmentsRoutes);
+app.use('/api/admin/monitoring', adminMonitoringRoutes);
+app.use('/api/admin/settings', adminBlockedPortsRoutes);
 app.use('/uploads', express.static('uploads'));
 
 // Swagger documentation
@@ -193,6 +201,15 @@ const server = app.listen(PORT, async () => {
     await initializeScheduledCleanup();
   }, 2000);
   printIndexInstructions();
+
+  // Initialize WebSocket for real-time monitoring
+  try {
+    const { initializeMonitoringWebSocket } = await import('./services/monitoringWebSocket.js');
+    initializeMonitoringWebSocket(server);
+    console.log(`🔌 WebSocket: ws://localhost:${PORT}/ws/monitoring\n`);
+  } catch (error) {
+    console.error('❌ WebSocket initialization failed:', error.message);
+  }
 });
 
 // Graceful shutdown
@@ -207,6 +224,11 @@ const gracefulShutdown = async (signal) => {
   try {
     await new Promise((resolve) => server.close(resolve));
     console.log('  ✓ HTTP server closed');
+
+    // Stop WebSocket server
+    const { stopMonitoringWebSocket } = await import('./services/monitoringWebSocket.js');
+    stopMonitoringWebSocket();
+    console.log('  ✓ WebSocket server closed');
 
     stopCronJobs();
     console.log('  ✓ Cron jobs stopped');

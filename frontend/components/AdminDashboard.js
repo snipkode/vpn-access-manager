@@ -3,12 +3,20 @@ import { useUIStore, useAuthStore } from '../store';
 import { adminUsersAPI, adminDevicesAPI, adminDashboardAPI, adminVpnAPI } from '../lib/api';
 import { Tabs, DataTable, StatusBadge } from './admin';
 import AdminVPN from './AdminVPN';
+import AdminFirewall from './AdminFirewall';
+import AdminDepartments from './AdminDepartments';
+import AdminMonitoring from './AdminMonitoring';
+import AdminIPPool from './AdminIPPool';
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'users', label: 'Users' },
   { id: 'devices', label: 'Devices' },
   { id: 'vpn', label: 'VPN' },
+  { id: 'firewall', label: 'Firewall' },
+  { id: 'departments', label: 'Departments' },
+  { id: 'monitoring', label: 'Monitoring' },
+  { id: 'ippool', label: 'IP Pool' },
 ];
 
 const STAT_CONFIG = [
@@ -60,22 +68,21 @@ export default function AdminDashboard({ token, userData }) {
     try {
       const [statsData, usersData, devicesData] = await Promise.all([
         adminDashboardAPI.getStats(),
-        adminUsersAPI.getUsers(), // Get all users (no filter)
+        adminUsersAPI.getUsers(),
         adminDevicesAPI.getDevices(),
       ]);
       setStats(statsData);
-      
-      // Filter: exclude admins and current logged-in user
+
+      // Get all users - only exclude current logged-in user for safety
       const allUsers = usersData.users || [];
-      const filteredUsers = allUsers.filter(u => 
-        u.role !== 'admin' && // Exclude admin users
-        u.id !== user?.uid && // Exclude current user
-        u.email !== user?.email // Backup filter by email
+      const filteredUsers = allUsers.filter(u =>
+        u.id !== user?.uid // Only exclude current user
       );
-      
+
       setUsers(filteredUsers);
       setDevices(devicesData.devices || []);
     } catch (error) {
+      console.error('Failed to load admin data:', error);
       showNotification('Failed to load admin data', 'error');
     } finally {
       setLoading(false);
@@ -130,6 +137,10 @@ export default function AdminDashboard({ token, userData }) {
       {activeTab === 'users' && <UsersTable users={users} onToggle={toggleVpnAccess} onDelete={deleteUser} />}
       {activeTab === 'devices' && <DevicesTable devices={devices} onRevoke={revokeDevice} />}
       {activeTab === 'vpn' && <AdminVPN token={token} />}
+      {activeTab === 'firewall' && <AdminFirewall token={token} />}
+      {activeTab === 'departments' && <AdminDepartments />}
+      {activeTab === 'monitoring' && <AdminMonitoring />}
+      {activeTab === 'ippool' && <AdminIPPool />}
     </div>
   );
 }
@@ -404,6 +415,32 @@ function UsersTable({ users, onToggle, onDelete }) {
 }
 
 function DevicesTable({ devices, onRevoke }) {
+  const [filterUserId, setFilterUserId] = useState('all');
+  
+  // Get unique users from devices
+  const deviceUsers = useMemo(() => {
+    const users = new Map();
+    devices.forEach(device => {
+      if (!users.has(device.user_id)) {
+        users.set(device.user_id, {
+          user_id: device.user_id,
+          device_count: 0,
+          devices: []
+        });
+      }
+      const user = users.get(device.user_id);
+      user.device_count++;
+      user.devices.push(device);
+    });
+    return Array.from(users.values());
+  }, [devices]);
+
+  // Filter devices by user
+  const filteredDevices = useMemo(() => {
+    if (filterUserId === 'all') return devices;
+    return devices.filter(d => d.user_id === filterUserId);
+  }, [devices, filterUserId]);
+
   const columns = useMemo(() => [
     {
       key: 'device_name',
@@ -414,11 +451,11 @@ function DevicesTable({ devices, onRevoke }) {
       ),
     },
     {
-      key: 'user_id',
+      key: 'user_email',
       label: 'User',
       sortable: true,
       render: (device) => (
-        <span className="text-sm text-gray-500">{device.user_id}</span>
+        <span className="text-sm text-gray-600">{device.user_email || device.user_id}</span>
       ),
     },
     {
@@ -459,14 +496,43 @@ function DevicesTable({ devices, onRevoke }) {
     },
   ], [onRevoke]);
 
+  const headerContent = (
+    <div className="bg-purple-50 border-b border-purple-100 px-6 py-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm text-purple-700">
+          <span className="text-lg">📱</span>
+          <span>
+            Showing <strong>{filteredDevices.length}</strong> device(s)
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-purple-600 font-medium">Filter by User:</label>
+          <select
+            value={filterUserId}
+            onChange={(e) => setFilterUserId(e.target.value)}
+            className="px-3 py-1.5 border border-purple-200 rounded-lg text-xs font-medium bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+          >
+            <option value="all">All Users ({devices.length})</option>
+            {deviceUsers.map(user => (
+              <option key={user.user_id} value={user.user_id}>
+                {user.user_id} ({user.device_count} devices)
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <DataTable
       columns={columns}
-      data={devices}
+      data={filteredDevices}
       itemsPerPage={10}
       emptyMessage="No devices found"
+      headerContent={headerContent}
       searchable={true}
-      searchKeys={['device_name', 'ip_address', 'user_id']}
+      searchKeys={['device_name', 'ip_address', 'user_email']}
       sortable={true}
       mobileCardView={true}
       renderCard={(device) => (
@@ -475,7 +541,7 @@ function DevicesTable({ devices, onRevoke }) {
             <div>
               <div className="font-bold text-dark">{device.device_name}</div>
               <div className="text-xs text-gray-400 font-mono">{device.ip_address}</div>
-              <div className="text-xs text-gray-500 mt-1">User: {device.user_id}</div>
+              <div className="text-xs text-gray-500 mt-1">User: {device.user_email || device.user_id}</div>
             </div>
             <StatusBadge
               status={device.status}
