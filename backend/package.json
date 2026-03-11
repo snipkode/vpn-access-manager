@@ -13,8 +13,9 @@
     "db:migrate": "npx sequelize-cli db:migrate",
     "db:migrate:undo": "npx sequelize-cli db:migrate:undo",
     "db:migrate:undo:all": "npx sequelize-cli db:migrate:undo:all",
-    "db:seed": "npx sequelize-cli db:seed:all",
+    "db:seed": "node seeders/20260311000000-seed-initial-data.js",
     "db:drop": "npx sequelize-cli db:migrate:undo:all",
+    "migrate:firestore": "node scripts/migrate-firestore-to-mysql.js",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f mysql"
