@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: vpn_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword123}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-vpn_access}
+      MYSQL_USER: ${MYSQL_USER:-vpn_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-vpnpassword123}
+      TZ: ${TZ:-Asia/Jakarta}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backups/mysql:/backups
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
+      --innodb-buffer-pool-size=256M
+      --max-connections=100
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword123}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vpn_network
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: vpn_phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: ${MYSQL_USER:-vpn_user}
+      PMA_PASSWORD: ${MYSQL_PASSWORD:-vpnpassword123}
+      UPLOAD_LIMIT: 100M
+    ports:
+      - "${PMA_PORT:-8080}:80"
+    depends_on:
+      - mysql
+    networks:
+      - vpn_network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  vpn_network:
+    driver: bridge
