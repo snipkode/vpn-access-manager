@@ -1256,6 +1256,9 @@ export default function AdminFirewall({ token }) {
           onToggle={handleToggle}
           sortConfig={sortConfig}
           onSort={handleSort}
+          searchQuery={searchQuery}
+          filterAction={filterAction}
+          filterStatus={filterStatus}
         />
 
         {/* Pagination */}
@@ -1274,7 +1277,7 @@ export default function AdminFirewall({ token }) {
   );
 }
 
-function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle, sortConfig, onSort }) {
+function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle, sortConfig, onSort, searchQuery, filterAction, filterStatus }) {
   const columns = [
     {
       key: 'select',
@@ -1294,10 +1297,10 @@ function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle
       label: 'Rule Name',
       sortable: true,
       render: (rule) => (
-        <div>
-          <div className="font-medium text-dark">{rule.name}</div>
+        <div className="max-w-xs">
+          <div className="font-medium text-dark truncate">{rule.name}</div>
           {rule.description && (
-            <div className="text-xs text-gray-500 truncate max-w-xs">{rule.description}</div>
+            <div className="text-xs text-gray-500 truncate">{rule.description}</div>
           )}
         </div>
       ),
@@ -1307,7 +1310,7 @@ function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle
       label: 'Port',
       sortable: true,
       render: (rule) => (
-        <span className="font-mono text-sm text-gray-600">{rule.port}</span>
+        <span className="font-mono text-sm text-gray-600 whitespace-nowrap">{rule.port}</span>
       ),
     },
     {
@@ -1315,7 +1318,7 @@ function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle
       label: 'Protocol',
       sortable: true,
       render: (rule) => (
-        <span className="text-sm text-gray-600 uppercase">{rule.protocol}</span>
+        <span className="text-sm text-gray-600 uppercase whitespace-nowrap">{rule.protocol}</span>
       ),
     },
     {
@@ -1323,8 +1326,8 @@ function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle
       label: 'IP Selection',
       sortable: true,
       render: (rule) => (
-        <div>
-          <div className="font-mono text-sm text-dark">
+        <div className="max-w-xs">
+          <div className="font-mono text-sm text-dark truncate">
             {rule.ip_type === 'individual'
               ? `${rule.ips?.length || 0} IPs`
               : rule.ip_type === 'department'
@@ -1332,7 +1335,7 @@ function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle
               : rule.ip_range
             }
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-gray-500 truncate">
             {rule.ip_count} IPs
           </div>
         </div>
@@ -1343,7 +1346,7 @@ function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle
       label: 'Action',
       sortable: true,
       render: (rule) => (
-        <span className={`text-sm font-medium ${rule.action === 'allow' ? 'text-green-600' : 'text-red-600'}`}>
+        <span className={`text-sm font-medium whitespace-nowrap ${rule.action === 'allow' ? 'text-green-600' : 'text-red-600'}`}>
           {rule.action === 'allow' ? '✓ Allow' : '✗ Deny'}
         </span>
       ),
@@ -1353,7 +1356,9 @@ function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle
       label: 'Status',
       sortable: true,
       render: (rule) => (
-        <StatusBadge status={rule.enabled ? 'active' : 'disabled'} />
+        <div className="whitespace-nowrap">
+          <StatusBadge status={rule.enabled ? 'active' : 'disabled'} />
+        </div>
       ),
     },
     {
@@ -1361,10 +1366,10 @@ function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle
       label: 'Actions',
       sortable: false,
       render: (rule) => (
-        <div className="flex gap-2">
+        <div className="flex gap-2 whitespace-nowrap">
           <button
             onClick={() => onToggle(rule.id, rule.enabled)}
-            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+            className={`px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
               rule.enabled
                 ? 'bg-amber-50 text-amber-600 hover:bg-amber-100'
                 : 'bg-green-50 text-green-600 hover:bg-green-100'
@@ -1374,13 +1379,13 @@ function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle
           </button>
           <button
             onClick={() => onEdit(rule)}
-            className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-medium hover:bg-blue-100"
+            className="px-2 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-medium hover:bg-blue-100"
           >
             Edit
           </button>
           <button
             onClick={() => onDelete(rule.id)}
-            className="px-3 py-1 bg-red-50 text-red-600 rounded-lg text-xs font-medium hover:bg-red-100"
+            className="px-2 py-1 bg-red-50 text-red-600 rounded-lg text-xs font-medium hover:bg-red-100"
           >
             Delete
           </button>
@@ -1405,15 +1410,25 @@ function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full">
+      <table className="w-full min-w-[1000px]">
         <thead className="bg-gray-50">
           <tr>
-            {columns.map((col) => (
+            {columns.map((col, index) => (
               <SortableHeader
                 key={col.key}
                 column={col}
                 sortConfig={sortConfig}
                 onSort={onSort}
+                className={
+                  col.key === 'select' ? 'w-10' :
+                  col.key === 'name' ? 'w-1/4' :
+                  col.key === 'port' ? 'w-20' :
+                  col.key === 'protocol' ? 'w-24' :
+                  col.key === 'ip_range' ? 'w-1/4' :
+                  col.key === 'action' ? 'w-24' :
+                  col.key === 'enabled' ? 'w-24' :
+                  col.key === 'actions' ? 'w-48' : ''
+                }
               />
             ))}
           </tr>
@@ -1422,7 +1437,7 @@ function RulesTable({ rules, selectedRules, onSelect, onEdit, onDelete, onToggle
           {rules.map((rule) => (
             <tr key={rule.id} className={`hover:bg-gray-50 transition-colors ${selectedRules.includes(rule.id) ? 'bg-blue-50' : ''}`}>
               {columns.map((col) => (
-                <td key={col.key} className="px-6 py-4 whitespace-nowrap">
+                <td key={col.key} className="px-6 py-4 align-top">
                   {col.render(rule)}
                 </td>
               ))}
