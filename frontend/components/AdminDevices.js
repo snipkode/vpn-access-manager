@@ -17,7 +17,24 @@ export default function AdminDevices() {
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all'); // all, active, inactive
-  const [filterUser, setFilterUser] = useState('');
+  const [filterUser, setFilterUser] = useState('all');
+  
+  // Get unique users for filter dropdown
+  const uniqueUsers = useMemo(() => {
+    const usersMap = new Map();
+    devices.forEach(device => {
+      if (device.user_id && !usersMap.has(device.user_id)) {
+        usersMap.set(device.user_id, {
+          id: device.user_id,
+          name: device.user_name,
+          email: device.user_email
+        });
+      }
+    });
+    return Array.from(usersMap.values()).sort((a, b) => 
+      (a.name || '').localeCompare(b.name || '')
+    );
+  }, [devices]);
   
   // Sorting state
   const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
@@ -53,12 +70,9 @@ export default function AdminDevices() {
       );
     }
 
-    // User filter
-    if (filterUser) {
-      result = result.filter(device => 
-        device.user_email?.toLowerCase().includes(filterUser.toLowerCase()) ||
-        device.user_name?.toLowerCase().includes(filterUser.toLowerCase())
-      );
+    // User filter (by user_id)
+    if (filterUser !== 'all') {
+      result = result.filter(device => device.user_id === filterUser);
     }
 
     // Status filter
@@ -202,14 +216,18 @@ export default function AdminDevices() {
               </div>
 
               {/* User Filter */}
-              <div className="w-full sm:w-48">
-                <SearchInput
-                  value={filterUser}
-                  onChange={setFilterUser}
-                  placeholder="Filter by user..."
-                  size="sm"
-                />
-              </div>
+              <select
+                value={filterUser}
+                onChange={(e) => setFilterUser(e.target.value)}
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent w-full sm:w-48"
+              >
+                <option value="all">All Users</option>
+                {uniqueUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.email})
+                  </option>
+                ))}
+              </select>
 
               {/* Status Filter */}
               <select
